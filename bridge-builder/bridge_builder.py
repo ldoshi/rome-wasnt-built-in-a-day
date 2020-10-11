@@ -51,7 +51,7 @@ class Q:
     self.model = tf.keras.models.Sequential()
     self.model.add(tf.keras.layers.Conv2D(4,3,strides=(2,2),padding="valid",activation="relu",input_shape=input_shape))
     self.model.add(tf.keras.layers.Conv2D(8,2,strides=(1,1),padding="valid",activation="relu",input_shape=input_shape))
-    self.model.add(tf.keras.layers.Flatten())update
+    self.model.add(tf.keras.layers.Flatten())
     self.model.add(tf.keras.layers.Dense(64, activation='relu'))
     self.model.add(tf.keras.layers.Dense(action_space))
   
@@ -79,14 +79,17 @@ class Q:
   def predict(self, states):
     return self.model.predict(np.expand_dims(states, axis=3))
   
-def update_models(memory, q, q_target, q_loss):
+def update_models(memory, q, q_target, q_loss, update_bound):
     BATCH_SIZE = 1000             
     gamma = .99                   
-    states, actions, next_states, rewards, dones = memory.sample(BATCH_SIZE)     
- 
-    ys = rewards + (1-dones) * gamma * q_target.predict(next_states)   
-#    pdb.set_trace()              
-    q.update(states, ys, q_loss) 
+    states, actions, next_states, rewards, dones = memory.sample(BATCH_SIZE)    
+
+    q_values_now = q.predict(states)
+    td_targets = rewards + (1-dones) * gamma * q_target.predict(next_states).max(axis=1)   
+#    pdb.set_trace()
+    q_values_now[np.arange(len(actions)),actions] += np.clip(td_targets - q_values_now[np.arange(len(actions)),actions], -update_bound, update_bound)
+    
+    q.update(states, q_values_now, q_loss) 
     q_target.set_weights(q.get_weights())     
 
 def make_epsilon_greedy_policy(estimator, nA):
@@ -112,7 +115,7 @@ def make_epsilon_greedy_policy(estimator, nA):
     return policy_fn
 
 
-def train(iterations, episode_length, train_frequency, memory, q, q_target, q_loss): 
+def train(iterations, episode_length, train_frequency, memory, q, q_target, q_loss,update_bound): 
     current_epoch = 1             
     for iteration in range(iterations):      
         print("ITERATION %d" % iteration)
@@ -126,11 +129,15 @@ def train(iterations, episode_length, train_frequency, memory, q, q_target, q_lo
 
             next_state, reward, done, _ = env.step(action)
             memory.add(state, action, next_state, reward, done)
+            print(state)
+            print(next_state)
+            print(action)
+            print(reward)
  
             state = next_state    
  
             if current_epoch % train_frequency == 0:
-                update_models(memory, q, q_target, q_loss)
+                update_models(memory, q, q_target, q_loss, update_bound)
                 with summary_writer.as_default():
                   tf.summary.scalar('q_loss', q_loss.result(), step=current_epoch)
             if done:              
@@ -160,6 +167,7 @@ env = gym.make(environment_name)
 
 STATE_SPACE_N = len(env.reset())  
 ACTION_SPACE_N = len(env.action_space.sample())    
+UPDATE_BOUND = 50
 
 iterations = 100                
 train_frequency = 10             
@@ -181,7 +189,7 @@ summary_writer = tf.summary.create_file_writer(log_dir)
 # Define our metrics              
 q_loss = tf.keras.metrics.Mean('q_loss', dtype=tf.float32)
  
-train(iterations=iterations, episode_length=episode_length, train_frequency=train_frequency, memory=memory, q=q, q_target=q_target, q_loss=q_loss)
+train(iterations=iterations, episode_length=episode_length, train_frequency=train_frequency, memory=memory, q=q, q_target=q_target, q_loss=q_loss, update_bound=UPDATE_BOUND)
 
 
 demo(env, 500, pi)
