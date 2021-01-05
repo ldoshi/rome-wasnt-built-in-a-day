@@ -42,11 +42,14 @@ class TrainingPanel:
         
     def _render_states(self, state_training_history):
         for i in range(min(len(state_training_history), self._states_n)):
-            self._axs[i,0].matshow(state_training_history[i].state, cmap='hot')
+            ax = self._axs[i,0]
+            ax.cla()
+            ax.matshow(state_training_history[i].state, cmap='hot')
 
     def _render_series(self, state_training_history, column_index, method):
         for i in range(min(len(state_training_history), self._states_n)):
             ax = self._axs[i, column_index]
+            ax.cla()
             history = state_training_history[i]
             for a in range(self._actions_n):
                 xs, ys = getattr(history, method)(a)
