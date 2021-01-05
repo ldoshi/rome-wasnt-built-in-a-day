@@ -61,11 +61,12 @@ class StateTrainingHistory:
         return self._state_complexity
 
 class TrainingHistory:
-    def __init__(self):
+    def __init__(self, state_hash=str):
         self._training_history = {}
+        self._state_hash = state_hash
 
     def _add_if_missing(self, state):
-        key = str(state)
+        key = self._state_hash(state) if self._state_hash else state        
         if key not in self._training_history:
             self._training_history[key] = StateTrainingHistory(state)
         
