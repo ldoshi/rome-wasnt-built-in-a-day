@@ -11,7 +11,6 @@ google-auth-oauthlib==0.4.1
 google-pasta==0.2.0
 grpcio==1.32.0
 gym==0.17.3
--e git+git@github.com:ldoshi/gym-bridges.git@f2f9153f6e543f5f0a39017494666b819dc981df#egg=gym_bridges
 h5py==2.10.0
 idna==2.10
 importlib-metadata==2.0.0
