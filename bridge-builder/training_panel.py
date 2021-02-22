@@ -18,7 +18,7 @@ class TrainingPanel:
 
         self._fig, self._axs = plt.subplots(self._states_n, 4, gridspec_kw=gs_args, figsize=([2 * width, 2 * self._states_n]))
 
-        self._titles = ["State", "Q", "Q Target", "TD Target Delta"]
+        self._titles = ["State", "Q", "Q Target", "TD Error"]
         for i in range(self._states_n):
             for j,title in enumerate(self._titles):
                 self._axs[i,j].set_title(title)
@@ -61,7 +61,7 @@ class TrainingPanel:
         self._render_states(state_training_history)
         self._render_series(state_training_history, 1, "get_q_values")
         self._render_series(state_training_history, 2, "get_q_target_values")
-        self._render_series(state_training_history, 3, "get_td_target_deltas")
+        self._render_series(state_training_history, 3, "get_td_errors")
         self._fig.canvas.draw()
         self._fig.canvas.flush_events()
         

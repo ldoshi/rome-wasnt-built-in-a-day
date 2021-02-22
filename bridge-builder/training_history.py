@@ -14,7 +14,7 @@ class StateTrainingHistory:
         self._q_epochs = []
         self._q_history = defaultdict(list)
         self._q_target_history = defaultdict(list)
-        self._td_target_deltas = defaultdict(StateTrainingHistoryDataSeries)
+        self._td_errors = defaultdict(StateTrainingHistoryDataSeries)
 
     def add_q_values(self, epoch, q_values, q_target_values):
         assert not self._q_history or len(self._q_history) == len(q_values)
@@ -26,19 +26,19 @@ class StateTrainingHistory:
         for a, q_target_value in enumerate(q_target_values):
             self._q_target_history[a].append(q_target_value)
 
-    def add_td_target_delta(self, action, epoch, td_target_delta):
-        series = self._td_target_deltas[action]
+    def add_td_error(self, action, epoch, td_error):
+        series = self._td_errors[action]
         series.epochs.append(epoch)
-        series.data.append(td_target_delta)
+        series.data.append(td_error)
 
     def increment_visit_count(self):
         self._visit_count += 1
 
-    def get_td_target_deltas(self, action):
-        if action not in self._td_target_deltas:
+    def get_td_errors(self, action):
+        if action not in self._td_errors:
             return [], []
 
-        series = self._td_target_deltas[action]
+        series = self._td_errors[action]
         return series.epochs, series.data
 
     def get_q_values(self, action):
@@ -74,9 +74,9 @@ class TrainingHistory:
         self._add_if_missing(state)
         self._training_history[str(state)].add_q_values(epoch, q_values, q_target_values)
 
-    def add_td_target_delta(self, state, action, epoch, td_target_delta):
+    def add_td_error(self, state, action, epoch, td_error):
         self._add_if_missing(state)
-        self._training_history[str(state)].add_td_target_delta(action, epoch, td_target_delta)
+        self._training_history[str(state)].add_td_error(action, epoch, td_error)
 
     def increment_visit_count(self, state):
         self._add_if_missing(state)

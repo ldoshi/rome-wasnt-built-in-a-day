@@ -27,10 +27,10 @@ def build_test_history(states=None, base=None):
     history.add_q_values(states[2], 1, base + 2, (base+2) * 2)
     history.add_q_values(states[2], 10, (base + 2)*10, (base+2) * 10 * 2)
 
-    history.add_td_target_delta(states[0], 1, 1, 10)
-    history.add_td_target_delta(states[0], 1, 10, 5)
-    history.add_td_target_delta(states[0], 2, 11, 6)
-    history.add_td_target_delta(states[2], 1, 1, 5)
+    history.add_td_error(states[0], 1, 1, 10)
+    history.add_td_error(states[0], 1, 10, 5)
+    history.add_td_error(states[0], 2, 11, 6)
+    history.add_td_error(states[2], 1, 1, 5)
     return history
 
 class TestTrainingHistory(unittest.TestCase):
@@ -64,26 +64,26 @@ class TestTrainingHistory(unittest.TestCase):
             
         # Validate td target deltas.
         state_training_history = test_map[str(self._states[0])]
-        epochs, values = state_training_history.get_td_target_deltas(1)
+        epochs, values = state_training_history.get_td_errors(1)
         self.assertListEqual(epochs, [1, 10])
         self.assertListEqual(values, [10, 5])       
-        epochs, values = state_training_history.get_td_target_deltas(2)
+        epochs, values = state_training_history.get_td_errors(2)
         self.assertListEqual(epochs, [11])
         self.assertListEqual(values, [6])
-        epochs, values = state_training_history.get_td_target_deltas(0)
+        epochs, values = state_training_history.get_td_errors(0)
         self.assertListEqual(epochs, [])
         self.assertListEqual(values, [])
 
         state_training_history = test_map[str(self._states[1])]
-        epochs, values = state_training_history.get_td_target_deltas(0)
+        epochs, values = state_training_history.get_td_errors(0)
         self.assertListEqual(epochs, [])
         self.assertListEqual(values, [])
 
         state_training_history = test_map[str(self._states[2])]
-        epochs, values = state_training_history.get_td_target_deltas(1)
+        epochs, values = state_training_history.get_td_errors(1)
         self.assertListEqual(epochs, [1])
         self.assertListEqual(values, [5])
-        epochs, values = state_training_history.get_td_target_deltas(0)
+        epochs, values = state_training_history.get_td_errors(0)
         self.assertListEqual(epochs, [])
         self.assertListEqual(values, [])
 
