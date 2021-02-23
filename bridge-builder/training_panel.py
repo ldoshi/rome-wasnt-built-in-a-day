@@ -18,11 +18,6 @@ class TrainingPanel:
 
         self._fig, self._axs = plt.subplots(self._states_n, 4, gridspec_kw=gs_args, figsize=([2 * width, 2 * self._states_n]))
 
-        self._titles = ["State", "Q", "Q Target", "TD Error"]
-        for i in range(self._states_n):
-            for j,title in enumerate(self._titles):
-                self._axs[i,j].set_title(title)
-
         plt.show(block=False)
 
     def _state_plots_init(self):
@@ -44,9 +39,10 @@ class TrainingPanel:
         for i in range(min(len(state_training_history), self._states_n)):
             ax = self._axs[i,0]
             ax.cla()
-            ax.matshow(state_training_history[i].state, cmap='hot')
+            ax.matshow(state_training_history[i].state, cmap='binary')
+            ax.set_title("Visits: %d" % state_training_history[i].visit_count)
 
-    def _render_series(self, state_training_history, column_index, method):
+    def _render_series(self, state_training_history, column_index, method, title):
         for i in range(min(len(state_training_history), self._states_n)):
             ax = self._axs[i, column_index]
             ax.cla()
@@ -55,13 +51,14 @@ class TrainingPanel:
                 xs, ys = getattr(history, method)(a)
                 ax.plot(xs, ys, label=a)
 
+            ax.set_title(title)
             ax.legend()
         
     def update_panel(self, state_training_history):
         self._render_states(state_training_history)
-        self._render_series(state_training_history, 1, "get_q_values")
-        self._render_series(state_training_history, 2, "get_q_target_values")
-        self._render_series(state_training_history, 3, "get_td_errors")
+        self._render_series(state_training_history, 1, "get_q_values", "Q")
+        self._render_series(state_training_history, 2, "get_q_target_values", "Q Target")
+        self._render_series(state_training_history, 3, "get_td_errors", "TD Error")
         self._fig.canvas.draw()
         self._fig.canvas.flush_events()
         

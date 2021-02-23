@@ -29,7 +29,10 @@ import tensorflow as tf
 from tensorflow.keras import layers
 from pandas import DataFrame
 import time                   
-from collections import deque, namedtuple                     
+from collections import deque, namedtuple
+
+import training_history
+import training_panel 
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
@@ -56,23 +59,20 @@ def make_epsilon_greedy_policy(estimator, nA):
     return policy_fn
 
 class Memory: 
-    size = 0
-    content = None
-    index = 0
-    
     def __init__(self, n):                                
-        self.size = n              
-        self.content = []          
+        self._size = n              
+        self._content = []
+        self._index = 0
   
     def add(self, s, a, ss, r, d): 
-        if len(self.content) == self.size:    
-            self.content[self.index] = [s, a, ss, r, d]
-            self.index = (self.index + 1) % self.size
+        if len(self._content) == self._size:    
+            self._content[self._index] = [s, a, ss, r, d]
+            self._index = (self._index + 1) % self._size
         else:                      
-            self.content.append([s, a, ss, r, d])
+            self._content.append([s, a, ss, r, d])
   
     def sample(self, n):           
-      samples = random.sample(self.content, min(n, len(self.content)))
+      samples = random.sample(self._content, min(n, len(self._content)))
   
       states = np.array([i[0] for i in samples]) 
       actions = np.array([i[1] for i in samples])
@@ -83,12 +83,7 @@ class Memory:
 
 
 class NetworkQ:                           
-  model = None                     
-  tau = None                    
-                                   
   def __init__(self,input_shape, action_space_n, tau):
-    
-      
     self.model = tf.keras.models.Sequential()
     self.model.add(tf.keras.layers.Conv2D(4,3,strides=(2,2),padding="same",activation="relu",input_shape=input_shape))
     self.model.add(tf.keras.layers.Conv2D(8,2,strides=(1,1),padding="same",activation="relu",input_shape=input_shape))
@@ -97,20 +92,18 @@ class NetworkQ:
     self.model.add(tf.keras.layers.Dense(action_space_n))
   
     self.model.compile(optimizer='adam', loss='mse', metrics=["accuracy"])        
-    self.tau = tau           
-  
-  def get_model(self):             
-    return self.model;             
-  
-  def get_weights(self):           
+    self._tau = tau           
+
+  @property
+  def weights(self):           
     return self.model.get_weights()
   
   def initialize_weights(self, weights):      
     self.model.set_weights(weights)
   
   def set_weights(self, weights):  
-    current = self.get_weights()   
-    self.model.set_weights([current[i] * self.tau + (1 - self.tau) * weights[i] for i in range(len(weights))])             
+    current = self.weights   
+    self.model.set_weights([self._tau * current[i] + (1 - self._tau) * weights[i] for i in range(len(weights))])             
   
   def update(self, states, q_values, q_loss=None, epochs=1):
       # TODO(lyric): Revisit tensorboard_callback and/or q_loss.
@@ -122,17 +115,17 @@ class NetworkQ:
   def predict(self, states):
     return self.model.predict(np.expand_dims(states, axis=3))
   
-
-# TODO(lyric): Add TrainingHistory and relevant updates (and maybe loss).    
+# TODO(lyric): Make training history optional in the future to reduce overhead. Consider adding a "debug" config.
 class Trainer:
     def __init__(self, env, training_config, summary_writer=None): 
         self._env = env
         self._training_state = TrainingState(training_config)
+        self._training_history = training_history.TrainingHistory()
         self._memory = Memory(training_config.memory_size)
         self._summary_writer = summary_writer
         self._q = NetworkQ(env.reset().shape + (1,), training_config.action_space_n, training_config.tau)
         self._q_target = NetworkQ(env.reset().shape + (1,), training_config.action_space_n, training_config.tau)
-        self._q_target.initialize_weights(self._q.get_weights())
+        self._q_target.initialize_weights(self._q.weights)
         # TODO(lyric): Consider moving the policy to training_config if multiple are supported.
         self._policy = make_epsilon_greedy_policy(self._q, training_config.action_space_n)
 
@@ -157,37 +150,41 @@ class Trainer:
             self.follow_policy()
     
     # Take the provided action n times.
-    def take_action(self, action, n=1, verbose=False):
+    def take_action(self, action, n=1, training_frequency=None, verbose=False):
+        if training_frequency is None:
+            training_frequency = self._training_state.training_config.training_frequency
+
         self._start_episode_if_necessary()
         
         for _ in range(n):
             next_state, reward, is_done, _ = self._env.step(action)
             if verbose:
                 self._env.render()
+
             self._memory.add(self._training_state.current_state, action, next_state, reward, is_done)
             self._training_state.current_state = next_state
             self._training_state.increment_current_episode_step()
 
-            if not self._training_state.episode_active or is_done:
+            if not is_done:
+                self._training_history.increment_visit_count(next_state)
+
+            if self._training_state.current_epoch % training_frequency == 0:
+                self.update_models()
+            
+            if is_done or not self._training_state.episode_active:
                 self._training_state.end_episode()
                 break
 
     # Follow the policy for the requested number of steps. Returns early if the episode ends. Starts a new episode if one is not already active. If steps_n is None, go until the episode ends.
-    def follow_policy(self, steps_n=None, training_frequency=None,verbose=False):
-        if training_frequency is None:
-            training_frequency = self._training_state.training_config.training_frequency
-        
+    def follow_policy(self, steps_n=None, training_frequency=None,verbose=False):        
         self._start_episode_if_necessary()
 
         step_counter = 0
         while self._should_take_step(step_counter, steps_n):
             action_probabilities = self._policy(self._training_state.current_state, self._training_state.current_epsilon)
             action = np.random.choice(np.arange(len(action_probabilities)), p=action_probabilities)
-            self.take_action(action,verbose=verbose)
+            self.take_action(action,training_frequency=training_frequency, verbose=verbose)
             
-            if self._training_state.current_epoch % training_frequency == 0:
-                self.update_models()
-
             step_counter +=1         
 
     def _should_take_step(self, step_counter, steps_n):
@@ -204,7 +201,7 @@ class Trainer:
             return
 
         self._training_state.start_episode()
-        self._training_state.current_state = self._env.reset()            
+        self._training_state.current_state = self._env.reset()
         
     def update_models(self):
         states, actions, next_states, rewards, is_dones = self._memory.sample(self._training_state.training_config.batch_size)    
@@ -212,11 +209,31 @@ class Trainer:
         q_values_now = self._q.predict(states)
         td_targets = rewards[:,0] + (1-is_dones[:,0]) * self._training_state.training_config.gamma * self._q_target.predict(next_states).max(axis=1)   
 
+        self._log_td_error_to_training_history_debug(states, actions, td_targets - q_values_now[np.arange(len(actions)),actions])
+        
         q_values_now[np.arange(len(actions)),actions] += self._training_state.training_config.alpha * np.clip(td_targets - q_values_now[np.arange(len(actions)),actions], -self._training_state.training_config.update_bound, self._training_state.training_config.update_bound)
     
         self._q.update(states, q_values_now) 
-        self._q_target.set_weights(self._q.get_weights())     
+        self._q_target.set_weights(self._q.weights)
 
+        self._log_q_values_to_training_history_debug()
+
+    # For debuging only. Averages the td error per (state, action) pair. 
+    def _log_td_error_to_training_history_debug(self, states, actions, td_errors):
+        for i in range(len(states)):
+            self._training_history.add_td_error(states[i], actions[i], self._training_state.current_epoch, td_errors[i])
+        
+    # For debuging only. Computes q and q_target values across most visited 100 states and all actions. 
+    def _log_q_values_to_training_history_debug(self):
+        visited_state_histories = self._training_history.get_history_by_visit_count(100)
+        states = np.array([visited_state_history.state for visited_state_history in visited_state_histories])
+
+        q_values = self._q.predict(states)        
+        q_target_values = self._q.predict(states)
+
+        for i in range(len(states)):
+            self._training_history.add_q_values(states[i], self._training_state.current_epoch, q_values[i], q_target_values[i])
+            
 
 class TrainingConfig:
     # If provided, the epsilon policy should be an array of length number_of_episodes with the epsilon value to use for each episode.
@@ -316,24 +333,28 @@ def demo(env, estimator, episode_length):
             print("finished at %d" % t)
             break
 
+def reload_modules():
+    reload(training_history)
+    reload(training_panel)
+    
 environment_name = "gym_bridges.envs:Bridges-v0"
 env = gym.make(environment_name)
-env.setup(5,6)
+env.setup(3,6)
 
 number_of_episodes=100
 epsilon_policy = np.linspace(1, .05, number_of_episodes)
 
 training_config = TrainingConfig(
     number_of_episodes=number_of_episodes,
-    episode_length=40,
+    episode_length=15,
     training_frequency=1,
     memory_size=10000,
-    update_bound=50,
+    update_bound=100,
     action_space_n=env.action_space.n,
-    tau=.5,
+    tau=.01,
     batch_size=100,
     gamma=.99,
-    alpha=.5,
+    alpha=1,
     epsilon=None,
     epsilon_policy=epsilon_policy)
 
@@ -342,4 +363,9 @@ trainer = Trainer(env, training_config)
 # Uncomment if you want to run training using the training_config as is. It may or may not work out!
 # trainer.train()
 
-demo(env, trainer.q, 50)
+# Uncomment to view the TrainingPanel.
+#panel = training_panel.TrainingPanel(states_n=10, state_width=env.shape[1], state_height=env.shape[0], actions_n=env.action_space.n)
+#panel.update_panel(trainer.training_history.get_history_by_visit_count())
+
+# Uncomment to run the policy in the environment.
+#demo(env, trainer.q, 50)
