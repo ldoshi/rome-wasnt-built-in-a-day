@@ -4,8 +4,14 @@ import matplotlib.gridspec as gridspec
 from training_history import TrainingHistory
 from training_history_test import build_test_history
 
+import numpy as np
+
+def equally_spaced_indices(length, n):
+    return np.round(np.linspace(0, length - 1, n)).astype(int)
+
 class TrainingPanel:
     def __init__(self, states_n, state_width, state_height, actions_n):
+        self._max_points_per_plot = 50
         self._states_n = states_n
         self._state_width = state_width
         self._state_height = state_height
@@ -49,11 +55,15 @@ class TrainingPanel:
             history = state_training_history[i]
             for a in range(self._actions_n):
                 xs, ys = getattr(history, method)(a)
+                if len(xs) > self._max_points_per_plot:
+                    subsampled_indices_for_plotting = equally_spaced_indices(len(xs), self._max_points_per_plot)
+                    xs = [xs[index] for index in subsampled_indices_for_plotting]
+                    ys = [ys[index] for index in subsampled_indices_for_plotting]
                 ax.plot(xs, ys, label=a)
 
             ax.set_title(title)
             ax.legend()
-        
+
     def update_panel(self, state_training_history):
         self._render_states(state_training_history)
         self._render_series(state_training_history, 1, "get_q_values", "Q")

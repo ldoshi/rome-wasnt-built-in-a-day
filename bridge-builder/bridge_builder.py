@@ -36,6 +36,12 @@ import training_panel
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
+
+def reload_modules():
+    from importlib import reload
+    reload(training_history)
+    reload(training_panel)
+
 def make_epsilon_greedy_policy(estimator, nA):
     """
     Creates an epsilon-greedy policy based on a given Q-function approximator and epsilon.
@@ -64,7 +70,7 @@ class Memory:
         self._content = []
         self._index = 0
   
-    def add(self, s, a, ss, r, d): 
+    def add(self, s, a, ss, r, d):
         if len(self._content) == self._size:    
             self._content[self._index] = [s, a, ss, r, d]
             self._index = (self._index + 1) % self._size
@@ -73,7 +79,7 @@ class Memory:
   
     def sample(self, n):           
       samples = random.sample(self._content, min(n, len(self._content)))
-  
+
       states = np.array([i[0] for i in samples]) 
       actions = np.array([i[1] for i in samples])
       next_states = np.array([i[2] for i in samples])
@@ -103,7 +109,7 @@ class NetworkQ:
   
   def set_weights(self, weights):  
     current = self.weights   
-    self.model.set_weights([self._tau * current[i] + (1 - self._tau) * weights[i] for i in range(len(weights))])             
+    self.model.set_weights([(1-self._tau) * current[i] + self._tau * weights[i] for i in range(len(weights))])             
   
   def update(self, states, q_values, q_loss=None, epochs=1):
       # TODO(lyric): Revisit tensorboard_callback and/or q_loss.
@@ -229,7 +235,7 @@ class Trainer:
         states = np.array([visited_state_history.state for visited_state_history in visited_state_histories])
 
         q_values = self._q.predict(states)        
-        q_target_values = self._q.predict(states)
+        q_target_values = self._q_target.predict(states)
 
         for i in range(len(states)):
             self._training_history.add_q_values(states[i], self._training_state.current_epoch, q_values[i], q_target_values[i])
@@ -332,21 +338,54 @@ def demo(env, estimator, episode_length):
         if is_done:                  
             print("finished at %d" % t)
             break
-
-def reload_modules():
-    reload(training_history)
-    reload(training_panel)
     
+# env and memory should be treated as read-only.
+class DebugUtil:
+    def __init__(self, environment_name, env, memory):
+        self._memory = memory
+        self._debug_env = gym.make(environment_name)
+        self._debug_env.setup(env.shape[0], env.shape[1])
+
+    # Returns the state following the provided series of actions after a reset().
+    def get_state(self, actions):
+        state = self._debug_env.reset()
+        for a in actions:
+            state,_,_,_ = self._debug_env.step(a)
+
+        return state
+
+    # Returns entries from memory.
+    # Filters on states, actions, and rewards are AND-ed together.
+    # Filters within an input, such as actions, are OR-ed together. Provide None to match all.
+    def extract_memory_entries(self, states=None, actions=None, rewards=None):
+        out = []
+        if not states and not actions and not rewards:
+            return out
+
+        for entry in self._memory._content:
+            match = True
+            if match and states and entry[0] not in states:
+                match = False
+            if match and actions and entry[1] not in actions:
+                match = False
+            if match and rewards and entry[3] not in rewards:
+                match = False
+
+            if match:
+                out.append(entry)
+
+        return out
+            
 environment_name = "gym_bridges.envs:Bridges-v0"
 env = gym.make(environment_name)
-env.setup(3,6)
+env.setup(4,6)
 
-number_of_episodes=100
+number_of_episodes=300
 epsilon_policy = np.linspace(1, .05, number_of_episodes)
 
 training_config = TrainingConfig(
     number_of_episodes=number_of_episodes,
-    episode_length=15,
+    episode_length=10,
     training_frequency=1,
     memory_size=10000,
     update_bound=100,
@@ -360,12 +399,15 @@ training_config = TrainingConfig(
 
 trainer = Trainer(env, training_config)
 
-# Uncomment if you want to run training using the training_config as is. It may or may not work out!
-# trainer.train()
-
 # Uncomment to view the TrainingPanel.
 #panel = training_panel.TrainingPanel(states_n=10, state_width=env.shape[1], state_height=env.shape[0], actions_n=env.action_space.n)
-#panel.update_panel(trainer.training_history.get_history_by_visit_count())
 
-# Uncomment to run the policy in the environment.
-#demo(env, trainer.q, 50)
+# Uncomment if you want to run training using the training_config as is. It may or may not work out!
+#for _ in range(60):
+    #trainer.train(5)
+
+    # Uncomment to update the TrainingPanel.
+    #panel.update_panel(trainer.training_history.get_history_by_visit_count())
+
+    # Uncomment to run the policy in the environment.
+    #demo(env, trainer.q, 50)
