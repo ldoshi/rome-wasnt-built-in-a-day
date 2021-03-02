@@ -33,7 +33,8 @@ class TrainingPanel:
             figsize=([2 * width, 2 * self._states_n]),
         )
 
-        plt.show(block=False)
+        plt.ion()
+        plt.show()
 
     def _state_plots_init(self):
         for i in range(self._states_n):
@@ -84,7 +85,7 @@ class TrainingPanel:
         self._render_series(state_training_history, 3, "get_td_errors", "TD Error")
         self._fig.canvas.draw()
         self._fig.canvas.flush_events()
-
+        plt.pause(.001)
 
 if __name__ == "__main__":
     history = build_test_history()
