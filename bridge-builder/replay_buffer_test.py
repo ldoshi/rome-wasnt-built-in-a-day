@@ -22,44 +22,54 @@ class TestSumTree(unittest.TestCase):
     def test_uniform_tree(self):
         capacity = 21
         tree = SumTree(capacity)
-        for i in range(capacity):
-            tree.set_value(i, 1)
-            self.assertEqual(tree.max_value, 1)
+        boosted_priorities={}
+        self._populate_sum_tree(tree, capacity, boosted_priorities)
 
-        self._sample_and_verify(tree, capacity, boosted_priorities={}, stratified=False)
-        self._sample_and_verify(tree, capacity, boosted_priorities={}, stratified=True)
+        self._sample_and_verify(tree, capacity, boosted_priorities, stratified=False)
+        self._sample_and_verify(tree, capacity, boosted_priorities, stratified=True)
+
+        # Set the values from uniform trees to instead have some boosted priorities.
+        boosted_priorities={1: 7, 19: 7}
+        self._populate_sum_tree(tree, capacity, boosted_priorities)
+
+        self._sample_and_verify(tree, capacity, boosted_priorities, stratified=False)
+        self._sample_and_verify(tree, capacity, boosted_priorities, stratified=True)
+
 
     def test_prioritized_tree(self):
         capacity = 21
         tree = SumTree(capacity)
-        boosted_priorities = {1: 7, 19: 7}
-        max_value = 1
+        boosted_priorities={1: 7, 19: 7}
+        self._populate_sum_tree(tree, capacity, boosted_priorities)
+
+        self._sample_and_verify(tree, capacity, boosted_priorities, stratified=False)
+        self._sample_and_verify(tree, capacity, boosted_priorities, stratified=True)
+            
+        # Set the values from boosted_priorities back to 1 and verify the tree is now uniform.
+        self._populate_sum_tree(tree, capacity, boosted_priorities={}, max_value=tree.max_value)
+
+        self._sample_and_verify(tree, capacity, boosted_priorities={}, stratified=False)
+        self._sample_and_verify(tree, capacity, boosted_priorities={}, stratified=True)
+
+    def _populate_sum_tree(self, tree, capacity, boosted_priorities, max_value=1):
         for i in range(capacity):
             if i in boosted_priorities:
                 tree.set_value(i, boosted_priorities[i])
-                max_value = boosted_priorities[i]
+                max_value = max(max_value, boosted_priorities[i])
             else:
                 tree.set_value(i, 1)
                 
             self.assertEqual(tree.max_value, max_value)
 
-        self._sample_and_verify(tree, capacity, boosted_priorities=boosted_priorities, stratified=False)
-        self._sample_and_verify(tree, capacity, boosted_priorities=boosted_priorities, stratified=True)
-            
-        # Set the values from boosted_priorities back to 1 and verify the tree is now uniform.
-        for index in boosted_priorities:
-            tree.set_value(index, 1)
-
-        self._sample_and_verify(tree, capacity, boosted_priorities={}, stratified=False)
-        self._sample_and_verify(tree, capacity, boosted_priorities={}, stratified=True)
-
     def _sample_and_verify(self, tree, capacity, boosted_priorities, stratified):
         samples = []
-        iterations = 10000
+        iterations = 20000
         sample_count = 3
 
         for _ in range(iterations):
-            samples.append(tree.sample(sample_count, stratified=stratified))
+            sample = tree.sample(sample_count, stratified=stratified)
+            self.assertEqual(len(sample), sample_count)
+            samples.append(sample)
 
         sample_index_sets = [set() for _ in range(sample_count)]
         repeat_found = False
