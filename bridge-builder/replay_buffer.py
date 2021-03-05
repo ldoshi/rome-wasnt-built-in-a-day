@@ -1,6 +1,8 @@
 import numpy as np
 import random
 from bisect import bisect_right
+from collections import namedtuple
+from collections import deque
 
 # The sum tree is contained in a single array. The slots represent the
 # layers of the binary tree starting from the root laid out
@@ -13,6 +15,8 @@ from bisect import bisect_right
 
 def layer_base(depth):
     return (1 << depth) - 1
+
+TraversalEntry = namedtuple("TravseralEntry", ["target_values_left", "target_values_right", "target_index", "depth"])
 
 class SumTree:
   def __init__(self, capacity):      
@@ -33,29 +37,33 @@ class SumTree:
       return self._tree[0]
 
 
-  def _sample_collector(self, samples, target_values, target_values_left, target_values_right, target_index, current_depth):
-      if target_values_left == target_values_right:
-          return
+  def _sample_collector(self, samples, target_values):
+      traversal = deque([TraversalEntry(0, len(target_values), 0, 0)])
 
-      assert target_index < self._capacity
+      while traversal:
+          current = traversal.pop()
+
+          assert current.target_index < self._capacity, "Target Index {} vs Capacity {}".format(current.target_index, self._capacity)
       
-      if current_depth == self._tree_depth:
-          # The value (target_values_right - target_values_left)
-          # represents how many times we selected this element
-          # (sampling with replacement).
-          for _ in range(target_values_right - target_values_left):
-              samples.append((target_index, self._tree[layer_base(self._tree_depth - 1) + target_index] / self._tree_total_value()))
-          return
+          if current.depth == self._tree_depth:
+              # The value (target_values_right - target_values_left)
+              # represents how many times we selected this element
+              # (sampling with replacement).
+              for _ in range(current.target_values_right - current.target_values_left):
+                  samples.append((current.target_index, self._tree[layer_base(self._tree_depth - 1) + current.target_index] / self._tree_total_value()))
+              continue
 
-      target_index *= 2
-      left_sum = self._tree[layer_base(current_depth) + target_index]
-      split_point = bisect_right(target_values, left_sum, target_values_left, target_values_right)
-      # Traverse left.
-      self._sample_collector(samples, target_values, target_values_left, split_point, target_index, current_depth + 1)
+          updated_target_index = current.target_index * 2
+          left_sum = self._tree[layer_base(current.depth) + updated_target_index]
+          split_point = bisect_right(target_values, left_sum, current.target_values_left, current.target_values_right)
+          # Traverse left.
+          if current.target_values_left < split_point:
+              traversal.append(TraversalEntry(current.target_values_left, split_point, updated_target_index, current.depth + 1))
 
-      # Traverse right.
-      target_values[split_point:target_values_right] -= left_sum
-      self._sample_collector(samples, target_values, split_point, target_values_right, target_index + 1, current_depth + 1)
+          # Traverse right.
+          if split_point < current.target_values_right:
+              target_values[split_point:current.target_values_right] -= left_sum
+              traversal.append(TraversalEntry(split_point, current.target_values_right, updated_target_index + 1, current.depth + 1))
           
   # Samples with replacement. Returns the index and probability of n
   # elements. If stratified is true, the selection space [0,
@@ -76,7 +84,7 @@ class SumTree:
       target_values = np.array(target_values)
       samples = []
 
-      self._sample_collector(samples, target_values, target_values_left=0, target_values_right=len(target_values), target_index=0, current_depth=0)
+      self._sample_collector(samples, target_values)
       
       return samples
       
