@@ -57,14 +57,14 @@ class SumTree:
           updated_target_index = current[2] * 2
           left_sum = self._tree[layer_base(current[3]) + updated_target_index]
           split_point = bisect_right(target_values, left_sum, current[0], current[1])
-          # Traverse left.
-          if current[0] < split_point:
-              traversal.append((current[0], split_point, updated_target_index, current[3] + 1))
-
           # Traverse right.
           if split_point < current[1]:
               target_values[split_point:current[1]] -= left_sum
               traversal.append((split_point, current[1], updated_target_index + 1, current[3] + 1))
+
+          # Traverse left.
+          if current[0] < split_point:
+              traversal.append((current[0], split_point, updated_target_index, current[3] + 1))
 
       return samples
           
@@ -79,7 +79,7 @@ class SumTree:
       if stratified:
           boundaries = np.linspace(0,1,n+1) * self._tree_total_value()
           # Sorted by construction.
-          target_values = [random.uniform(boundaries[i],boundaries[i+1]) for i in range(len(boundaries) - 1)] 
+          target_values = [random.uniform(boundaries[i],boundaries[i+1]) for i in range(len(boundaries) - 1)]
       else:
           target_values = [random.uniform(0,1) * self._tree_total_value() for _ in range(n)]
           target_values.sort()
@@ -107,27 +107,53 @@ class SumTree:
 
           current_depth_base -= 1
           current_index //= 2
-        
+
+# If update_priorities is never called, this calls implements uniform
+# sampling of the Experience Replay Buffer.
 class ReplayBuffer:
     def __init__(self, capacity, alpha=.5):
-        self._size = n
+        self._capacity = capacity
         self._content = []
+        self._alpha = alpha
         self._index = 0
+        self._tree = SumTree(capacity)
+        # epsilon is added to |td_errr| to ensure all priorities are non-zero.
+        self._epsilon = 1e-10
   
-    def add(self, s, a, ss, r, d):
-        if len(self._content) == self._size:    
+    def add_new_experience(self, s, a, ss, r, d):
+        if len(self._content) == self._capacity:    
             self._content[self._index] = [s, a, ss, r, d]
-            self._index = (self._index + 1) % self._size
         else:                      
             self._content.append([s, a, ss, r, d])
-  
-    def sample(self, n, beta):           
-      samples = random.sample(self._content, min(n, len(self._content)))
 
-      states = np.array([i[0] for i in samples]) 
-      actions = np.array([i[1] for i in samples])
-      next_states = np.array([i[2] for i in samples])
-      rewards = np.array([[i[3]] for i in samples])
-      is_dones = np.array([[i[4]] for i in samples])
-      return states, actions, next_states, rewards, is_dones
-    
+        self._tree.set_value(self._index, self._tree.max_value)
+        self._index = (self._index + 1) % self._capacity
+
+    def update_priorities(self, indices, td_errors):
+        for index, value in zip(indices, td_errors):
+            self._tree.set_value(index, pow(abs(value) + self._epsilon, self._alpha))
+
+    def sample(self, n, beta):
+        samples = self._tree.sample(n, stratified=True)
+
+        indices = []
+        states = []
+        actions = []
+        next_states = []
+        rewards = []
+        is_dones = []
+        weights = []
+        # Collect samples and compute importance sampling weights.
+        data_holders = [states, actions, next_states, rewards, is_dones]
+        
+        for index, probability in samples:
+            indices.append(index)
+            
+            entry = self._content[index]
+            for data, holder in zip(entry, data_holders):
+                holder.append(data)
+
+            weights.append(pow(1/len(self._content) * 1/probability, beta))
+
+        weights = np.array(weights)
+        return indices, np.array(states), np.array(actions), np.array(next_states), np.array(rewards), np.array(is_dones), (weights / np.max(weights))
