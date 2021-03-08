@@ -330,10 +330,10 @@ def demo(env, estimator, episode_length):
             print("finished at %d" % t)
             break
     
-# env and memory should be treated as read-only.
+# env and replay_buffer should be treated as read-only.
 class DebugUtil:
-    def __init__(self, environment_name, env, memory):
-        self._memory = memory
+    def __init__(self, environment_name, env, replay_buffer):
+        self._replay_buffer = replay_buffer
         self._debug_env = gym.make(environment_name)
         self._debug_env.setup(env.shape[0], env.shape[1], vary_heights=(len(env.height_pairs) > 1))
 
@@ -345,15 +345,15 @@ class DebugUtil:
 
         return state
 
-    # Returns entries from memory.
+    # Returns entries from replay buffer.
     # Filters on states, actions, and rewards are AND-ed together.
     # Filters within an input, such as actions, are OR-ed together. Provide None to match all.
-    def extract_memory_entries(self, states=None, actions=None, rewards=None):
+    def extract_replay_buffer_entries(self, states=None, actions=None, rewards=None):
         out = []
         if not states and not actions and not rewards:
             return out
 
-        for entry in self._memory._content:
+        for entry in self._replay_buffer._content:
             match = True
             if match and states and entry[0] not in states:
                 match = False
