@@ -4,19 +4,22 @@ from bisect import bisect_right
 from itertools import chain, starmap
 from functools import partial
 
-# The sum tree is contained in a single array. The slots represent the
-# layers of the binary tree starting from the root laid out
-# contiguously. The intermediate layers contains the sum of priorities
-# of its children. The leaf nodes contain the priorities stored in the
-# tree.
-# An example tree with capacity 7.
-# [10,  6, 4,  2, 4, 2, 2,  1, 1, 3, 1, 1, 1, 2, _ ]
-# |L0 |  L1  |     L2     |          L3          ^ unused slot.
-
 
 class SumTree:
+    """A binary tree in which leaf node must contain a nonnegative value and
+    each non-leaf node contains the sum of it's two children.
+
+    Implementation Details: The sum tree is contained in a single array. The
+    slots represent the layers of the binary tree starting from the root laid
+    out contiguously. An example tree with capacity 7:
+
+    [10,  6, 4,  2, 4, 2, 2,  1, 1, 3, 1, 1, 1, 2, _ ]
+    |L0 |  L1  |     L2     |          L3          ^ unused slot.
+    """
+
     def __init__(self, capacity):
         """Creates a SumTree for storing up to `capacity` leaf values"""
+
         self._tree_depth = np.ceil(np.log2(capacity)).astype(int) + 1
         self._leaf_base = (1 << (self._tree_depth - 1)) - 1
         self._tree = np.zeros(2 * self._leaf_base + 1)
@@ -30,15 +33,12 @@ class SumTree:
         print(self._capacity)
         print(self.max_value)
 
-    def __getitem__(self, index):
-        return self._tree[index]
-
     # By construction, the root node contains the sum of all values.
     @property
     def _tree_total_value(self):
-        return self[0]
+        return self._tree[0]
 
-    def _process_layer(
+    def _process_intermediate_level(
         self,
         target_values,
         target_values_left,
@@ -46,21 +46,36 @@ class SumTree:
         target_index,
         current_left_sum,
     ):
+        """Helper function that partitions a list of cumulative probabilties
+        between two children of a non-leaf node in the SumTree.
 
-        cap_err = f"Target Index {target_index} vs Capacity {self._capacity}"
+        Args:
+            target_values: a numpy array of values in non-decreasing order to be
+                used as cumulative probabilities for sampling from the SumTree
+            target_values_left, target_values_right: two indices such that
+                `target_values[target_values_left:target_values_right]` are the
+                cumulative probabilities to be partitioned
+            target_index: the index of the node within the SumTree, ordered
+                canonically (left to right, top to bottom), between whose
+                children the cumulative probabilities should be partitioned
+            current_left_sum: the sum of all nodes to the left of `target_index`
+                on the same level of the SumTree
 
-        leaf_index = target_index - self._leaf_base
-        assert leaf_index < self._capacity, cap_err
+        Returns up to two 4-tuples (one for each child node of `target_index`).
+            Each 4-tuple will have the structure `(left, right, idx, lsum)`,
+            where `idx` is the index of the child node within the SumTree,
+            `lsum` is the sum of all nodes to the left of the child node on the
+            same level, and `left` and `right` are indices such that [`left`, `right`)
+            is a subset of [`target_values_left`, `target_values_right`) and
+            `target_values[left:right]` are partitioned to the `idx` child node
+        """
 
-        if leaf_index >= 0:
-            # The value (target_values_right - target_values_left)
-            # represents how many times we selected this element
-            # (sampling with replacement).
-            sample = (leaf_index, self[target_index] / self._tree_total_value)
-            return [sample] * (target_values_right - target_values_left)
+        assert (
+            target_index < self._leaf_base
+        ), f"Node {target_index} has no children and cannot be expanded"
 
         target_index = 2 * target_index + 1
-        left_sum = self[target_index] + current_left_sum
+        left_sum = self._tree[target_index] + current_left_sum
         split_point = bisect_right(
             target_values, left_sum, target_values_left, target_values_right
         )
@@ -80,23 +95,84 @@ class SumTree:
 
         return next_level_splits
 
-    def _sample_collector(self, target_values):
+    def _sample_final_level(
+        self,
+        target_values,
+        target_values_left,
+        target_values_right,
+        target_index,
+        current_left_sum,
+    ):
+        """Helper function that takes a list of cumulative probabilties
+        corresponding to a leaf node in the SumTree and returns a list
+        containing an equal number of copies of the leaf node's index
+        (among the leaf nodes only) and the probability corresponding to
+        that leaf node.
 
+        Args:
+            target_values: a numpy array of values in non-decreasing order to be
+                used as cumulative probabilities for sampling from the SumTree
+            target_values_left, target_values_right: two indices such that
+                `target_values[target_values_left:target_values_right]` are the
+                cumulative probabilities corresponding to the leaf node
+            target_index: the index of the leaf node within the SumTree,
+                ordered canonically (left to right, top to bottom)
+            current_left_sum: the sum of all leaf nodes to the left of this one
+
+        Returns a list containing `(target_values_right - target_values_left)`
+            copies of the tuple `(idx, p)` where `idx` is the index of this leaf
+            node amongst all leaf nodes, and `p` is the probability of sampling
+            this leaf node, as stored in the SumTree
+        """
+
+        leaf_index = target_index - self._leaf_base
+        assert leaf_index >= 0, f"Node {target_index} is not a leaf"
+        # The value (target_values_right - target_values_left) represents how
+        # many times we selected this element (sampling with replacement).
+        sample = (leaf_index, self._tree[target_index] / self._tree_total_value)
+        return [sample] * (target_values_right - target_values_left)
+
+    def _sample_collector(self, target_values):
+        """Helper function that a takes a list of cumulative probabilties and
+        returns the corresponding leaf node samples from the SumTree.
+
+        Args:
+            target_values: a numpy array of values in non-decreasing order to be
+                used as cumulative probabilities for sampling from the SumTree
+
+        Returns a list of samples `(idx, p)` from the SumTree, where `idx` is
+            the leaf-level index of the leaf node sampled and `p` is the
+            probability of sampling this leaf node, as stored in the SumTree.
+        """
+
+        level_func = partial(self._process_intermediate_level, target_values)
+        sample_func = partial(self._sample_final_level, target_values)
         # Each tuple in splits contains (target_values_left,
         # target_values_right, target_index, current_left_sum).
-        layer_func = partial(self._process_layer, target_values)
         splits = [(0, len(target_values), 0, 0)]
-        for i in range(self._tree_depth):
+        for i in range(self._tree_depth - 1):
             # With multiple cores, you can split out itertools.starmap
             # for a multiprocessing version
-            splits = chain.from_iterable(starmap(layer_func, splits))
-        return list(splits)
+            splits = chain.from_iterable(starmap(level_func, splits))
 
-    # Samples with replacement. Returns the index and probability of n
-    # elements. If stratified is true, the selection space [0,
-    # tree_total_value) is split into n contiguous buckets of size 1/n
-    # and a sample if uniformly chosen from within each bucket.
+        samples = chain.from_iterable(starmap(sample_func, splits))
+        return list(samples)
+
     def sample(self, n, stratified=False):
+        """Returns n samples drawn (with replacement) from the SumTree.
+
+        Args:
+            n: the number of samples to be drawn
+            stratified: a boolean - if True, the range [0, 1) is split into `n`
+                identical, contiguous buckets and a probability is drawn
+                uniformly at random from each. if False, `n` probabilities are
+                drawn uniformly at random from [0, 1)
+
+        Returns a list of samples `(idx, p)` from the SumTree, where `idx` is
+            the leaf-level index of the leaf node sampled and `p` is the
+            probability of sampling this leaf node, as stored in the SumTree.
+        """
+
         if n == 0:
             return []
 
@@ -109,6 +185,9 @@ class SumTree:
         return self._sample_collector(target_values * self._tree_total_value)
 
     def set_value(self, index, value):
+        """Sets the leaf node at leaf-level index `index` to have probability
+        `value`, and updates the rest of the SumTree accordingly"""
+
         if index >= self._capacity:
             raise ValueError(
                 f"Attempted to set index {index} beyond capacity {self._capacity}."

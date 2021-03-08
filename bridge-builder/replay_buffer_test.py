@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import unittest
 from timeit import timeit
 from parameterized import parameterized
@@ -16,7 +17,8 @@ class TestSumTree(unittest.TestCase):
             ("Not Stratified", False, 100000, 100, 10000),
         ]
     )
-    def test_sampling_speed(self, name, stratified, capacity, batch, repititions):
+    @pytest.mark.integtest
+    def test_sampling_speed(self, name, stratified, capacity, batch, repetitions):
         setup = [
             "import random",
             "from replay_buffer import SumTree",
@@ -27,9 +29,9 @@ class TestSumTree(unittest.TestCase):
         time = timeit(
             stmt=f"tree.sample({batch}, stratified={stratified})",
             setup="\n".join(setup),
-            number=repititions,
+            number=repetitions,
         )
-        report = f"{name} Runtime: {time} sec for {repititions} repititions "
+        report = f"{name} Runtime: {time} sec for {repetitions} repetitions "
         report += f"sampling batches of {batch} with a buffer capacity of {capacity}"
         print(report)
 
