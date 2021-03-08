@@ -1,5 +1,7 @@
 import numpy as np
 import unittest
+from parameterized import parameterized
+
 from replay_buffer import SumTree
 from replay_buffer import ReplayBuffer
 
@@ -137,28 +139,31 @@ class TestReplayBuffer(unittest.TestCase):
         
     # This test case also verifies that returned indices correspond to
     # the correct entries.
-    def test_uniform_replay(self):
-        capacity = 10
+    @parameterized.expand(
+        [
+            ("Alpha Beta Pair 0", .5, .5),
+            ("Alpha Beta Pair 1", .5, 1),
+            ("Alpha Beta Pair 2", 1, .5),
+            ("Alpha Beta Pair 3", 1, 1)
+        ]
+    )
+    def test_uniform_replay(self, name, alpha, beta):
         # The alpha and beta value do not make a difference in the uniform case.
-        alphas = [.5, 1]
-        betas = [.5, 1]
-        for alpha in alphas:
-            for beta in betas:
-                replay_buffer = ReplayBuffer(capacity, alpha)
+        replay_buffer = ReplayBuffer(self._capacity, alpha)
 
-                for i in range(capacity):
-                    replay_buffer.add_new_experience(i,i,i,i,i)
-                    indices, states, actions, next_states, rewards, is_dones, weights = replay_buffer.sample(i+1, beta)
-                    combined_list = [indices, states, actions, next_states, rewards, is_dones]
+        for i in range(self._capacity):
+            replay_buffer.add_new_experience(i,i,i,i,i)
+            indices, states, actions, next_states, rewards, is_dones, weights = replay_buffer.sample(i+1, beta)
+            combined_list = [indices, states, actions, next_states, rewards, is_dones]
 
-                    for combined_list_member in combined_list:
-                        self.assertEqual(len(combined_list_member), i+1)
+            for combined_list_member in combined_list:
+                self.assertEqual(len(combined_list_member), i+1)
 
-                    for j in range(i+1):
-                        for combined_list_member in combined_list:
-                            self.assertEqual(combined_list_member[j], j, "{} vs {}".format(combined_list_member, j))
+            for j in range(i+1):
+                for combined_list_member in combined_list:
+                    self.assertEqual(combined_list_member[j], j, "{} vs {}".format(combined_list_member, j))
 
-                        self.assertEqual(weights[j], 1)
+                self.assertEqual(weights[j], 1)
 
     def _make_replay_buffer_with_unit_priorities(self, alpha=1):
         replay_buffer = ReplayBuffer(self._capacity, alpha)
