@@ -205,25 +205,56 @@ class SumTree:
             index = (index - 1) // 2
 
 
+# If update_priorities is never called, this calls implements uniform
+# sampling of the Experience Replay Buffer.
 class ReplayBuffer:
     def __init__(self, capacity, alpha=0.5):
-        self._size = n
+        self._capacity = capacity
         self._content = []
+        self._alpha = alpha
         self._index = 0
+        self._tree = SumTree(capacity)
+        # epsilon is added to |td_errr| to ensure all priorities are non-zero.
+        self._epsilon = 1e-10
 
-    def add(self, s, a, ss, r, d):
-        if len(self._content) == self._size:
+    def add_new_experience(self, s, a, ss, r, d):
+        if len(self._content) == self._capacity:
             self._content[self._index] = [s, a, ss, r, d]
-            self._index = (self._index + 1) % self._size
         else:
             self._content.append([s, a, ss, r, d])
 
-    def sample(self, n, beta):
-        samples = random.sample(self._content, min(n, len(self._content)))
+        self._tree.set_value(self._index, self._tree.max_value)
+        self._index = (self._index + 1) % self._capacity
 
-        states = np.array([i[0] for i in samples])
-        actions = np.array([i[1] for i in samples])
-        next_states = np.array([i[2] for i in samples])
-        rewards = np.array([[i[3]] for i in samples])
-        is_dones = np.array([[i[4]] for i in samples])
-        return states, actions, next_states, rewards, is_dones
+    def update_priorities(self, indices, td_errors):
+        for index, value in zip(indices, td_errors):
+            self._tree.set_value(index, pow(abs(value) + self._epsilon, self._alpha))
+
+    def sample(self, n, beta):
+        samples = self._tree.sample(n, stratified=True)
+
+        indices = []
+        states = []
+        actions = []
+        next_states = []
+        rewards = []
+        is_dones = []
+        weights = []
+        # Collect samples and compute importance sampling weights.
+        data_holders = [states, actions, next_states, rewards, is_dones]
+
+        for index, probability in samples:
+            indices.append(index)
+
+            entry = self._content[index]
+            for data, holder in zip(entry, data_holders):
+                holder.append(data)
+
+            weights.append(pow(len(self._content) * probability, -beta))
+
+        weights = np.array(weights)
+        return (
+            indices,
+            *(np.array(holder) for holder in data_holders),
+            (weights / np.max(weights)),
+        )
