@@ -5,8 +5,7 @@ from parameterized import parameterized
 from replay_buffer import SumTree
 from replay_buffer import ReplayBuffer
 
-#class TestSumTree(unittest.TestCase):
-class TestSumTree:
+class TestSumTree(unittest.TestCase):
     
     def setUp(self):
         self._delta = 1e-6
