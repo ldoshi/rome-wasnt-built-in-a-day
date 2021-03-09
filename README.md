@@ -10,7 +10,7 @@ This project is also about creating a bot that learns the necessary skills to bu
 
 The bot will start with simple action primitives, such as "drop a block at this coordinate". The bot will expand the set of primitives in its toolkit as it learns new skills, such as adding a wall of given dimensions or knowing how to build a column as a single action. Once the bot has been trained to reliably build a bridge across a gap, we want the bot to internalize the skill of building bridges to apply efficiently whenever it encounters a gap. The current mechanic focuses on construction by placing block after block. We will begin with a 2D grid and expand to 3D.
 
-The bot must also learn to combine skills, such as combining knowing on how to build bridges and towers to cross uneven ground.
+The bot must also learn to combine skills to accomplish higher level tasks, e.g integrating bridge-building and tower-building to cross uneven ground.
 
 To make the world interesting, the bot will also need to learn notions of creativity and style. For example, instead of building the minimum bridge for a span, it may opt to build a covered bridge or a bridge with arches.
 
