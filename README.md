@@ -6,20 +6,20 @@ You will need the [gym-bridges](https://github.com/ldoshi/gym-bridges) repo for 
 
 * Create a virtualenv with _Python 3.8.5_, and activate it.
   * If you're using python directly
-    
+
     `python3 -m venv venv`
-    
+
     `source venv/bin/activate`
-  
+
   * If you're using miniconda
-  
+
     `conda create -n myenv python=3.8.5`
-  
+
     `conda activate myenv`
 
 * Install dependencies `pip install -r requirements.txt`
 
-This project is currently uses black to autoformat all code. Highly recommend using black as well to prevent spurious diffs.
+This project currently uses black to autoformat all code. Highly recommend using black as well to prevent spurious diffs.
 
 ## Running
 
