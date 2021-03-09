@@ -1,12 +1,14 @@
-from collections import defaultdict 
+from collections import defaultdict
 import numpy as np
+
 
 class StateTrainingHistoryDataSeries:
     def __init__(self):
         self.epochs = []
         self.data = []
 
-class StateTrainingHistory:    
+
+class StateTrainingHistory:
     def __init__(self, state):
         self._state = state
         self._state_complexity = int(np.sum(self._state))
@@ -18,7 +20,9 @@ class StateTrainingHistory:
 
     def add_q_values(self, epoch, q_values, q_target_values):
         assert not self._q_history or len(self._q_history) == len(q_values)
-        assert not self._q_target_history or len(self._q_target_history) == len(q_target_values)
+        assert not self._q_target_history or len(self._q_target_history) == len(
+            q_target_values
+        )
 
         self._q_epochs.append(epoch)
         for a, q_value in enumerate(q_values):
@@ -46,11 +50,11 @@ class StateTrainingHistory:
 
     def get_q_target_values(self, action):
         return self._q_epochs, self._q_target_history[action]
-        
+
     @property
     def state(self):
         return self._state
-        
+
     @property
     def visit_count(self):
         return self._visit_count
@@ -60,19 +64,22 @@ class StateTrainingHistory:
         # Currently implemented as the number of bricks
         return self._state_complexity
 
+
 class TrainingHistory:
     def __init__(self, state_hash=str):
         self._training_history = {}
         self._state_hash = state_hash
 
     def _add_if_missing(self, state):
-        key = self._state_hash(state) if self._state_hash else state        
+        key = self._state_hash(state) if self._state_hash else state
         if key not in self._training_history:
             self._training_history[key] = StateTrainingHistory(state)
-        
+
     def add_q_values(self, state, epoch, q_values, q_target_values):
         self._add_if_missing(state)
-        self._training_history[str(state)].add_q_values(epoch, q_values, q_target_values)
+        self._training_history[str(state)].add_q_values(
+            epoch, q_values, q_target_values
+        )
 
     def add_td_error(self, state, action, epoch, td_error):
         self._add_if_missing(state)
@@ -84,8 +91,21 @@ class TrainingHistory:
 
     # These are sorted in descending order.
     def get_history_by_visit_count(self, n=None):
-        return [v for k,v in sorted(self._training_history.items(), key=lambda item: item[1].visit_count, reverse=True)][:n]
+        return [
+            v
+            for k, v in sorted(
+                self._training_history.items(),
+                key=lambda item: item[1].visit_count,
+                reverse=True,
+            )
+        ][:n]
 
     # These are sorted in ascending order.
     def get_history_by_complexity(self, n=None):
-        return [v for k,v in sorted(self._training_history.items(), key=lambda item: item[1].state_complexity)][:n]
+        return [
+            v
+            for k, v in sorted(
+                self._training_history.items(),
+                key=lambda item: item[1].state_complexity,
+            )
+        ][:n]

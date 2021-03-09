@@ -28,93 +28,138 @@ import matplotlib
 import tensorflow as tf
 from tensorflow.keras import layers
 from pandas import DataFrame
-import time                   
+import time
 from collections import deque, namedtuple
 from replay_buffer import ReplayBuffer
 
 import training_history
-import training_panel 
+import training_panel
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
+
 def reload_modules():
     from importlib import reload
+
     reload(training_history)
     reload(training_panel)
+
 
 def make_epsilon_greedy_policy(estimator, nA):
     """
     Creates an epsilon-greedy policy based on a given Q-function approximator and epsilon.
-    
+
     Args:
         estimator: An estimator that returns q values for a given state
         epsilon: The probability to select a random action . float between 0 and 1.
         nA: Number of actions in the environment.
-    
+
     Returns:
         A function that takes the observation as an argument and returns
         the probabilities for each action in the form of a numpy array of length nA.
-    
+
     """
+
     def policy_fn(observation, epsilon):
         A = np.ones(nA, dtype=float) * epsilon / nA
         q_values = estimator.predict([observation])
         best_action = np.argmax(q_values)
-        A[best_action] += (1.0 - epsilon)
+        A[best_action] += 1.0 - epsilon
         return A
+
     return policy_fn
 
-class NetworkQ:                           
-  def __init__(self,input_shape, action_space_n, tau):
-    self.model = tf.keras.models.Sequential()
-    self.model.add(tf.keras.layers.Conv2D(4,3,strides=(2,2),padding="same",activation="relu",input_shape=input_shape))
-    self.model.add(tf.keras.layers.Conv2D(8,2,strides=(1,1),padding="same",activation="relu",input_shape=input_shape))
-    self.model.add(tf.keras.layers.Flatten())
-    self.model.add(tf.keras.layers.Dense(64, activation='relu'))
-    self.model.add(tf.keras.layers.Dense(action_space_n))
-  
-    self.model.compile(optimizer='adam', loss='mse', metrics=["accuracy"])        
-    self._tau = tau           
 
-  @property
-  def weights(self):           
-    return self.model.get_weights()
-  
-  def initialize_weights(self, weights):      
-    self.model.set_weights(weights)
-  
-  def set_weights(self, weights):  
-    current = self.weights   
-    self.model.set_weights([(1-self._tau) * current[i] + self._tau * weights[i] for i in range(len(weights))])             
-  
-  def update(self, states, q_values, q_loss=None, epochs=1):
-      # TODO(lyric): Revisit tensorboard_callback and/or q_loss.
-      #      history = self.model.fit(np.expand_dims(states,axis=3), q_values, epochs=epochs, verbose=0, callbacks=[tensorboard_callback])
-      history = self.model.fit(np.expand_dims(states,axis=3), q_values, epochs=epochs, verbose=0)
-      if q_loss:
-        q_loss(history.history['loss'][-1])
-  
-  def predict(self, states):
-    return self.model.predict(np.expand_dims(states, axis=3))
-  
+class NetworkQ:
+    def __init__(self, input_shape, action_space_n, tau):
+        self.model = tf.keras.models.Sequential()
+        self.model.add(
+            tf.keras.layers.Conv2D(
+                4,
+                3,
+                strides=(2, 2),
+                padding="same",
+                activation="relu",
+                input_shape=input_shape,
+            )
+        )
+        self.model.add(
+            tf.keras.layers.Conv2D(
+                8,
+                2,
+                strides=(1, 1),
+                padding="same",
+                activation="relu",
+                input_shape=input_shape,
+            )
+        )
+        self.model.add(tf.keras.layers.Flatten())
+        self.model.add(tf.keras.layers.Dense(64, activation="relu"))
+        self.model.add(tf.keras.layers.Dense(action_space_n))
+
+        self.model.compile(optimizer="adam", loss="mse", metrics=["accuracy"])
+        self._tau = tau
+
+    @property
+    def weights(self):
+        return self.model.get_weights()
+
+    def initialize_weights(self, weights):
+        self.model.set_weights(weights)
+
+    def set_weights(self, weights):
+        current = self.weights
+        self.model.set_weights(
+            [
+                (1 - self._tau) * current[i] + self._tau * weights[i]
+                for i in range(len(weights))
+            ]
+        )
+
+    def update(self, states, q_values, q_loss=None, epochs=1):
+        # TODO(lyric): Revisit tensorboard_callback and/or q_loss.
+        #      history = self.model.fit(np.expand_dims(states,axis=3), q_values, epochs=epochs, verbose=0, callbacks=[tensorboard_callback])
+        history = self.model.fit(
+            np.expand_dims(states, axis=3), q_values, epochs=epochs, verbose=0
+        )
+        if q_loss:
+            q_loss(history.history["loss"][-1])
+
+    def predict(self, states):
+        return self.model.predict(np.expand_dims(states, axis=3))
+
+
 # TODO(lyric): Make training history optional in the future to reduce overhead. Consider adding a "debug" config.
 class Trainer:
-    def __init__(self, env, training_config, summary_writer=None): 
+    def __init__(self, env, training_config, summary_writer=None):
         self._env = env
         self._training_state = TrainingState(training_config)
         self._training_history = training_history.TrainingHistory()
-        self._replay_buffer = ReplayBuffer(capacity=training_config.replay_buffer_capacity, alpha=training_config.replay_buffer_alpha)
+        self._replay_buffer = ReplayBuffer(
+            capacity=training_config.replay_buffer_capacity,
+            alpha=training_config.replay_buffer_alpha,
+        )
         self._summary_writer = summary_writer
-        self._q = NetworkQ(env.reset().shape + (1,), training_config.action_space_n, training_config.tau)
-        self._q_target = NetworkQ(env.reset().shape + (1,), training_config.action_space_n, training_config.tau)
+        self._q = NetworkQ(
+            env.reset().shape + (1,),
+            training_config.action_space_n,
+            training_config.tau,
+        )
+        self._q_target = NetworkQ(
+            env.reset().shape + (1,),
+            training_config.action_space_n,
+            training_config.tau,
+        )
         self._q_target.initialize_weights(self._q.weights)
         # TODO(lyric): Consider moving the policy to training_config if multiple are supported.
-        self._policy = make_epsilon_greedy_policy(self._q, training_config.action_space_n)
+        self._policy = make_epsilon_greedy_policy(
+            self._q, training_config.action_space_n
+        )
 
     @property
     def q(self):
         return self._q
-        
+
     @property
     def training_state(self):
         return self._training_state
@@ -123,27 +168,29 @@ class Trainer:
     def training_history(self):
         return self._training_history
 
-    # Train through the requested number of episodes. 
+    # Train through the requested number of episodes.
     def train(self, number_of_episodes=None):
         if number_of_episodes is None:
             number_of_episodes = self._training_state.training_config.number_of_episodes
-            
+
         for _ in range(number_of_episodes):
             self.follow_policy()
-    
+
     # Take the provided action n times.
     def take_action(self, action, n=1, training_frequency=None, verbose=False):
         if training_frequency is None:
             training_frequency = self._training_state.training_config.training_frequency
 
         self._start_episode_if_necessary()
-        
+
         for _ in range(n):
             next_state, reward, is_done, _ = self._env.step(action)
             if verbose:
                 self._env.render()
 
-            self._replay_buffer.add_new_experience(self._training_state.current_state, action, next_state, reward, is_done)
+            self._replay_buffer.add_new_experience(
+                self._training_state.current_state, action, next_state, reward, is_done
+            )
             self._training_state.current_state = next_state
             self._training_state.increment_current_episode_step()
 
@@ -152,27 +199,33 @@ class Trainer:
 
             if self._training_state.current_epoch % training_frequency == 0:
                 self.update_models()
-            
+
             if is_done or not self._training_state.episode_active:
                 self._training_state.end_episode()
                 break
 
     # Follow the policy for the requested number of steps. Returns early if the episode ends. Starts a new episode if one is not already active. If steps_n is None, go until the episode ends.
-    def follow_policy(self, steps_n=None, training_frequency=None,verbose=False):        
+    def follow_policy(self, steps_n=None, training_frequency=None, verbose=False):
         self._start_episode_if_necessary()
 
         step_counter = 0
         while self._should_take_step(step_counter, steps_n):
-            action_probabilities = self._policy(self._training_state.current_state, self._training_state.current_epsilon)
-            action = np.random.choice(np.arange(len(action_probabilities)), p=action_probabilities)
-            self.take_action(action,training_frequency=training_frequency, verbose=verbose)
-            
-            step_counter +=1         
+            action_probabilities = self._policy(
+                self._training_state.current_state, self._training_state.current_epsilon
+            )
+            action = np.random.choice(
+                np.arange(len(action_probabilities)), p=action_probabilities
+            )
+            self.take_action(
+                action, training_frequency=training_frequency, verbose=verbose
+            )
+
+            step_counter += 1
 
     def _should_take_step(self, step_counter, steps_n):
         if not self._training_state.episode_active:
             return False
-        
+
         if steps_n:
             return step_counter < steps_n
 
@@ -184,46 +237,97 @@ class Trainer:
 
         self._training_state.start_episode()
         self._training_state.current_state = self._env.reset()
-        
+
     def update_models(self):
-        indices, states, actions, next_states, rewards, is_dones, weights = self._replay_buffer.sample(self._training_state.training_config.batch_size, self._training_state.current_replay_buffer_beta)
+        (
+            indices,
+            states,
+            actions,
+            next_states,
+            rewards,
+            is_dones,
+            weights,
+        ) = self._replay_buffer.sample(
+            self._training_state.training_config.batch_size,
+            self._training_state.current_replay_buffer_beta,
+        )
 
         q_values_now = self._q.predict(states)
-        td_targets = rewards + (1-is_dones) * self._training_state.training_config.gamma * self._q_target.predict(next_states).max(axis=1)   
+        td_targets = rewards + (
+            1 - is_dones
+        ) * self._training_state.training_config.gamma * self._q_target.predict(
+            next_states
+        ).max(
+            axis=1
+        )
 
-        td_errors = td_targets - q_values_now[np.arange(len(actions)),actions]
+        td_errors = td_targets - q_values_now[np.arange(len(actions)), actions]
         self._replay_buffer.update_priorities(indices, td_errors)
         self._log_td_error_to_training_history_debug(states, actions, td_errors)
-        
+
         weighted_td_errors = weights * td_errors
-        q_values_now[np.arange(len(actions)),actions] += self._training_state.training_config.alpha * np.clip(weighted_td_errors, -self._training_state.training_config.update_bound, self._training_state.training_config.update_bound)
-    
-        self._q.update(states, q_values_now) 
+        q_values_now[
+            np.arange(len(actions)), actions
+        ] += self._training_state.training_config.alpha * np.clip(
+            weighted_td_errors,
+            -self._training_state.training_config.update_bound,
+            self._training_state.training_config.update_bound,
+        )
+
+        self._q.update(states, q_values_now)
         self._q_target.set_weights(self._q.weights)
 
         self._log_q_values_to_training_history_debug()
 
-    # For debuging only. Averages the td error per (state, action) pair. 
+    # For debuging only. Averages the td error per (state, action) pair.
     def _log_td_error_to_training_history_debug(self, states, actions, td_errors):
         for i in range(len(states)):
-            self._training_history.add_td_error(states[i], actions[i], self._training_state.current_epoch, td_errors[i])
-        
-    # For debuging only. Computes q and q_target values across most visited 100 states and all actions. 
+            self._training_history.add_td_error(
+                states[i], actions[i], self._training_state.current_epoch, td_errors[i]
+            )
+
+    # For debuging only. Computes q and q_target values across most visited 100 states and all actions.
     def _log_q_values_to_training_history_debug(self):
         visited_state_histories = self._training_history.get_history_by_visit_count(100)
-        states = np.array([visited_state_history.state for visited_state_history in visited_state_histories])
+        states = np.array(
+            [
+                visited_state_history.state
+                for visited_state_history in visited_state_histories
+            ]
+        )
 
-        q_values = self._q.predict(states)        
+        q_values = self._q.predict(states)
         q_target_values = self._q_target.predict(states)
 
         for i in range(len(states)):
-            self._training_history.add_q_values(states[i], self._training_state.current_epoch, q_values[i], q_target_values[i])
-            
+            self._training_history.add_q_values(
+                states[i],
+                self._training_state.current_epoch,
+                q_values[i],
+                q_target_values[i],
+            )
+
 
 class TrainingConfig:
     # If provided, the epsilon policy should be an array of length number_of_episodes with the epsilon value to use for each episode.
     # At least one of epsilon and epsilon_policy should be provided.
-    def __init__(self, number_of_episodes, episode_length, training_frequency, replay_buffer_capacity, replay_buffer_alpha, replay_buffer_beta_policy, update_bound, action_space_n, tau, batch_size, gamma, alpha, epsilon=None, epsilon_policy=None):
+    def __init__(
+        self,
+        number_of_episodes,
+        episode_length,
+        training_frequency,
+        replay_buffer_capacity,
+        replay_buffer_alpha,
+        replay_buffer_beta_policy,
+        update_bound,
+        action_space_n,
+        tau,
+        batch_size,
+        gamma,
+        alpha,
+        epsilon=None,
+        epsilon_policy=None,
+    ):
         self.number_of_episodes = number_of_episodes
         self.episode_length = episode_length
         self.training_frequency = training_frequency
@@ -243,7 +347,7 @@ class TrainingConfig:
     def set_epsilon(self, epsilon):
         if epsilon is None:
             assert self._epsilon_policy
-            
+
         self.epsilon = epsilon
 
     def set_epsilon_policy(self, epsilon_policy):
@@ -252,9 +356,9 @@ class TrainingConfig:
 
         if epsilon_policy is not None:
             assert len(epsilon_policy) == self.number_of_episodes
-            
+
         self.epsilon_policy = epsilon_policy
-        
+
 
 class TrainingState:
     def __init__(self, training_config):
@@ -292,7 +396,7 @@ class TrainingState:
         epsilon_policy_index = self._current_episode
         if self._current_episode >= len(self.training_config.epsilon_policy):
             epsilon_policy_index = -1
-        
+
         return self.training_config.epsilon_policy[epsilon_policy_index]
 
     # Follow the replay_buffer_beta policy.
@@ -302,8 +406,10 @@ class TrainingState:
         replay_buffer_beta_policy_index = self._current_episode
         if self._current_episode >= len(self.training_config.epsilon_policy):
             replay_buffer_beta_policy_index = -1
-        
-        return self.training_config.replay_buffer_beta_policy[replay_buffer_beta_policy_index]
+
+        return self.training_config.replay_buffer_beta_policy[
+            replay_buffer_beta_policy_index
+        ]
 
     @property
     def episode_active(self):
@@ -315,33 +421,36 @@ class TrainingState:
     def end_episode(self):
         self._current_episode_step = self.training_config.episode_length
         self._increment_current_episode()
-        
+
 
 def demo(env, estimator, episode_length):
-    state = env.reset()           
+    state = env.reset()
     for t in range(episode_length):
         # TODO(lyric): Currently hard-coded a policy to choose best action based on action-value function.
         action = np.argmax(estimator.predict([state]))
         next_state, reward, is_done, _ = env.step(action)
-        env.render()              
-        state = next_state        
- 
-        if is_done:                  
+        env.render()
+        state = next_state
+
+        if is_done:
             print("finished at %d" % t)
             break
-    
+
+
 # env and replay_buffer should be treated as read-only.
 class DebugUtil:
     def __init__(self, environment_name, env, replay_buffer):
         self._replay_buffer = replay_buffer
         self._debug_env = gym.make(environment_name)
-        self._debug_env.setup(env.shape[0], env.shape[1], vary_heights=(len(env.height_pairs) > 1))
+        self._debug_env.setup(
+            env.shape[0], env.shape[1], vary_heights=(len(env.height_pairs) > 1)
+        )
 
     # Returns the state following the provided series of actions after a reset().
-    def get_state(self, actions = None):
+    def get_state(self, actions=None):
         state = self._debug_env.reset()
         for a in actions:
-            state,_,_,_ = self._debug_env.step(a)
+            state, _, _, _ = self._debug_env.step(a)
 
         return state
 
@@ -366,35 +475,42 @@ class DebugUtil:
                 out.append(entry)
 
         return out
-            
+
+
 environment_name = "gym_bridges.envs:Bridges-v0"
 env = gym.make(environment_name)
-env.setup(4,6,vary_heights=True)
+env.setup(4, 6, vary_heights=True)
 
-number_of_episodes=1000
-epsilon_policy = np.linspace(1, .05, number_of_episodes)
-replay_buffer_beta_policy = np.linspace(.5, 1, number_of_episodes)
+number_of_episodes = 1000
+epsilon_policy = np.linspace(1, 0.05, number_of_episodes)
+replay_buffer_beta_policy = np.linspace(0.5, 1, number_of_episodes)
 
 training_config = TrainingConfig(
     number_of_episodes=number_of_episodes,
     episode_length=10,
     training_frequency=1,
     replay_buffer_capacity=10000,
-    replay_buffer_alpha=.5,
+    replay_buffer_alpha=0.5,
     replay_buffer_beta_policy=replay_buffer_beta_policy,
     update_bound=1,
     action_space_n=env.action_space.n,
-    tau=.01,
+    tau=0.01,
     batch_size=100,
-    gamma=.99,
+    gamma=0.99,
     alpha=1,
     epsilon=None,
-    epsilon_policy=epsilon_policy)
+    epsilon_policy=epsilon_policy,
+)
 
 trainer = Trainer(env, training_config)
 
 # Uncomment to view the TrainingPanel.
-panel = training_panel.TrainingPanel(states_n=20, state_width=env.shape[1], state_height=env.shape[0], actions_n=env.action_space.n)
+panel = training_panel.TrainingPanel(
+    states_n=20,
+    state_width=env.shape[1],
+    state_height=env.shape[0],
+    actions_n=env.action_space.n,
+)
 
 # Uncomment if you want to run training using the training_config as is. It may or may not work out!
 for _ in range(int(number_of_episodes / 5)):
