@@ -253,12 +253,12 @@ class Trainer:
         )
 
         q_values_now = self._q.predict(states)
-        next_action = np.argmax(q_values_now, axis=1)
+        next_actions = np.argmax(q_values_now, axis=1)
         td_targets = (
             rewards
             + (1 - is_dones)
             * self._training_state.training_config.gamma
-            * self._q_target.predict(states)[range(len(states)), next_action]
+            * self._q_target.predict(next_states)[np.arange(len(states)), next_actions]
         )
 
         td_errors = td_targets - q_values_now[np.arange(len(actions)), actions]
