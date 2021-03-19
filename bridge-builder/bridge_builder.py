@@ -32,6 +32,7 @@ import time
 from collections import deque, namedtuple
 from replay_buffer import ReplayBuffer
 
+import policies
 import training_history
 import training_panel
 
@@ -43,31 +44,6 @@ def reload_modules():
 
     reload(training_history)
     reload(training_panel)
-
-
-def make_epsilon_greedy_policy(estimator, nA):
-    """
-    Creates an epsilon-greedy policy based on a given Q-function approximator and epsilon.
-
-    Args:
-        estimator: An estimator that returns q values for a given state
-        epsilon: The probability to select a random action . float between 0 and 1.
-        nA: Number of actions in the environment.
-
-    Returns:
-        A function that takes the observation as an argument and returns
-        the probabilities for each action in the form of a numpy array of length nA.
-
-    """
-
-    def policy_fn(observation, epsilon):
-        A = np.ones(nA, dtype=float) * epsilon / nA
-        q_values = estimator.predict([observation])
-        best_action = np.argmax(q_values)
-        A[best_action] += 1.0 - epsilon
-        return A
-
-    return policy_fn
 
 
 class NetworkQ:
@@ -128,6 +104,9 @@ class NetworkQ:
     def predict(self, states):
         return self.model.predict(np.expand_dims(states, axis=3))
 
+    def __call__(self, state):
+        return self.predict([state])
+
 
 # TODO(lyric): Make training history optional in the future to reduce overhead. Consider adding a "debug" config.
 class Trainer:
@@ -152,9 +131,7 @@ class Trainer:
         )
         self._q_target.initialize_weights(self._q.weights)
         # TODO(lyric): Consider moving the policy to training_config if multiple are supported.
-        self._policy = make_epsilon_greedy_policy(
-            self._q, training_config.action_space_n
-        )
+        self._policy = policies.EpsilonGreedyPolicy(self._q)
 
     @property
     def q(self):
@@ -210,16 +187,13 @@ class Trainer:
 
         step_counter = 0
         while self._should_take_step(step_counter, steps_n):
-            action_probabilities = self._policy(
-                self._training_state.current_state, self._training_state.current_epsilon
-            )
-            action = np.random.choice(
-                np.arange(len(action_probabilities)), p=action_probabilities
+            action = self._policy(
+                self._training_state.current_state,
+                epsilon=self._training_state.current_epsilon,
             )
             self.take_action(
                 action, training_frequency=training_frequency, verbose=verbose
             )
-
             step_counter += 1
 
     def _should_take_step(self, step_counter, steps_n):
@@ -340,7 +314,6 @@ class TrainingConfig:
         self.batch_size = batch_size
         self.gamma = gamma
         self.alpha = alpha
-        assert epsilon is not None or epsilon_policy is not None
         self.epsilon = epsilon
         self.set_epsilon_policy(epsilon_policy)
 
@@ -352,9 +325,8 @@ class TrainingConfig:
 
     def set_epsilon_policy(self, epsilon_policy):
         if epsilon_policy is None:
-            assert self._epsilon
-
-        if epsilon_policy is not None:
+            assert self.epsilon
+        else:
             assert len(epsilon_policy) == self.number_of_episodes
 
         self.epsilon_policy = epsilon_policy
