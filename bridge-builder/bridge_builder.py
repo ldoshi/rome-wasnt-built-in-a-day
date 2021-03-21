@@ -227,7 +227,8 @@ class Trainer:
         )
 
         q_values_now = self._q.predict(states)
-        next_actions = np.argmax(q_values_now, axis=1)
+        q_values_next = self._q.predict(next_states)
+        next_actions = np.argmax(q_values_next, axis=1)
         td_targets = (
             rewards
             + (1 - is_dones)
