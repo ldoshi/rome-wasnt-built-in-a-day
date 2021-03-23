@@ -6,7 +6,7 @@ The overarching goal of this project is to create a world to explore and interac
 
 *Prerequisite:* Said world.
 
-This project is also about creating a bot that learns the necessary skills to build such a world. 
+This project is also about creating a bot that learns the necessary skills to build such a world.
 
 The bot will start with simple action primitives, such as "drop a block at this coordinate". The bot will expand the set of primitives in its toolkit as it learns new skills, such as adding a wall of given dimensions or knowing how to build a column as a single action. Once the bot has been trained to reliably build a bridge across a gap, we want the bot to internalize the skill of building bridges to apply efficiently whenever it encounters a gap. The current mechanic focuses on construction by placing block after block. We will begin with a 2D grid and expand to 3D.
 
@@ -18,7 +18,7 @@ We will need to hone a neural architecture that allows the bot to incrementally 
 
 Throughout the process, we will also build tools to make our bot development, training and debugging more efficient.
 
-Developing NPCs in the world itself is not a current project priority but would be a natural extension. 
+Developing NPCs in the world itself is not a current project priority but would be a natural extension.
 
 ## Status
 
@@ -49,7 +49,7 @@ This project currently uses black to autoformat all code. Highly recommend using
 
 In `gym-bridges`, run `./reinstall.sh`. You will need to do this every time the gym-bridges environment code changes.
 
-The primary code is in `bridge-builder/bridge_builder.py`
+The primary code is in `bridger/bridge_builder.py`
 
 ### REPL
 
@@ -63,4 +63,3 @@ View the current env `env.render()`
 
 
 ## Training/debugging panel
-
