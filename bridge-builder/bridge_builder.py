@@ -226,7 +226,6 @@ class Trainer:
             self._training_state.current_replay_buffer_beta,
         )
 
-        q_values_now = self._q.predict(states)
         q_values_next = self._q.predict(next_states)
         next_actions = np.argmax(q_values_next, axis=1)
         td_targets = (
@@ -236,6 +235,7 @@ class Trainer:
             * self._q_target.predict(next_states)[np.arange(len(states)), next_actions]
         )
 
+        q_values_now = self._q.predict(states)
         td_errors = td_targets - q_values_now[np.arange(len(actions)), actions]
         self._replay_buffer.update_priorities(indices, td_errors)
         self._log_td_error_to_training_history_debug(states, actions, td_errors)
