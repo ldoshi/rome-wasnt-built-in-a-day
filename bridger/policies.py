@@ -20,7 +20,11 @@ class SamplingPolicy(Policy):
 
     def run(self, state, *args, **kwargs):
         probabilities = self.get_probabilities(state, *args, **kwargs)
-        return np.random.choice(probabilities.shape[0], p=probabilities)
+        # TODO: This is fine while we plan on doing Q-Learning, but if we ever
+        # want to differentiate through our policies, we'll have to replace
+        # this torch.multinomial# call with a torch module that uses the
+        # reparameterization trick
+        return torch.multinomial(probabilities, 1).item()
 
     @abc.abstractmethod
     def get_probabilities(self, state, *args, **kwargs):
@@ -35,7 +39,7 @@ class EstimatorPolicy(SamplingPolicy):
 
         Args:
             estimator: A callable that takes a state as input and returns a
-            numpy array of per-action Q values for the input state
+            torch tensor of per-action Q values for the input state
         """
         assert callable(estimator)
         self.Q = estimator
@@ -59,9 +63,9 @@ class EpsilonGreedyPolicy(EstimatorPolicy):
         if epsilon is None:
             epsilon = self.epsilon
         q_values = self.Q(state).squeeze()
-        num_actions = q_values.shape[0]
-        probabilities = np.full(num_actions, epsilon / num_actions)
-        probabilities[q_values.argmax()] += 1 - epsilon
+        exploit = torch.where(q_values == q_values.max(), 1, 0)
+        explore = torch.full(q_values.shape[0:], 1 / q_values.shape[0])
+        probabilities = (1 - epsilon) * exploit + epsilon * explore
         return probabilities
 
 
@@ -74,3 +78,6 @@ class GreedyPolicy(EpsilonGreedyPolicy):
 
     def get_probabilities(self, state):
         return super().get_probabilities(state)
+
+
+choices = {"greedy": GreedyPolicy, "epsilon_greedy": EpsilonGreedyPolicy}
