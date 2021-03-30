@@ -105,7 +105,7 @@ class NetworkQ:
         return self.model.predict(np.expand_dims(states, axis=3))
 
     def __call__(self, state):
-        return self.predict([state])
+        return self.predict([state]).squeeze()
 
 
 # TODO(lyric): Make training history optional in the future to reduce overhead. Consider adding a "debug" config.

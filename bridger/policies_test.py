@@ -11,13 +11,13 @@ def _constant_estimator(state):
 
 def _state_is_action_estimator(state):
     q_values = np.zeros(5)
-    q_values[int(state) % 5] = 1
+    q_values[state % 5] = 1
     return q_values
 
 
 def _noisy_state_is_action_estimator(state):
     q_values = np.random.rand(5)
-    q_values[int(state) % 5] = 1
+    q_values[state % 5] = 1
     return q_values
 
 
@@ -29,7 +29,7 @@ class TestProbabilities(unittest.TestCase):
             for epsilon in np.linspace(0, 1, 10)
         ]
         + [
-            (estimator, state, epsilon, int(state) % 5)
+            (estimator, state, epsilon, state % 5)
             for estimator in [
                 _state_is_action_estimator,
                 _noisy_state_is_action_estimator,
@@ -50,7 +50,7 @@ class TestProbabilities(unittest.TestCase):
     @parameterized.expand(
         [(_constant_estimator, state, 0) for state in range(5)]
         + [
-            (estimator, state, int(state) % 5)
+            (estimator, state, state % 5)
             for estimator in [
                 _state_is_action_estimator,
                 _noisy_state_is_action_estimator,

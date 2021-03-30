@@ -58,7 +58,7 @@ class EpsilonGreedyPolicy(EstimatorPolicy):
     def get_probabilities(self, state, epsilon=None):
         if epsilon is None:
             epsilon = self.epsilon
-        q_values = self.Q(state).squeeze()
+        q_values = self.Q(state)
         num_actions = q_values.shape[0]
         probabilities = np.full(num_actions, epsilon / num_actions)
         probabilities[q_values.argmax()] += 1 - epsilon
