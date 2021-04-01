@@ -46,18 +46,23 @@ class BridgeBuilder(pl.LightningModule):
         self.policy = policies.EpsilonGreedyPolicy(self.Q)
 
         self.epsilon = hparams.epsilon_training_start
-        self.make_memories()
+        self.memGen = self.memory_generator()
 
-    def make_memories(self):
-        self.Q.freeze()
-        for i in range(self.hparams.inter_training_episodes):
-            for j in range(self.hparams.episode_length):
-                next_state, reward, is_done = self()
-                if is_done:
+    def on_train_batch_start(self):
+        with torch.no_grad():
+            for i in range(self.hparams.inter_training_steps):
+                episode_idx, step_idx, *_ = next(self.memGen)
+
+    def memory_generator(self):
+        episode_idx = 0
+        while True:
+            for step_idx in range(self.hparams.episode_length):
+                yield (episode_idx, step_idx, *(self()))
+                if finished:
                     break
             self.update_epsilon()
             self.env.reset()
-        self.Q.unfreeze()
+            episode_idx += 1
 
     def forward(self):
         state, action = self.env.state, self.policy(
