@@ -11,8 +11,6 @@ from bridger import config, policies, qfunctions, replay_buffer
 
 # TODO: Add hooks for TrainingHistory
 # TODO: Add hooks for stepping through code at different scales
-# TODO: Ensure that all states coming out of gym env are immediately converted to torch from numpy
-# TODO: Ensure that all state handling in this package is done in torch
 class BridgeBuilder(pl.LightningModule):
     def __init__(self, hparams):
         """Constructor for the BridgeBuilder Module
@@ -39,8 +37,10 @@ class BridgeBuilder(pl.LightningModule):
             batch_size=hparams.batch_size,
         )
 
-        self.Q = qfunctions.CNNQ(hparams.env_height, hparams.env_width, env.nA)
-        self.target = qfunctions.CNNQ(hparams.env_height, hparams.env_width, env.nA)
+        self.Q = qfunctions.CNNQ(hparams.env_height, hparams.env_width, self.env.nA)
+        self.target = qfunctions.CNNQ(
+            hparams.env_height, hparams.env_width, self.env.nA
+        )
         self.target.load_state_dict(self.Q.state_dict())
 
         self.policy = policies.EpsilonGreedyPolicy(self.Q)
@@ -56,11 +56,13 @@ class BridgeBuilder(pl.LightningModule):
                 if is_done:
                     break
             self.update_epsilon()
-            env.reset()
+            self.env.reset()
         self.Q.unfreeze()
 
     def forward(self):
-        state, action = env.state, self.policy(env.state, epsilon=self.epsilon)
+        state, action = self.env.state, self.policy(
+            torch.tensor(self.env.state), epsilon=self.epsilon
+        )
         result = (state, action, *self.env.step(action)[:3])
         self.replay_buffer.add_new_experience(*result)
         return result
