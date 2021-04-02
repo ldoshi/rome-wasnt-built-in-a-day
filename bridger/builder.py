@@ -104,9 +104,11 @@ class BridgeBuilder(pl.LightningModule):
         IPython.core.getipython.get_ipython().exiter()
 
     def forward(self):
-        state, action = self.env.state, self.policy(
-            torch.tensor(self.env.state), epsilon=self.epsilon
-        )
+        state = self.env.state
+        if self.hparams.interactive_mode and self.next_action is not None:
+            action = self.next_action
+        else:
+            action = self.policy(torch.tensor(state), epsilon=self.epsilon)
         result = (state, action, *self.env.step(action)[:3])
         self.replay_buffer.add_new_experience(*result)
         return result
