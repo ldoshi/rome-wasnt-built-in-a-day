@@ -51,7 +51,18 @@ class BridgeBuilder(pl.LightningModule):
         self.next_action = None
         self.checkpoint = {"step": 0, "episode": 0}
 
-    def on_train_batch_start(self):
+    def on_train_epoch_start(self):
+        self.make_memories()
+
+    def on_train_batch_end(outputs, batch, batch_idx, dataloader_idx):
+        params = self.target.state_dict()
+        update = self.Q.state_dict()
+        for param in params:
+            params[param] += self.hparams.tau * (update[param] - params[param])
+        self.target.load_state_dict(params)
+        self.make_memories()
+
+    def make_memories(self):
         with torch.no_grad():
             for i in range(self.hparams.inter_training_steps):
                 episode_idx, step_idx, *_ = next(self.memGen)

@@ -4,7 +4,7 @@ import torch
 
 class CNNQ(pl.LightningModule):
     def __init__(self, image_height, image_width, num_actions):
-
+        super(CNNQ, self).__init__()
         self.image_height = image_height
         self.image_width = image_width
 
