@@ -62,9 +62,10 @@ class BridgeBuilder(pl.LightningModule):
         while True:
             for step_idx in range(self.hparams.episode_length):
                 self.checkpoint({"episode": episode_idx, "step": total_step_idx})
-                yield (episode_idx, step_idx, *(self()))
+                memory = self()  # start_state, action, end_state, reward, finished
+                yield (episode_idx, step_idx, *memory)
                 total_step_idx += 1
-                if finished:
+                if memory[-1]:
                     break
             self.update_epsilon()
             self.env.reset()
