@@ -1,4 +1,5 @@
 import argparse
+import IPython
 import gym
 import gym_bridges.envs
 import pytorch_lightning as pl
@@ -10,7 +11,6 @@ from bridger import config, policies, qfunctions, replay_buffer
 
 
 # TODO: Add hooks for TrainingHistory
-# TODO: Add hooks for stepping through code at different scales
 class BridgeBuilder(pl.LightningModule):
     def __init__(self, hparams):
         """Constructor for the BridgeBuilder Module
@@ -48,6 +48,9 @@ class BridgeBuilder(pl.LightningModule):
         self.epsilon = hparams.epsilon_training_start
         self.memGen = self.memory_generator()
 
+        self.next_action = None
+        self.checkpoint = {"step": 0, "episode": 0}
+
     def on_train_batch_start(self):
         with torch.no_grad():
             for i in range(self.hparams.inter_training_steps):
@@ -55,14 +58,50 @@ class BridgeBuilder(pl.LightningModule):
 
     def memory_generator(self):
         episode_idx = 0
+        total_step_idx = 0
         while True:
             for step_idx in range(self.hparams.episode_length):
+                self.checkpoint({"episode": episode_idx, "step": total_step_idx})
                 yield (episode_idx, step_idx, *(self()))
+                total_step_idx += 1
                 if finished:
                     break
             self.update_epsilon()
             self.env.reset()
             episode_idx += 1
+
+    def checkpoint(self, thresholds):
+        while self.hparams.interactive_mode:
+            if all(self.checkpoint[k] > v for k, v in thresholds.items()):
+                break  # Don't stop for a checkpoint
+            self.checkpoint = thresholds
+            self.next_action = None
+            IPython.embed()
+
+    def enable_interactive_mode(self):
+        self.hparams.interactive_mode = True
+
+    def disable_interactive_mode(self):
+        self.hparams.interactive_mode = False
+
+    def take_action(self, action, repetitions=1):
+        self.next_action = action
+        self.checkpoint["episode"] += 1
+        self.checkpoint["step"] += repetitions
+        IPython.core.getipython.get_ipython().exiter()
+
+    def follow_policy(self, num_actions=None, num_episodes=1):
+        if num_actions is None:
+            self.checkpoint["step"] = np.inf
+        else:
+            assert num_episodes == 1
+            self.checkpoint["step"] += num_actions
+        self.checkpoint["episode"] += num_episodes
+        IPython.core.getipython.get_ipython().exiter()
+
+    def return_to_training(self):
+        self.disable_interactive_mode()
+        IPython.core.getipython.get_ipython().exiter()
 
     def forward(self):
         state, action = self.env.state, self.policy(
