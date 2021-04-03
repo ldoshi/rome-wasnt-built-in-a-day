@@ -30,7 +30,7 @@ class StateTrainingHistory:
         for a, q_target_value in enumerate(q_target_values):
             self._q_target_history[a].append(q_target_value)
 
-    def add_td_error(self, action, td_error):
+    def add_td_error(self, action, epoch, td_error):
         series = self._td_errors[action]
         series.epochs.append(epoch)
         series.data.append(td_error)
