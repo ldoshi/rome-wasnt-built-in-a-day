@@ -74,20 +74,20 @@ class TrainingHistory:
         key = self._state_hash(state) if self._state_hash else state
         if key not in self._training_history:
             self._training_history[key] = StateTrainingHistory(state)
+        return key
 
     def add_q_values(self, epoch, state, q_values, q_target_values):
-        self._add_if_missing(state)
-        self._training_history[str(state)].add_q_values(
+        self._training_history[self._add_if_missing(state)].add_q_values(
             epoch, q_values, q_target_values
         )
 
     def add_td_error(self, epoch, state, action, td_error):
-        self._add_if_missing(state)
-        self._training_history[str(state)].add_td_error(action, epoch, td_error)
+        self._training_history[self._add_if_missing(state)].add_td_error(
+            action, epoch, td_error
+        )
 
     def increment_visit_count(self, state):
-        self._add_if_missing(state)
-        self._training_history[str(state)].increment_visit_count()
+        self._training_history[self._add_if_missing(state)].increment_visit_count()
 
     # These are sorted in descending order.
     def get_history_by_visit_count(self, n=None):
