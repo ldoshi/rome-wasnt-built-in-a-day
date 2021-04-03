@@ -7,10 +7,11 @@ import torch
 
 from torch.utils.data import DataLoader
 
-from bridger import config, policies, qfunctions, replay_buffer
+from bridger import config, policies, qfunctions, replay_buffer, training_history
 
 
-# TODO: Add hooks for TrainingHistory
+# TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
+# mode, debug mode, display mode) as Lightning Callbacks
 class BridgeBuilder(pl.LightningModule):
     def __init__(self, hparams):
         """Constructor for the BridgeBuilder Module
@@ -42,7 +43,7 @@ class BridgeBuilder(pl.LightningModule):
             hparams.env_height, hparams.env_width, self.env.nA
         )
         self.target.load_state_dict(self.Q.state_dict())
-
+        # TODO(lyric): Consider specifying the policy as a hyperparam
         self.policy = policies.EpsilonGreedyPolicy(self.Q)
 
         self.epsilon = hparams.epsilon_training_start
@@ -51,16 +52,41 @@ class BridgeBuilder(pl.LightningModule):
         self.next_action = None
         self.checkpoint = {"step": 0, "episode": 0}
 
+        if hparams.debug:
+            # TODO(arvind): Move as much of this functionality as possible into
+            # the tensorboard logging already being done here.
+            self.training_history = training_history.TrainingHistory()
+            self.training_step = 0
+
     def on_train_epoch_start(self):
         self.make_memories()
 
     def on_train_batch_end(outputs, batch, batch_idx, dataloader_idx):
+        self.update_target()
+        if self.hparams.debug:
+            self.record_q_values()
+            self.training_step += 1
+        self.make_memories()
+
+    def update_target(self):
         params = self.target.state_dict()
         update = self.Q.state_dict()
         for param in params:
             params[param] += self.hparams.tau * (update[param] - params[param])
         self.target.load_state_dict(params)
-        self.make_memories()
+
+    def record_q_values(self):
+        visited_state_histories = self.training_history.get_history_by_visit_count(100)
+        states = [
+            visited_state_history.state
+            for visited_state_history in visited_state_histories
+        ]
+        states_tensor = torch.tensor(states)
+        triples = zip(
+            states, self.Q(states_tensor).tolist(), self.target(states_tensor).tolist()
+        )
+        for triple in triples:
+            self.training_history.add_q_values(self.training_step, *triple)
 
     def make_memories(self):
         with torch.no_grad():
@@ -73,11 +99,21 @@ class BridgeBuilder(pl.LightningModule):
         while True:
             for step_idx in range(self.hparams.episode_length):
                 self.checkpoint({"episode": episode_idx, "step": total_step_idx})
-                memory = self()  # start_state, action, end_state, reward, finished
-                yield (episode_idx, step_idx, *memory)
+                start_state, action, end_state, reward, finished = self()
+                yield (
+                    episode_idx,
+                    step_idx,
+                    start_state,
+                    action,
+                    end_state,
+                    reward,
+                    finished,
+                )
                 total_step_idx += 1
-                if memory[-1]:
+                if finished:
                     break
+                elif self.hparams.debug:
+                    self.training_history.increment_visit_count(end_state)
             self.update_epsilon()
             self.env.reset()
             episode_idx += 1
@@ -123,6 +159,10 @@ class BridgeBuilder(pl.LightningModule):
             action = self.policy(torch.tensor(state), epsilon=self.epsilon)
         result = (state, action, *self.env.step(action)[:3])
         self.replay_buffer.add_new_experience(*result)
+
+        if self.hparams.env_display:
+            self.env.render()
+
         return result
 
     def update_epsilon(self):
@@ -154,12 +194,18 @@ class BridgeBuilder(pl.LightningModule):
     def compute_loss(self, td_errors, weights=None):
         if weights:
             td_errors = weights * td_errors
-        # TODO: Change design to clip the gradient rather than the loss
+        # TODO(arvind): Change design to clip the gradient rather than the loss
         return (td_errors.clip(max=self.hparams.update_bound) ** 2).mean()
 
     def training_step(self, batch, batch_idx):
         indices, states, actions, next_states, rewards, finished, weights = batch
         td_errors = self.get_td_error(states, actions, next_states, rewards, finished)
+        if self.hparams.debug:
+            triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
+            for triple in triples:
+                # For debuging only. Averages the td error per (state, action) pair.
+                self.training_history.add_td_error(self.training_step, *triple)
+
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
@@ -170,18 +216,18 @@ class BridgeBuilder(pl.LightningModule):
 
         return loss
 
-    # TODO: Override hooks to compute non-TD-error metris for val and test
+    # TODO(arvind): Override hooks to compute non-TD-error metris for val and test
 
     def configure_optimizers(self):
-        # TODO: This should work, but should we say Q.parameters(), or is
-        # that limiting for the future?
+        # TODO(arvind): This should work, but should we say Q.parameters(), or
+        # is that limiting for the future?
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
 
     @pl.data_loader
     def train_dataloader(self):
         return DataLoader(self.replay_buffer, batch_size=self.hparams.batch_size)
 
-    # TODO: Override hooks to load data appropriately for val and test
+    # TODO(arvind): Override hooks to load data appropriately for val and test
 
     @staticmethod
     def get_hyperparam_parser(parser=None):

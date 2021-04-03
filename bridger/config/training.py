@@ -34,3 +34,8 @@ key = "seed"
 hparam_dict[key] = {"type": int, "default": 42}
 help_str = "Random seed for training"
 hparam_dict[key]["help"] = help_str
+
+key = "debug"
+hparam_dict[key] = {"type": bool, "default": False}
+help_str = "Whether to log to TrainingHistory for debugging purposes"
+hparam_dict[key]["help"] = help_str

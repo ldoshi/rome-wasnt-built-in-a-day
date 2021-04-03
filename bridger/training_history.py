@@ -30,7 +30,7 @@ class StateTrainingHistory:
         for a, q_target_value in enumerate(q_target_values):
             self._q_target_history[a].append(q_target_value)
 
-    def add_td_error(self, action, epoch, td_error):
+    def add_td_error(self, action, td_error):
         series = self._td_errors[action]
         series.epochs.append(epoch)
         series.data.append(td_error)
@@ -75,13 +75,13 @@ class TrainingHistory:
         if key not in self._training_history:
             self._training_history[key] = StateTrainingHistory(state)
 
-    def add_q_values(self, state, epoch, q_values, q_target_values):
+    def add_q_values(self, epoch, state, q_values, q_target_values):
         self._add_if_missing(state)
         self._training_history[str(state)].add_q_values(
             epoch, q_values, q_target_values
         )
 
-    def add_td_error(self, state, action, epoch, td_error):
+    def add_td_error(self, epoch, state, action, td_error):
         self._add_if_missing(state)
         self._training_history[str(state)].add_td_error(action, epoch, td_error)
 
