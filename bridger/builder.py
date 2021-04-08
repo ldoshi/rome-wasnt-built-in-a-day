@@ -46,10 +46,10 @@ class BridgeBuilder(pl.LightningModule):
         self.policy = policies.EpsilonGreedyPolicy(self.Q)
 
         self.epsilon = hparams.epsilon_training_start
-        self.memGen = self.memory_generator()
+        self.memories = self.memory_generator()
 
         self.next_action = None
-        self.checkpoint = {"step": 0, "episode": 0}
+        self.breakpoint = {"step": 0, "episode": 0}
 
     def on_train_epoch_start(self):
         self.make_memories()
@@ -65,9 +65,23 @@ class BridgeBuilder(pl.LightningModule):
     def make_memories(self):
         with torch.no_grad():
             for i in range(self.hparams.inter_training_steps):
-                episode_idx, step_idx, *_ = next(self.memGen)
+                next(self.memories)
 
     def memory_generator(self):
+        """A generator that serves up sequential transitions expierienced by the
+        agent. When an episode ends, a new one starts immediately. Each item
+        yielded is a tuple with the following elements (in order):
+
+         episode_idx: starting from 0, incremented every time an episode ends
+                      and another begins
+         step_idx:    starting from 0, incremented with each step,
+                      irrespective of the episode it is in
+         start_state: the state at the beginning of the transition
+         action:      the action taken during the transition
+         end_state:   the state at the end of the transition
+         reward:      the reward gained through the transition
+         finished:    whether the transition marked the end of the episode"""
+
         episode_idx = 0
         total_step_idx = 0
         while True:
@@ -83,10 +97,24 @@ class BridgeBuilder(pl.LightningModule):
             episode_idx += 1
 
     def checkpoint(self, thresholds):
+        """A checkpointer that compares instance-state breakpoints to method
+        inputs to determine whether to enter a breakpoint. This only runs while
+        interactive mode is enabled.
+
+        Args:
+         thresholds: a dict mapping some subset of 'episode' and 'step' to
+                     the current corresponding indices (as tracked by
+                     `memory_generator#`)
+
+        When these current-state thresholds reach or exceed corresponding
+        values in the instance variable `breakpoint`, a breakpoint is entered
+        (via `IPython.embed#`). This breakpoint will reoccur immediately and
+        repeatedly, even as the user manually exits the IPython shell, until
+        self.breakpoint has been updated"""
         while self.hparams.interactive_mode:
-            if all(self.checkpoint[k] > v for k, v in thresholds.items()):
+            if all(self.breakpoint[k] > v for k, v in thresholds.items()):
                 break  # Don't stop for a checkpoint
-            self.checkpoint = thresholds
+            self.breakpoint = thresholds
             self.next_action = None
             IPython.embed()
 
@@ -97,18 +125,35 @@ class BridgeBuilder(pl.LightningModule):
         self.hparams.interactive_mode = False
 
     def take_action(self, action, repetitions=1):
+        """Exits the current breakpoint and reenters one only after the input
+        `action` has been taken `repetitions` times (or the current episode
+        has ended)."""
         self.next_action = action
-        self.checkpoint["episode"] += 1
-        self.checkpoint["step"] += repetitions
+        # Updates self.breakpoint for use in self.checkpoint#
+        self.breakpoint["episode"] += 1  # Run until current episode ends OR
+        self.breakpoint["step"] += repetitions  # for `repetitions` steps
+        # Exits current breakpoint
         IPython.core.getipython.get_ipython().exiter()
 
     def follow_policy(self, num_actions=None, num_episodes=1):
+        """Exits the current breakpoint and draws actions from the policy.
+        Reenters a breakpoint only after either `num_actions` steps have been
+        taken or `num_episodes` episodes have newly finished.
+
+        Note: it is expected that only one of `num_actions` and `num_episodes`
+              are set. If `num_actions` is set, these actions will be preempted
+              by the end of the current episode. If `num_episodes` is set,
+              no limit is placed on the total number of actions taken. Finally,
+              if neither is set, the policy will be followed until the end of
+              the current epsiode."""
+        # Updates self.breakpoint for use in self.checkpoint#
         if num_actions is None:
-            self.checkpoint["step"] = np.inf
+            self.breakpoint["step"] = np.inf  # Run indefinitely until ...
         else:
             assert num_episodes == 1
-            self.checkpoint["step"] += num_actions
-        self.checkpoint["episode"] += num_episodes
+            self.breakpoint["step"] += num_actions  # Take `num_actions` steps
+        # ... `num_episodes` episodes have completed
+        self.breakpoint["episode"] += num_episodes
         IPython.core.getipython.get_ipython().exiter()
 
     def return_to_training(self):
