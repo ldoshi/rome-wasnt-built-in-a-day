@@ -238,7 +238,7 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
     def batch_size(self, value):
         assert value > 0, "ReplayBuffer batch size must be positive"
         assert isinstance(value, int), "ReplayBuffer batch size must be an int"
-        self._beta = value
+        self._batch_size = value
 
     def __iter__(self):
         while True:

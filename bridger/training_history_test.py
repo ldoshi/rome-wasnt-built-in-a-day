@@ -1,6 +1,6 @@
 import numpy as np
 import unittest
-from training_history import TrainingHistory
+from bridger.training_history import TrainingHistory
 
 
 def build_test_history(states=None, base=None):

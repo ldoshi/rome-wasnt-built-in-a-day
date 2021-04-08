@@ -1,5 +1,5 @@
 import abc
-import numpy as np
+import torch
 
 
 class Policy(abc.ABC):
@@ -79,5 +79,5 @@ class GreedyPolicy(EpsilonGreedyPolicy):
     def get_probabilities(self, state):
         return super().get_probabilities(state)
 
-      
+
 choices = {"greedy": GreedyPolicy, "epsilon_greedy": EpsilonGreedyPolicy}

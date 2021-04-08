@@ -1,8 +1,9 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from training_history import TrainingHistory
-from training_history_test import build_test_history
+
+from bridger.training_history import TrainingHistory
+from bridger.training_history_test import build_test_history
 
 import numpy as np
 
@@ -85,7 +86,8 @@ class TrainingPanel:
         self._render_series(state_training_history, 3, "get_td_errors", "TD Error")
         self._fig.canvas.draw()
         self._fig.canvas.flush_events()
-        plt.pause(.001)
+        plt.pause(0.001)
+
 
 if __name__ == "__main__":
     history = build_test_history()

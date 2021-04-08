@@ -26,10 +26,7 @@ class BridgeBuilder(pl.LightningModule):
         self.hparams = hparams
         torch.manual_seed(hparams.seed)
 
-        self.env = gym.make(hparams.env_name)
-        self.env.setup(
-            hparams.env_height, hparams.env_width, vary_heights=hparams.env_vary_heights
-        )
+        self.env = self.make_env()
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
             capacity=hparams.capacity,
@@ -58,10 +55,19 @@ class BridgeBuilder(pl.LightningModule):
             self.training_history = training_history.TrainingHistory()
             self.training_step = 0
 
+    def make_env(self):
+        env = gym.make(self.hparams.env_name)
+        env.setup(
+            self.hparams.env_height,
+            self.hparams.env_width,
+            vary_heights=self.hparams.env_vary_heights,
+        )
+        return env
+
     def on_train_epoch_start(self):
         self.make_memories()
 
-    def on_train_batch_end(outputs, batch, batch_idx, dataloader_idx):
+    def on_train_batch_end(self, outputs, batch, batch_idx, dataloader_idx):
         self.update_target()
         if self.hparams.debug:
             self.record_q_values()
@@ -111,7 +117,7 @@ class BridgeBuilder(pl.LightningModule):
         episode_idx = 0
         total_step_idx = 0
         while True:
-            for step_idx in range(self.hparams.episode_length):
+            for step_idx in range(self.hparams.max_episode_length):
                 self.checkpoint({"episode": episode_idx, "step": total_step_idx})
                 start_state, action, end_state, reward, finished = self()
                 yield (
@@ -149,7 +155,7 @@ class BridgeBuilder(pl.LightningModule):
         self.breakpoint has been updated"""
         while self.hparams.interactive_mode:
             if all(self.breakpoint[k] > v for k, v in thresholds.items()):
-                break  # Don't stop for a checkpoint
+                break  # Don't stop for a breakpoint
             self.breakpoint = thresholds
             self.next_action = None
             IPython.embed()
@@ -201,7 +207,9 @@ class BridgeBuilder(pl.LightningModule):
         if self.hparams.interactive_mode and self.next_action is not None:
             action = self.next_action
         else:
-            action = self.policy(torch.tensor(state), epsilon=self.epsilon)
+            action = self.policy(
+                torch.as_tensor(state, dtype=torch.float), epsilon=self.epsilon
+            )
         result = (state, action, *self.env.step(action)[:3])
         self.replay_buffer.add_new_experience(*result)
 
@@ -228,7 +236,7 @@ class BridgeBuilder(pl.LightningModule):
 
     def get_td_error(self, states, actions, next_states, rewards, finished):
 
-        row_idx = torch.arange(self.env.nA)
+        row_idx = torch.arange(actions.shape[0])
         qvals = self.Q(states)[row_idx, actions]
         with torch.no_grad():
             next_actions = self.Q(next_states).argmax(dim=1)
@@ -237,7 +245,7 @@ class BridgeBuilder(pl.LightningModule):
         return torch.abs(expected_qvals - qvals)
 
     def compute_loss(self, td_errors, weights=None):
-        if weights:
+        if weights is not None:
             td_errors = weights * td_errors
         # TODO(arvind): Change design to clip the gradient rather than the loss
         return (td_errors.clip(max=self.hparams.update_bound) ** 2).mean()
@@ -268,7 +276,6 @@ class BridgeBuilder(pl.LightningModule):
         # is that limiting for the future?
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
 
-    @pl.data_loader
     def train_dataloader(self):
         return DataLoader(self.replay_buffer, batch_size=self.hparams.batch_size)
 
@@ -298,4 +305,4 @@ class BridgeBuilder(pl.LightningModule):
                 assert check, f"Required argument {key} not provided"
                 if "default" in val:
                     hparams[key] = val["default"]
-        return DeepDiagnoser(argparse.Namespace(**hparams))
+        return BridgeBuilder(argparse.Namespace(**hparams))

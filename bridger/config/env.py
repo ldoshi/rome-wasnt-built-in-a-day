@@ -1,7 +1,7 @@
 hparam_dict = dict()
 
 key = "name"
-hparam_dict[key] = {"type": str, "default": 1}
+hparam_dict[key] = {"type": str, "default": "gym_bridges.envs:Bridges-v0"}
 help_str = "The name of the Gym environment (with gym_bridges.env) to use."
 hparam_dict[key]["help"] = help_str
 
