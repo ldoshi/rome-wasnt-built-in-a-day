@@ -37,7 +37,7 @@ class PanelCallback(Callback):
             states_n,
             state_width,
             state_height,
-            actions_n=model.env.nA,
+            actions_n,
         )
         self.frequency = steps_per_update
 
@@ -45,4 +45,4 @@ class PanelCallback(Callback):
         self, trainer, model, outputs, batch, batch_idx, dataloader_idx
     ):
         if (batch_idx + 1) % self.frequency == 0:
-            panel.update_panel(model.training_history.get_history_by_visit_count())
+            self.panel.update_panel(model.training_history.get_history_by_visit_count())
