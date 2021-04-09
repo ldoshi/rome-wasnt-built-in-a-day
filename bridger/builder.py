@@ -53,7 +53,6 @@ class BridgeBuilder(pl.LightningModule):
             # TODO(arvind): Move as much of this functionality as possible into
             # the tensorboard logging already being done here.
             self.training_history = training_history.TrainingHistory()
-            self.training_step = 0
 
     def make_env(self):
         env = gym.make(self.hparams.env_name)
@@ -64,14 +63,13 @@ class BridgeBuilder(pl.LightningModule):
         )
         return env
 
-    def on_train_epoch_start(self):
+    def on_train_start(self):
         self.make_memories()
 
     def on_train_batch_end(self, outputs, batch, batch_idx, dataloader_idx):
         self.update_target()
         if self.hparams.debug:
-            self.record_q_values()
-            self.training_step += 1
+            self.record_q_values(batch_idx)
         self.make_memories()
 
     def update_target(self):
@@ -81,7 +79,7 @@ class BridgeBuilder(pl.LightningModule):
             params[param] += self.hparams.tau * (update[param] - params[param])
         self.target.load_state_dict(params)
 
-    def record_q_values(self):
+    def record_q_values(self, training_step):
         visited_state_histories = self.training_history.get_history_by_visit_count(100)
         states = [
             visited_state_history.state
@@ -92,7 +90,7 @@ class BridgeBuilder(pl.LightningModule):
             states, self.Q(states_tensor).tolist(), self.target(states_tensor).tolist()
         )
         for triple in triples:
-            self.training_history.add_q_values(self.training_step, *triple)
+            self.training_history.add_q_values(training_step, *triple)
 
     def make_memories(self):
         with torch.no_grad():
@@ -257,7 +255,7 @@ class BridgeBuilder(pl.LightningModule):
             triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
             for triple in triples:
                 # For debuging only. Averages the td error per (state, action) pair.
-                self.training_history.add_td_error(self.training_step, *triple)
+                self.training_history.add_td_error(batch_idx, *triple)
 
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(

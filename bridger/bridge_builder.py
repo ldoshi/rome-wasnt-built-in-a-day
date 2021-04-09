@@ -13,29 +13,12 @@
 #
 # Use demo(...) to see how the policy performs.
 
-import IPython
 import torch
-import pytorch_lightning as pl
+from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from bridger import builder, training_history, training_panel
-
-
-def reload_modules():
-    from importlib import reload
-
-    reload(training_history)
-    reload(training_panel)
-
-
-def demo(env, policy, episode_length):
-    state = env.reset()
-    for t in range(episode_length):
-        state, reward, is_done = env.step(policy(torch.tensor(state)))[:3]
-        env.render()
-        if is_done:
-            print("finished at %d" % t)
-            break
+from bridger.builder import BridgeBuilder
+from bridger.callbacks import DemoCallback, PanelCallback
 
 
 # env and replay_buffer should be treated as read-only.
@@ -78,49 +61,51 @@ class DebugUtil:
 def test():
     MAX_STEPS = 5
     MAX_DEMO_EPISODE_LENGTH = 50
-
-    parser = builder.BridgeBuilder.get_hyperparam_parser()
+    # TODO(arvind): split the args into those relevant for the LightningModule
+    #               and those relevant for the Trainer/Callbacks
+    parser = BridgeBuilder.get_hyperparam_parser()
     hparams = parser.parse_args()
     # hparams.debug = True
-    model = builder.BridgeBuilder(hparams)
+    model = BridgeBuilder(hparams)
 
-    # # Uncomment to view the TrainingPanel.
-    # panel = training_panel.TrainingPanel(
-    #     states_n=20,
-    #     state_width=hparams.env_width,
-    #     state_height=hparams.env_height,
-    #     actions_n=model.env.nA,
-    # )
-
-    # Only retains checkpoint with minimum monitored quantity seen so far. By default,
-    # just saves the (temporally) last checkpoint. This should eventually be done based
-    # on monitoring a a well defined validation metric that doesn't depend on the most
-    # recent batch of memories
-    callback = ModelCheckpoint(
-        monitor=None,  # Should show a quantity, e.g. "train_loss"
-        period=hparams.checkpoint_interval,
-    )
+    callbacks = [
+        # Only retains checkpoint with minimum monitored quantity seen so far.
+        # By default, just saves the (temporally) last checkpoint. This should
+        # eventually be done based on monitoring a a well defined validation
+        # metric that doesn't depend on the most recent batch of memories
+        ModelCheckpoint(
+            monitor=None,  # Should show a quantity, e.g. "train_loss"
+            period=hparams.checkpoint_interval,
+        ),
+    ]
+    if hparams.debug:
+        callbacks += [
+            PanelCallback(
+                steps_per_update=MAX_STEPS,
+                states_n=20,
+                state_width=hparams.env_width,
+                state_height=hparams.env_height,
+                actions_n=model.env.nA,
+            ),
+            DemoCallback(
+                steps_per_update=MAX_STEPS,
+                max_episode_length=MAX_DEMO_EPISODE_LENGTH,
+            ),
+        ]
     # TODO: After validation logic has been added to BridgeBuilder,
     # 1. Make val_check_interval below a settable parameter with reasonable default
     # 2. Update callback variable above to reflect the validation logic and pass it
     #    to Trainer init below
-    trainer = pl.Trainer(
+    trainer = Trainer(
         val_check_interval=int(1e6),
         default_root_dir=hparams.checkpoint_model_dir,
         checkpoint_callback=True,
-        max_steps=MAX_STEPS,
+        max_steps=hparams.max_training_batches,
+        callbacks=callbacks,
     )
 
-    # TODO: Write this as a callback that happens every MAX_STEPS training batches,
-    # rather than as a loop around a short-lived training run
-    # Uncomment if you want to run training using the training_config as is. It may
-    # or may not work out!
-    for _ in range(hparams.max_training_batches // MAX_STEPS):
-        trainer.fit(model)
+    trainer.fit(model)
 
-        # # Update the TrainingPanel.
-        # panel.update_panel(model.training_history.get_history_by_visit_count())
 
-        # # Demo Run the policy in the environment.
-        # with torch.no_grad():
-        #     demo(model.make_env(), model.policy, MAX_DEMO_EPISODE_LENGTH)
+if __name__ == "__main__":
+    test()
