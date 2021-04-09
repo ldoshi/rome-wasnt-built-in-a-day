@@ -40,7 +40,7 @@ def test():
         # metric that doesn't depend on the most recent batch of memories
         ModelCheckpoint(
             monitor=None,  # Should show a quantity, e.g. "train_loss"
-            period=hparams.checkpoint_interval,
+            every_n_train_steps=hparams.checkpoint_interval,
         ),
     ]
     if hparams.debug:

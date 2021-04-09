@@ -22,8 +22,9 @@ class BridgeBuilder(pl.LightningModule):
                      #get_hyperparam_parser"""
 
         super(BridgeBuilder, self).__init__()
-
-        self.hparams = hparams
+        #  TODO(arvind) Simplify once you understand hyperparam handling in PL 1.3
+        for k, v in hparams.__dict__.items():
+            self.hparams[k] = v
         torch.manual_seed(hparams.seed)
 
         self.env = self.make_env()

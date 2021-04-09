@@ -1,86 +1,63 @@
 # Training scenarios used for debugging.
-# TODO(arvind): Refactor this to align with torch related updates
 
-import gym
-import gym_bridges.envs
-import numpy as np
+from pytorch_lightning.callbacks import Callback
 
-import bridge_builder
-import training_panel
-
-environment_name = "gym_bridges.envs:Bridges-v0"
-
+from bridger import training_panel
+from bridger.builder import BridgeBuilder
 
 # Creates the smallest world where a bridge can be built. Cycles
 # through a series of actions to build simple episodes into the
 # training set. Inspecting the TrainingPanel should show that the
 # value function reflects the experiences encountered.
+
+
 def tiny_world():
-    env = gym.make(environment_name)
-    env.setup(3, 4)
+
+    MAX_EPISODE_LENGTH = 5
+
+    model = BridgeBuilder.instantiate(
+        env_height=3,
+        env_width=4,
+        env_vary_heights=False,
+        debug=True,
+        max_episode_length=MAX_EPISODE_LENGTH,
+    )
 
     panel = training_panel.TrainingPanel(
         states_n=10,
-        state_width=env.shape[1],
-        state_height=env.shape[0],
-        actions_n=env.action_space.n,
+        state_width=model.hparams.env_width,
+        state_height=model.hparams.env_height,
+        actions_n=model.env.nA,
     )
 
-    number_of_episodes = 100
-    epsilon_policy = np.linspace(1, 0.05, number_of_episodes)
+    class FixedRotatingPolicy(Callback):
+        def __init__(self, max_episode_length):
+            self.max_episode_length = max_episode_length
+            self.actions = self.action_sequence()
 
-    training_config = bridge_builder.TrainingConfig(
-        number_of_episodes=number_of_episodes,
-        episode_length=5,
-        training_frequency=1,
-        memory_size=10000,
-        update_bound=100,
-        action_space_n=env.action_space.n,
-        tau=0.01,
-        batch_size=100,
-        gamma=0.99,
-        alpha=1,
-        epsilon=None,
-        epsilon_policy=epsilon_policy,
+        def action_sequence(self):
+            # Exercises various scenarios.
+            while True:
+                yield from [0] * self.max_episode_length  # Only the left
+                yield from [1] * self.max_episode_length  # Only the right
+                yield from [2] * self.max_episode_length  # Only the middle gap
+                yield from [0] + [1] * self.max_episode_length  # Left then middle
+                yield from [2] + [1] * self.max_episode_length  # Right then middle
+                yield from [0, 2]  # Left to right
+                yield from [2, 0]  # Right to left
+
+        def on_train_start(self, trainer, model):
+            model.policy = lambda *args, **kwargs: next(self.actions)
+
+    trainer = Trainer(
+        val_check_interval=int(1e6),
+        max_steps=10 * (5 * MAX_EPISODE_LENGTH + 6),
+        callbacks=[FixedRotatingPolicy(MAX_EPISODE_LENGTH)],
     )
+    trainer.fit(model)
 
-    trainer = bridge_builder.Trainer(env, training_config)
-
-    # Exercises various scenarios.
-    iterations = 10
-    for _ in range(iterations):
-        # Only the left.
-        for _ in range(training_config.episode_length):
-            trainer.take_action(0)
-
-        # Only the gap in the middle.
-        for _ in range(training_config.episode_length):
-            trainer.take_action(1)
-
-        # Only the right.
-        for _ in range(training_config.episode_length):
-            trainer.take_action(2)
-
-        # One on the left, then only the middle.
-        trainer.take_action(0)
-        for _ in range(training_config.episode_length):
-            trainer.take_action(1)
-
-        # One on the right, then only the middle.
-        trainer.take_action(2)
-        for _ in range(training_config.episode_length):
-            trainer.take_action(1)
-
-        # Complete a bridge left to right.
-        trainer.take_action(0)
-        trainer.take_action(2)
-
-        # Complete a bridge right to left.
-        trainer.take_action(2)
-        trainer.take_action(0)
-
-    panel.update_panel(trainer.training_history.get_history_by_visit_count())
-    return env, trainer, panel
+    panel.update_panel(model.training_history.get_history_by_visit_count())
+    return model, panel
 
 
 # env and replay_buffer should be treated as read-only.
