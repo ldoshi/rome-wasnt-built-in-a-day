@@ -68,7 +68,7 @@ class BridgeBuilder(pl.LightningModule):
                 next(self.memories)
 
     def memory_generator(self):
-        """A generator that serves up sequential transitions expierienced by the
+        """A generator that serves up sequential transitions experienced by the
         agent. When an episode ends, a new one starts immediately. Each item
         yielded is a tuple with the following elements (in order):
 
