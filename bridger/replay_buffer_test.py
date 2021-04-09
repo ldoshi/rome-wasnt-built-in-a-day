@@ -4,8 +4,7 @@ import unittest
 from timeit import timeit
 from parameterized import parameterized
 
-from replay_buffer import SumTree
-from replay_buffer import ReplayBuffer
+from bridger.replay_buffer import SumTree, ReplayBuffer
 
 
 class TestSumTree(unittest.TestCase):

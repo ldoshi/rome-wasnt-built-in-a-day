@@ -2,7 +2,7 @@ import numpy as np
 import unittest
 from parameterized import parameterized
 
-import policies
+from bridger import policies
 
 
 def _constant_estimator(state):

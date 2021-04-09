@@ -1,4 +1,5 @@
 # Training scenarios used for debugging.
+# TODO(arvind): Refactor this to align with torch related updates
 
 import gym
 import gym_bridges.envs
@@ -8,6 +9,7 @@ import bridge_builder
 import training_panel
 
 environment_name = "gym_bridges.envs:Bridges-v0"
+
 
 # Creates the smallest world where a bridge can be built. Cycles
 # through a series of actions to build simple episodes into the
@@ -81,4 +83,38 @@ def tiny_world():
     return env, trainer, panel
 
 
-env, trainer, panel = tiny_world()
+# env and replay_buffer should be treated as read-only.
+class DebugUtil:
+    def __init__(self, environment_name, env, replay_buffer):
+        self._replay_buffer = replay_buffer
+        self._debug_env = gym.make(environment_name)
+        self._debug_env.setup(
+            env.shape[0], env.shape[1], vary_heights=(len(env.height_pairs) > 1)
+        )
+
+    # Returns the state following the provided series of actions after a reset().
+    def get_state(self, actions=None):
+        state = self._debug_env.reset()
+        for a in actions:
+            state, _, _, _ = self._debug_env.step(a)
+
+        return state
+
+    # Returns entries from replay buffer.
+    # Filters on states, actions, and rewards are AND-ed together.
+    # Filters within an input, such as actions, are OR-ed together. Provide None to match all.
+    def extract_replay_buffer_entries(self, states=None, actions=None, rewards=None):
+        out = []
+        if None == states == actions == rewards:  # noqa: E711
+            return out
+
+        for entry in self._replay_buffer._content:
+            if states and entry[0] not in states:
+                continue
+            elif actions and entry[1] not in actions:
+                continue
+            elif rewards and entry[3] not in rewards:
+                continue
+            out.append(entry)
+
+        return out

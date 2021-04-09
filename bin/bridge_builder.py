@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Current usage notes:
 
 # If this is called with command line arg "interactive-mode" set to True, then
@@ -19,43 +21,6 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 from bridger.builder import BridgeBuilder
 from bridger.callbacks import DemoCallback, PanelCallback
-
-
-# env and replay_buffer should be treated as read-only.
-class DebugUtil:
-    def __init__(self, environment_name, env, replay_buffer):
-        self._replay_buffer = replay_buffer
-        self._debug_env = gym.make(environment_name)
-        self._debug_env.setup(
-            env.shape[0], env.shape[1], vary_heights=(len(env.height_pairs) > 1)
-        )
-
-    # Returns the state following the provided series of actions after a reset().
-    def get_state(self, actions=None):
-        state = self._debug_env.reset()
-        for a in actions:
-            state, _, _, _ = self._debug_env.step(a)
-
-        return state
-
-    # Returns entries from replay buffer.
-    # Filters on states, actions, and rewards are AND-ed together.
-    # Filters within an input, such as actions, are OR-ed together. Provide None to match all.
-    def extract_replay_buffer_entries(self, states=None, actions=None, rewards=None):
-        out = []
-        if None == states == actions == rewards:  # noqa: E711
-            return out
-
-        for entry in self._replay_buffer._content:
-            if states and entry[0] not in states:
-                continue
-            elif actions and entry[1] not in actions:
-                continue
-            elif rewards and entry[3] not in rewards:
-                continue
-            out.append(entry)
-
-        return out
 
 
 def test():
@@ -99,7 +64,6 @@ def test():
     trainer = Trainer(
         val_check_interval=int(1e6),
         default_root_dir=hparams.checkpoint_model_dir,
-        checkpoint_callback=True,
         max_steps=hparams.max_training_batches,
         callbacks=callbacks,
     )
