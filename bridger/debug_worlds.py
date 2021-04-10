@@ -1,5 +1,6 @@
 # Training scenarios used for debugging.
 
+from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 
 from bridger import training_panel

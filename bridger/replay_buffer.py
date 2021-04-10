@@ -1,7 +1,8 @@
 import numpy as np
 import torch
+
 from bisect import bisect_right
-from itertools import chain, starmap
+from itertools import chain, islice, starmap
 from functools import partial
 
 
@@ -247,6 +248,13 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
             for index, probability in samples:
                 weight = pow(prob_min / probability, self.beta)
                 yield (index, *self._content[index], weight)
+
+    def sample(self, batch_size, beta):
+        old_vals = self.batch_size, self.beta
+        self.batch_size, self.beta = batch_size, beta
+        samples = zip(*islice(iter(self), self.batch_size))
+        self.batch_size, self.beta = old_vals
+        return list(map(list, samples))
 
     def add_new_experience(self, start_state, action, end_state, reward, finished):
         experience = [start_state, action, end_state, reward, finished]

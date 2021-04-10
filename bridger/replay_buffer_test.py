@@ -21,7 +21,7 @@ class TestSumTree(unittest.TestCase):
     def test_sampling_speed(self, name, stratified, capacity, batch, repetitions):
         setup = [
             "import random",
-            "from replay_buffer import SumTree",
+            "from bridger.replay_buffer import SumTree",
             f"tree=SumTree({capacity})",
             f"for i in range({capacity}): tree.set_value(i, random.uniform(0, 10))",
         ]
