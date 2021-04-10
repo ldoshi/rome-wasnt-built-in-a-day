@@ -45,10 +45,10 @@ class BridgeBuilder(pl.LightningModule):
         self.policy = policies.EpsilonGreedyPolicy(self.Q)
 
         self.epsilon = hparams.epsilon_training_start
-        self.memories = self.memory_generator()
+        self.memories = self._memory_generator()
 
         self.next_action = None
-        self.breakpoint = {"step": 0, "episode": 0}
+        self._breakpoint = {"step": 0, "episode": 0}
 
         if hparams.debug:
             # TODO(arvind): Move as much of this functionality as possible into
@@ -98,7 +98,7 @@ class BridgeBuilder(pl.LightningModule):
             for i in range(self.hparams.inter_training_steps):
                 next(self.memories)
 
-    def memory_generator(self):
+    def _memory_generator(self):
         """A generator that serves up sequential transitions experienced by the
         agent. When an episode ends, a new one starts immediately. Each item
         yielded is a tuple with the following elements (in order):
@@ -117,7 +117,7 @@ class BridgeBuilder(pl.LightningModule):
         total_step_idx = 0
         while True:
             for step_idx in range(self.hparams.max_episode_length):
-                self.checkpoint({"episode": episode_idx, "step": total_step_idx})
+                self._checkpoint({"episode": episode_idx, "step": total_step_idx})
                 start_state, action, end_state, reward, finished = self()
                 yield (
                     episode_idx,
@@ -133,11 +133,11 @@ class BridgeBuilder(pl.LightningModule):
                     break
                 elif self.hparams.debug:
                     self.training_history.increment_visit_count(end_state)
-            self.update_epsilon()
+            self._update_epsilon()
             self.env.reset()
             episode_idx += 1
 
-    def checkpoint(self, thresholds):
+    def _checkpoint(self, thresholds):
         """A checkpointer that compares instance-state breakpoints to method
         inputs to determine whether to enter a breakpoint. This only runs while
         interactive mode is enabled.
@@ -145,17 +145,17 @@ class BridgeBuilder(pl.LightningModule):
         Args:
          thresholds: a dict mapping some subset of 'episode' and 'step' to
                      the current corresponding indices (as tracked by
-                     `memory_generator#`)
+                     `_memory_generator#`)
 
         When these current-state thresholds reach or exceed corresponding
         values in the instance variable `breakpoint`, a breakpoint is entered
         (via `IPython.embed#`). This breakpoint will reoccur immediately and
         repeatedly, even as the user manually exits the IPython shell, until
-        self.breakpoint has been updated"""
+        self._breakpoint has been updated"""
         while self.hparams.interactive_mode:
-            if all(self.breakpoint[k] > v for k, v in thresholds.items()):
+            if all(self._breakpoint[k] > v for k, v in thresholds.items()):
                 break  # Don't stop for a breakpoint
-            self.breakpoint = thresholds
+            self._breakpoint = thresholds
             self.next_action = None
             IPython.embed()
 
@@ -170,9 +170,9 @@ class BridgeBuilder(pl.LightningModule):
         `action` has been taken `repetitions` times (or the current episode
         has ended)."""
         self.next_action = action
-        # Updates self.breakpoint for use in self.checkpoint#
-        self.breakpoint["episode"] += 1  # Run until current episode ends OR
-        self.breakpoint["step"] += repetitions  # for `repetitions` steps
+        # Updates self._breakpoint for use in self._checkpoint#
+        self._breakpoint["episode"] += 1  # Run until current episode ends OR
+        self._breakpoint["step"] += repetitions  # for `repetitions` steps
         # Exits current breakpoint
         IPython.core.getipython.get_ipython().exiter()
 
@@ -187,14 +187,14 @@ class BridgeBuilder(pl.LightningModule):
               no limit is placed on the total number of actions taken. Finally,
               if neither is set, the policy will be followed until the end of
               the current epsiode."""
-        # Updates self.breakpoint for use in self.checkpoint#
+        # Updates self._breakpoint for use in self._checkpoint#
         if num_actions is None:
-            self.breakpoint["step"] = np.inf  # Run indefinitely until ...
+            self._breakpoint["step"] = np.inf  # Run indefinitely until ...
         else:
             assert num_episodes == 1
-            self.breakpoint["step"] += num_actions  # Take `num_actions` steps
+            self._breakpoint["step"] += num_actions  # Take `num_actions` steps
         # ... `num_episodes` episodes have completed
-        self.breakpoint["episode"] += num_episodes
+        self._breakpoint["episode"] += num_episodes
         IPython.core.getipython.get_ipython().exiter()
 
     def return_to_training(self):
@@ -217,14 +217,14 @@ class BridgeBuilder(pl.LightningModule):
 
         return result
 
-    def update_epsilon(self):
+    def _update_epsilon(self):
         if self.hparams.epsilon_decay_rule == "arithmetic":
             self.epsilon -= self.hparams.epsilon_decay_rate
         elif self.hparams.epsilon_decay_rule == "geometric":
             self.epsilon /= self.hparams.epsilon_decay_rate
         self.epsilon = max(self.epsilon, self.hparams.epsilon)
 
-    def update_beta(self):
+    def _update_beta(self):
         if self.hparams.beta_growth_rule == "arithmetic":
             self.replay_buffer.beta += self.hparams.beta_growth_rate
         elif self.hparams.beta_growth_rule == "geometric":
@@ -264,7 +264,7 @@ class BridgeBuilder(pl.LightningModule):
         )
         # Update replay buffer
         self.replay_buffer.update_priorities(indices, td_errors)
-        self.update_beta()
+        self._update_beta()
 
         return loss
 
