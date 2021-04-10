@@ -1,8 +1,8 @@
-from bridger.config.agent import hparam_dict as agent_config
-from bridger.config.buffer import hparam_dict as buffer_config
-from bridger.config.checkpointing import hparam_dict as checkpoint_config
-from bridger.config.env import hparam_dict as env_config
-from bridger.config.training import hparam_dict as training_config
+from config.agent import hparam_dict as agent_config
+from config.buffer import hparam_dict as buffer_config
+from config.checkpointing import hparam_dict as checkpoint_config
+from config.env import hparam_dict as env_config
+from config.training import hparam_dict as training_config
 
 bridger_config = dict(
     **agent_config,

@@ -17,6 +17,7 @@ grpcio==1.32.0
 gym==0.17.3
 h5py==2.10.0
 idna==2.10
+ipython==7.22.0
 importlib-metadata==2.0.0
 joblib==0.17.0
 Keras-Preprocessing==1.1.2

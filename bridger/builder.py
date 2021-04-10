@@ -7,7 +7,7 @@ import torch
 
 from torch.utils.data import DataLoader
 
-from bridger import config, policies, qfunctions, replay_buffer
+import config, policies, qfunctions, replay_buffer
 
 
 # TODO: Add hooks for TrainingHistory
