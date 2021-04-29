@@ -4,16 +4,14 @@
 
 # If this is called with command line arg "interactive-mode" set to True, then
 # Trainer will intermittently enter an IPython shell, allowing you to inspect
-# model state at your leisure. This shell can be exited by calling on four model
-# commands:
+# model state at your leisure. This shell can be exited by calling one of three
+# model commands:
 # 1. return_to_training will disable interactive mode and complete the requested
 #    training without additional IPython breakpoints.
 # 2. follow_policy will run the minimum of a requested number of steps or through
 #    the end of a requested number of episodes before returning to the IPython shell
 # 3. take_action will take the requested action, potentially mutliple times, before
 #    returning to the IPython shell
-#
-# Use demo(...) to see how the policy performs.
 
 import torch
 from pytorch_lightning import Trainer
@@ -36,7 +34,7 @@ def test():
     callbacks = [
         # Only retains checkpoint with minimum monitored quantity seen so far.
         # By default, just saves the (temporally) last checkpoint. This should
-        # eventually be done based on monitoring a a well defined validation
+        # eventually be done based on monitoring a well defined validation
         # metric that doesn't depend on the most recent batch of memories
         ModelCheckpoint(
             monitor=None,  # Should show a quantity, e.g. "train_loss"

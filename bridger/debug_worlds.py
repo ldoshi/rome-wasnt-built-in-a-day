@@ -40,8 +40,8 @@ def tiny_world():
             # Exercises various scenarios.
             while True:
                 yield from [0] * self.max_episode_length  # Only the left
-                yield from [1] * self.max_episode_length  # Only the right
-                yield from [2] * self.max_episode_length  # Only the middle gap
+                yield from [1] * self.max_episode_length  # Only the middle gap
+                yield from [2] * self.max_episode_length  # Only the right
                 yield from [0] + [1] * self.max_episode_length  # Left then middle
                 yield from [2] + [1] * self.max_episode_length  # Right then middle
                 yield from [0, 2]  # Left to right

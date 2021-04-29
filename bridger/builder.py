@@ -268,7 +268,7 @@ class BridgeBuilder(pl.LightningModule):
 
         return loss
 
-    # TODO(arvind): Override hooks to compute non-TD-error metris for val and test
+    # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
     def configure_optimizers(self):
         # TODO(arvind): This should work, but should we say Q.parameters(), or

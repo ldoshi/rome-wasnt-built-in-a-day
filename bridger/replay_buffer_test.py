@@ -3,6 +3,7 @@ import pytest
 import unittest
 from timeit import timeit
 from parameterized import parameterized
+from itertools import islice
 
 from bridger.replay_buffer import SumTree, ReplayBuffer
 
@@ -184,6 +185,14 @@ class TestSumTree(unittest.TestCase):
                 )
 
 
+def _sample_replay_buffer(replay_buffer, batch_size, beta):
+    old_vals = replay_buffer.batch_size, replay_buffer.beta
+    replay_buffer.batch_size, replay_buffer.beta = batch_size, beta
+    samples = zip(*islice(iter(replay_buffer), batch_size))
+    replay_buffer.batch_size, replay_buffer.beta = old_vals
+    return list(map(list, samples))
+
+
 class TestReplayBuffer(unittest.TestCase):
     def setUp(self):
         self._delta = 1e-6
@@ -214,7 +223,7 @@ class TestReplayBuffer(unittest.TestCase):
                 rewards,
                 is_dones,
                 weights,
-            ) = replay_buffer.sample(i + 1, beta)
+            ) = _sample_replay_buffer(replay_buffer, i + 1, beta)
             combined_list = [indices, states, actions, next_states, rewards, is_dones]
 
             for combined_list_member in combined_list:
@@ -263,8 +272,8 @@ class TestReplayBuffer(unittest.TestCase):
     def test_sample_large_counts(self):
         replay_buffer = self._make_replay_buffer_with_unit_priorities()
         # Sample a count higher then the entry count but lower than the capacity.
-        indices, _, _, _, _, _, weights = replay_buffer.sample(
-            self._capacity - 1, self._beta
+        indices, _, _, _, _, _, weights = _sample_replay_buffer(
+            replay_buffer, self._capacity - 1, self._beta
         )
         self._verify_sample(
             count=self._capacity - 1,
@@ -275,8 +284,8 @@ class TestReplayBuffer(unittest.TestCase):
         )
 
         # Sample a count higher than the capacity.
-        indices, _, _, _, _, _, weights = replay_buffer.sample(
-            self._capacity + 1, self._beta
+        indices, _, _, _, _, _, weights = _sample_replay_buffer(
+            replay_buffer, self._capacity + 1, self._beta
         )
         self._verify_sample(
             count=self._capacity + 1,
@@ -288,7 +297,9 @@ class TestReplayBuffer(unittest.TestCase):
 
     def test_prioritized_replay_simple(self):
         replay_buffer = self._make_replay_buffer_with_unit_priorities()
-        indices, _, _, _, _, _, weights = replay_buffer.sample(7, self._beta)
+        indices, _, _, _, _, _, weights = _sample_replay_buffer(
+            replay_buffer, 7, self._beta
+        )
         self._verify_sample(
             count=7,
             indices=indices,
@@ -306,7 +317,9 @@ class TestReplayBuffer(unittest.TestCase):
         # conveniently for deterministic testing).
         replay_buffer.update_priorities([2], [4])
 
-        indices, _, _, _, _, _, weights = replay_buffer.sample(5, self._beta)
+        indices, _, _, _, _, _, weights = _sample_replay_buffer(
+            replay_buffer, 5, self._beta
+        )
         self._verify_sample(
             count=5,
             indices=indices,
@@ -321,7 +334,9 @@ class TestReplayBuffer(unittest.TestCase):
         # giving the tree a total of 14. We extract 7 samples this
         # time to ensure a similar output as the previous case.
         replay_buffer.add_new_experience(7, 7, 7, 7, 7)
-        indices, _, _, _, _, _, weights = replay_buffer.sample(7, self._beta)
+        indices, _, _, _, _, _, weights = _sample_replay_buffer(
+            replay_buffer, 7, self._beta
+        )
         self._verify_sample(
             count=7,
             indices=indices,
@@ -337,12 +352,16 @@ class TestReplayBuffer(unittest.TestCase):
 
         replay_buffer.update_priorities([2], [4])
 
-        _, _, _, _, _, _, weights = replay_buffer.sample(5, self._beta)
+        _, _, _, _, _, _, weights = _sample_replay_buffer(replay_buffer, 5, self._beta)
 
-        _, _, _, _, _, _, higher_weights = replay_buffer.sample(5, self._beta / 2.0)
+        _, _, _, _, _, _, higher_weights = _sample_replay_buffer(
+            replay_buffer, 5, self._beta / 2.0
+        )
         np.testing.assert_array_less(weights[1:3], higher_weights[1:3])
 
-        _, _, _, _, _, _, lower_weights = replay_buffer.sample(5, 2 * self._beta)
+        _, _, _, _, _, _, lower_weights = _sample_replay_buffer(
+            replay_buffer, 5, 2 * self._beta
+        )
         np.testing.assert_array_less(lower_weights[1:3], weights[1:3])
 
     # Show that increasing (decreasing) alpha increases (decreases)
@@ -350,7 +369,9 @@ class TestReplayBuffer(unittest.TestCase):
     def test_prioritized_replay_alphas(self):
         replay_buffer = self._make_replay_buffer_with_unit_priorities(alpha=1)
         replay_buffer.update_priorities([2], [4])
-        indices, _, _, _, _, _, weights = replay_buffer.sample(5, self._beta)
+        indices, _, _, _, _, _, weights = _sample_replay_buffer(
+            replay_buffer, 5, self._beta
+        )
 
         # Instead of the weight of 4 for index 2 and a total weight of
         # 10, we now have a weight of 2 for index 2 and a total weight
@@ -358,8 +379,8 @@ class TestReplayBuffer(unittest.TestCase):
         # deterministic result for index 2.
         replay_buffer_half = self._make_replay_buffer_with_unit_priorities(alpha=0.5)
         replay_buffer_half.update_priorities([2], [4])
-        indices_half, _, _, _, _, _, weights_half = replay_buffer_half.sample(
-            4, self._beta
+        indices_half, _, _, _, _, _, weights_half = _sample_replay_buffer(
+            replay_buffer_half, 4, self._beta
         )
         self._verify_sample(
             count=4,
@@ -378,7 +399,9 @@ class TestReplayBuffer(unittest.TestCase):
         # deterministic result for index 2.
         replay_buffer_2 = self._make_replay_buffer_with_unit_priorities(alpha=2)
         replay_buffer_2.update_priorities([2], [4])
-        indices_2, _, _, _, _, _, weights_2 = replay_buffer_2.sample(11, self._beta)
+        indices_2, _, _, _, _, _, weights_2 = _sample_replay_buffer(
+            replay_buffer_2, 11, self._beta
+        )
         self._verify_sample(
             count=11,
             indices=indices_2,
@@ -393,11 +416,13 @@ class TestReplayBuffer(unittest.TestCase):
     def test_prioritized_replay_negative_td_errors(self):
         replay_buffer = self._make_replay_buffer_with_unit_priorities()
         replay_buffer.update_priorities([2], [4])
-        _, _, _, _, _, _, weights = replay_buffer.sample(5, self._beta)
+        _, _, _, _, _, _, weights = _sample_replay_buffer(replay_buffer, 5, self._beta)
 
         replay_buffer_negative = self._make_replay_buffer_with_unit_priorities()
         replay_buffer.update_priorities([2], [-4])
-        _, _, _, _, _, _, weights_negative = replay_buffer.sample(5, self._beta)
+        _, _, _, _, _, _, weights_negative = _sample_replay_buffer(
+            replay_buffer, 5, self._beta
+        )
 
         np.testing.assert_array_equal(weights, weights_negative)
 
