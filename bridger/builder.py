@@ -105,7 +105,7 @@ class BridgeBuilder(pl.LightningModule):
 
          episode_idx: starting from 0, incremented every time an episode ends
                       and another begins
-         step_idx:    starting from 0, incremented with each step,
+         step_idx:    starting from 0, incremented with each transition,
                       irrespective of the episode it is in
          start_state: the state at the beginning of the transition
          action:      the action taken during the transition
