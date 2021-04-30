@@ -22,7 +22,7 @@ from bridger.callbacks import DemoCallback, PanelCallback
 
 
 def test():
-    MAX_STEPS = 5
+    MAX_STEPS = 100
     MAX_DEMO_EPISODE_LENGTH = 50
     # TODO(arvind): split the args into those relevant for the LightningModule
     #               and those relevant for the Trainer/Callbacks

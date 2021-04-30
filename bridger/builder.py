@@ -2,6 +2,7 @@ import argparse
 import IPython
 import gym
 import gym_bridges.envs
+import numpy as np
 import pytorch_lightning as pl
 import torch
 
@@ -119,6 +120,8 @@ class BridgeBuilder(pl.LightningModule):
             for step_idx in range(self.hparams.max_episode_length):
                 self._checkpoint({"episode": episode_idx, "step": total_step_idx})
                 start_state, action, end_state, reward, finished = self()
+                if self.hparams.debug:
+                    self.training_history.increment_visit_count(start_state)
                 yield (
                     episode_idx,
                     step_idx,
@@ -131,8 +134,6 @@ class BridgeBuilder(pl.LightningModule):
                 total_step_idx += 1
                 if finished:
                     break
-                elif self.hparams.debug:
-                    self.training_history.increment_visit_count(end_state)
             self._update_epsilon()
             self.env.reset()
             episode_idx += 1
@@ -155,7 +156,7 @@ class BridgeBuilder(pl.LightningModule):
         while self.hparams.interactive_mode:
             if all(self._breakpoint[k] > v for k, v in thresholds.items()):
                 break  # Don't stop for a breakpoint
-            self._breakpoint = thresholds
+            self._breakpoint.update(thresholds)
             self.next_action = None
             IPython.embed()
 
