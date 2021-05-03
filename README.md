@@ -49,7 +49,9 @@ This project currently uses black to autoformat all code. Highly recommend using
 
 In `gym-bridges`, run `./reinstall.sh`. You will need to do this every time the gym-bridges environment code changes.
 
-The primary code is in `bridger/bridge_builder.py`
+Then, from this repository, call `pip install .` to install this package (`bridger`).
+
+The main testing entrypoint is to call `bridge_builder.py` from command line. Default arguments are available for all inputs, and can be viewed by calling `bridge_builder.py --help`
 
 ### REPL
 

@@ -1,8 +1,8 @@
 hparam_dict = dict()
 
-key = "inter_training_episodes"
+key = "inter_training_steps"
 hparam_dict[key] = {"type": int, "default": 1}
-help_str = "The number of episodes to be run between consecutive training batches."
+help_str = "The number of steps (state -> new state) to be run between consecutive training batches."
 hparam_dict[key]["help"] = help_str
 
 key = "max_training_batches"
@@ -33,4 +33,9 @@ hparam_dict[key]["help"] = help_str
 key = "seed"
 hparam_dict[key] = {"type": int, "default": 42}
 help_str = "Random seed for training"
+hparam_dict[key]["help"] = help_str
+
+key = "debug"
+hparam_dict[key] = {"type": bool, "default": False}
+help_str = "Whether to log to TrainingHistory for debugging purposes"
 hparam_dict[key]["help"] = help_str
