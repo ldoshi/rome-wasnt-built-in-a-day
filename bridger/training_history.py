@@ -1,5 +1,7 @@
-from collections import defaultdict
+import copy
 import numpy as np
+
+from collections import defaultdict
 
 
 class StateTrainingHistoryDataSeries:
@@ -10,7 +12,7 @@ class StateTrainingHistoryDataSeries:
 
 class StateTrainingHistory:
     def __init__(self, state):
-        self._state = state
+        self._state = copy.deepcopy(state)
         self._state_complexity = int(np.sum(self._state))
         self._visit_count = 0
         self._q_epochs = []
@@ -66,7 +68,7 @@ class StateTrainingHistory:
 
 
 class TrainingHistory:
-    def __init__(self, state_hash=str):
+    def __init__(self, state_hash=lambda state: str(np.array(state))):
         self._training_history = {}
         self._state_hash = state_hash
 
@@ -74,20 +76,20 @@ class TrainingHistory:
         key = self._state_hash(state) if self._state_hash else state
         if key not in self._training_history:
             self._training_history[key] = StateTrainingHistory(state)
+        return key
 
-    def add_q_values(self, state, epoch, q_values, q_target_values):
-        self._add_if_missing(state)
-        self._training_history[str(state)].add_q_values(
+    def add_q_values(self, epoch, state, q_values, q_target_values):
+        self._training_history[self._add_if_missing(state)].add_q_values(
             epoch, q_values, q_target_values
         )
 
-    def add_td_error(self, state, action, epoch, td_error):
-        self._add_if_missing(state)
-        self._training_history[str(state)].add_td_error(action, epoch, td_error)
+    def add_td_error(self, epoch, state, action, td_error):
+        self._training_history[self._add_if_missing(state)].add_td_error(
+            action, epoch, td_error
+        )
 
     def increment_visit_count(self, state):
-        self._add_if_missing(state)
-        self._training_history[str(state)].increment_visit_count()
+        self._training_history[self._add_if_missing(state)].increment_visit_count()
 
     # These are sorted in descending order.
     def get_history_by_visit_count(self, n=None):

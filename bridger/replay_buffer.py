@@ -1,5 +1,6 @@
 import numpy as np
-import random
+import torch
+
 from bisect import bisect_right
 from itertools import chain, starmap
 from functools import partial
@@ -205,56 +206,64 @@ class SumTree:
             index = (index - 1) // 2
 
 
-# If update_priorities is never called, this calls implements uniform
-# sampling of the Experience Replay Buffer.
-class ReplayBuffer:
-    def __init__(self, capacity, alpha=0.5):
+# TODO: Code right now is clean and readable, but experimentation can be made
+# more natural by splitting into separate but interdependent (custom) Sampler
+# and Dataset classes
+class ReplayBuffer(torch.utils.data.IterableDataset):
+    def __init__(self, capacity, alpha=0.5, beta=0.5, batch_size=100):
         self._capacity = capacity
-        self._content = []
         self._alpha = alpha
+        self._content = []
         self._index = 0
         self._tree = SumTree(capacity)
         # epsilon is added to |td_errr| to ensure all priorities are non-zero.
         self._epsilon = 1e-10
 
-    def add_new_experience(self, s, a, ss, r, d):
+        self.beta = beta
+        self.batch_size = batch_size
+
+    @property
+    def beta(self):
+        return self._beta
+
+    @beta.setter
+    def beta(self, value):
+        assert value > 0, "ReplayBuffer beta must be positive"
+        self._beta = value
+
+    @property
+    def batch_size(self):
+        return self._batch_size
+
+    @batch_size.setter
+    def batch_size(self, value):
+        assert value > 0, "ReplayBuffer batch size must be positive"
+        assert isinstance(value, int), "ReplayBuffer batch size must be an int"
+        self._batch_size = value
+
+    def __iter__(self):
+        while True:
+            samples = self._tree.sample(self.batch_size, stratified=True)
+            prob_min = min(probability for index, probability in samples)
+            for index, probability in samples:
+                weight = pow(prob_min / probability, self.beta)
+                yield (index, *self._content[index], weight)
+
+    def add_new_experience(self, start_state, action, end_state, reward, finished):
+        experience = [start_state, action, end_state, reward, finished]
         if len(self._content) == self._capacity:
-            self._content[self._index] = [s, a, ss, r, d]
+            self._content[self._index] = experience
         else:
-            self._content.append([s, a, ss, r, d])
+            self._content.append(experience)
 
         self._tree.set_value(self._index, self._tree.max_value)
         self._index = (self._index + 1) % self._capacity
 
     def update_priorities(self, indices, td_errors):
+        # If update_priorities is never called, this calls implements uniform
+        # sampling of the Experience Replay Buffer.
+        indices, td_errors = [
+            (L if isinstance(L, list) else L.tolist()) for L in [indices, td_errors]
+        ]
         for index, value in zip(indices, td_errors):
             self._tree.set_value(index, pow(abs(value) + self._epsilon, self._alpha))
-
-    def sample(self, n, beta):
-        samples = self._tree.sample(n, stratified=True)
-
-        indices = []
-        states = []
-        actions = []
-        next_states = []
-        rewards = []
-        is_dones = []
-        weights = []
-        # Collect samples and compute importance sampling weights.
-        data_holders = [states, actions, next_states, rewards, is_dones]
-
-        for index, probability in samples:
-            indices.append(index)
-
-            entry = self._content[index]
-            for data, holder in zip(entry, data_holders):
-                holder.append(data)
-
-            weights.append(pow(len(self._content) * probability, -beta))
-
-        weights = np.array(weights)
-        return (
-            indices,
-            *(np.array(holder) for holder in data_holders),
-            (weights / np.max(weights)),
-        )
