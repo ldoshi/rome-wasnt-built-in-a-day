@@ -1,8 +1,13 @@
+import argparse
+
 from bridger.config.agent import hparam_dict as agent_config
 from bridger.config.buffer import hparam_dict as buffer_config
 from bridger.config.checkpointing import hparam_dict as checkpoint_config
 from bridger.config.env import hparam_dict as env_config
 from bridger.config.training import hparam_dict as training_config
+
+# The defaults in this submodule have not yet been debugged or validated (changes
+# likely needed).
 
 bridger_config = dict(
     **agent_config,

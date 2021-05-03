@@ -1,6 +1,6 @@
 import numpy as np
 import unittest
-from training_history import TrainingHistory
+from bridger.training_history import TrainingHistory
 
 
 def build_test_history(states=None, base=None):
@@ -23,17 +23,17 @@ def build_test_history(states=None, base=None):
     history.increment_visit_count(states[1])
     history.increment_visit_count(states[1])
 
-    history.add_q_values(states[0], 1, base, base * 2)
-    history.add_q_values(states[0], 10, base * 10, base * 10 * 2)
-    history.add_q_values(states[1], 1, base + 1, (base + 1) * 2)
-    history.add_q_values(states[1], 10, (base + 1) * 10, (base + 1) * 10 * 2)
-    history.add_q_values(states[2], 1, base + 2, (base + 2) * 2)
-    history.add_q_values(states[2], 10, (base + 2) * 10, (base + 2) * 10 * 2)
+    history.add_q_values(1, states[0], base, base * 2)
+    history.add_q_values(10, states[0], base * 10, base * 10 * 2)
+    history.add_q_values(1, states[1], base + 1, (base + 1) * 2)
+    history.add_q_values(10, states[1], (base + 1) * 10, (base + 1) * 10 * 2)
+    history.add_q_values(1, states[2], base + 2, (base + 2) * 2)
+    history.add_q_values(10, states[2], (base + 2) * 10, (base + 2) * 10 * 2)
 
-    history.add_td_error(states[0], 1, 1, 10)
-    history.add_td_error(states[0], 1, 10, 5)
-    history.add_td_error(states[0], 2, 11, 6)
-    history.add_td_error(states[2], 1, 1, 5)
+    history.add_td_error(1, states[0], 1, 10)
+    history.add_td_error(10, states[0], 1, 5)
+    history.add_td_error(11, states[0], 2, 6)
+    history.add_td_error(1, states[2], 1, 5)
     return history
 
 

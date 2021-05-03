@@ -2,15 +2,17 @@ import argparse
 import IPython
 import gym
 import gym_bridges.envs
+import numpy as np
 import pytorch_lightning as pl
 import torch
 
 from torch.utils.data import DataLoader
 
-from bridger import config, policies, qfunctions, replay_buffer
+from bridger import config, policies, qfunctions, replay_buffer, training_history
 
 
-# TODO: Add hooks for TrainingHistory
+# TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
+# mode, debug mode, display mode) as Lightning Callbacks
 class BridgeBuilder(pl.LightningModule):
     def __init__(self, hparams):
         """Constructor for the BridgeBuilder Module
@@ -21,14 +23,12 @@ class BridgeBuilder(pl.LightningModule):
                      #get_hyperparam_parser"""
 
         super(BridgeBuilder, self).__init__()
-
-        self.hparams = hparams
+        #  TODO(arvind) Simplify once you understand hyperparam handling in PL 1.3
+        for k, v in hparams.__dict__.items():
+            self.hparams[k] = v
         torch.manual_seed(hparams.seed)
 
-        self.env = gym.make(hparams.env_name)
-        self.env.setup(
-            hparams.env_height, hparams.env_width, vary_heights=hparams.env_vary_heights
-        )
+        self.env = self.make_env()
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
             capacity=hparams.capacity,
@@ -42,39 +42,71 @@ class BridgeBuilder(pl.LightningModule):
             hparams.env_height, hparams.env_width, self.env.nA
         )
         self.target.load_state_dict(self.Q.state_dict())
-
+        # TODO(lyric): Consider specifying the policy as a hyperparam
         self.policy = policies.EpsilonGreedyPolicy(self.Q)
 
         self.epsilon = hparams.epsilon_training_start
-        self.memories = self.memory_generator()
+        self.memories = self._memory_generator()
 
         self.next_action = None
-        self.breakpoint = {"step": 0, "episode": 0}
+        self._breakpoint = {"step": 0, "episode": 0}
 
-    def on_train_epoch_start(self):
+        if hparams.debug:
+            # TODO(arvind): Move as much of this functionality as possible into
+            # the tensorboard logging already being done here.
+            self.training_history = training_history.TrainingHistory()
+
+    def make_env(self):
+        env = gym.make(self.hparams.env_name)
+        env.setup(
+            self.hparams.env_height,
+            self.hparams.env_width,
+            vary_heights=self.hparams.env_vary_heights,
+        )
+        return env
+
+    def on_train_start(self):
         self.make_memories()
 
-    def on_train_batch_end(outputs, batch, batch_idx, dataloader_idx):
+    def on_train_batch_end(self, outputs, batch, batch_idx, dataloader_idx):
+        self.update_target()
+        if self.hparams.debug:
+            self.record_q_values(batch_idx)
+        self.make_memories()
+
+    def update_target(self):
         params = self.target.state_dict()
         update = self.Q.state_dict()
         for param in params:
             params[param] += self.hparams.tau * (update[param] - params[param])
         self.target.load_state_dict(params)
-        self.make_memories()
+
+    def record_q_values(self, training_step):
+        visited_state_histories = self.training_history.get_history_by_visit_count(100)
+        states = [
+            visited_state_history.state
+            for visited_state_history in visited_state_histories
+        ]
+        states_tensor = torch.tensor(states)
+        triples = zip(
+            states, self.Q(states_tensor).tolist(), self.target(states_tensor).tolist()
+        )
+        for triple in triples:
+            self.training_history.add_q_values(training_step, *triple)
 
     def make_memories(self):
         with torch.no_grad():
             for i in range(self.hparams.inter_training_steps):
                 next(self.memories)
 
-    def memory_generator(self):
+    def _memory_generator(self):
         """A generator that serves up sequential transitions experienced by the
         agent. When an episode ends, a new one starts immediately. Each item
         yielded is a tuple with the following elements (in order):
 
          episode_idx: starting from 0, incremented every time an episode ends
                       and another begins
-         step_idx:    starting from 0, incremented with each step,
+         step_idx:    starting from 0, incremented with each transition,
                       irrespective of the episode it is in
          start_state: the state at the beginning of the transition
          action:      the action taken during the transition
@@ -85,18 +117,28 @@ class BridgeBuilder(pl.LightningModule):
         episode_idx = 0
         total_step_idx = 0
         while True:
-            for step_idx in range(self.hparams.episode_length):
-                self.checkpoint({"episode": episode_idx, "step": total_step_idx})
-                memory = self()  # start_state, action, end_state, reward, finished
-                yield (episode_idx, step_idx, *memory)
+            for step_idx in range(self.hparams.max_episode_length):
+                self._checkpoint({"episode": episode_idx, "step": total_step_idx})
+                start_state, action, end_state, reward, finished = self()
+                if self.hparams.debug:
+                    self.training_history.increment_visit_count(start_state)
+                yield (
+                    episode_idx,
+                    step_idx,
+                    start_state,
+                    action,
+                    end_state,
+                    reward,
+                    finished,
+                )
                 total_step_idx += 1
-                if memory[-1]:
+                if finished:
                     break
-            self.update_epsilon()
+            self._update_epsilon()
             self.env.reset()
             episode_idx += 1
 
-    def checkpoint(self, thresholds):
+    def _checkpoint(self, thresholds):
         """A checkpointer that compares instance-state breakpoints to method
         inputs to determine whether to enter a breakpoint. This only runs while
         interactive mode is enabled.
@@ -104,17 +146,17 @@ class BridgeBuilder(pl.LightningModule):
         Args:
          thresholds: a dict mapping some subset of 'episode' and 'step' to
                      the current corresponding indices (as tracked by
-                     `memory_generator#`)
+                     `_memory_generator#`)
 
         When these current-state thresholds reach or exceed corresponding
         values in the instance variable `breakpoint`, a breakpoint is entered
         (via `IPython.embed#`). This breakpoint will reoccur immediately and
         repeatedly, even as the user manually exits the IPython shell, until
-        self.breakpoint has been updated"""
+        self._breakpoint has been updated"""
         while self.hparams.interactive_mode:
-            if all(self.breakpoint[k] > v for k, v in thresholds.items()):
-                break  # Don't stop for a checkpoint
-            self.breakpoint = thresholds
+            if all(self._breakpoint[k] > v for k, v in thresholds.items()):
+                break  # Don't stop for a breakpoint
+            self._breakpoint.update(thresholds)
             self.next_action = None
             IPython.embed()
 
@@ -129,9 +171,9 @@ class BridgeBuilder(pl.LightningModule):
         `action` has been taken `repetitions` times (or the current episode
         has ended)."""
         self.next_action = action
-        # Updates self.breakpoint for use in self.checkpoint#
-        self.breakpoint["episode"] += 1  # Run until current episode ends OR
-        self.breakpoint["step"] += repetitions  # for `repetitions` steps
+        # Updates self._breakpoint for use in self._checkpoint#
+        self._breakpoint["episode"] += 1  # Run until current episode ends OR
+        self._breakpoint["step"] += repetitions  # for `repetitions` steps
         # Exits current breakpoint
         IPython.core.getipython.get_ipython().exiter()
 
@@ -146,14 +188,14 @@ class BridgeBuilder(pl.LightningModule):
               no limit is placed on the total number of actions taken. Finally,
               if neither is set, the policy will be followed until the end of
               the current epsiode."""
-        # Updates self.breakpoint for use in self.checkpoint#
+        # Updates self._breakpoint for use in self._checkpoint#
         if num_actions is None:
-            self.breakpoint["step"] = np.inf  # Run indefinitely until ...
+            self._breakpoint["step"] = np.inf  # Run indefinitely until ...
         else:
             assert num_episodes == 1
-            self.breakpoint["step"] += num_actions  # Take `num_actions` steps
+            self._breakpoint["step"] += num_actions  # Take `num_actions` steps
         # ... `num_episodes` episodes have completed
-        self.breakpoint["episode"] += num_episodes
+        self._breakpoint["episode"] += num_episodes
         IPython.core.getipython.get_ipython().exiter()
 
     def return_to_training(self):
@@ -165,19 +207,25 @@ class BridgeBuilder(pl.LightningModule):
         if self.hparams.interactive_mode and self.next_action is not None:
             action = self.next_action
         else:
-            action = self.policy(torch.tensor(state), epsilon=self.epsilon)
+            action = self.policy(
+                torch.as_tensor(state, dtype=torch.float), epsilon=self.epsilon
+            )
         result = (state, action, *self.env.step(action)[:3])
         self.replay_buffer.add_new_experience(*result)
+
+        if self.hparams.env_display:
+            self.env.render()
+
         return result
 
-    def update_epsilon(self):
+    def _update_epsilon(self):
         if self.hparams.epsilon_decay_rule == "arithmetic":
             self.epsilon -= self.hparams.epsilon_decay_rate
         elif self.hparams.epsilon_decay_rule == "geometric":
             self.epsilon /= self.hparams.epsilon_decay_rate
         self.epsilon = max(self.epsilon, self.hparams.epsilon)
 
-    def update_beta(self):
+    def _update_beta(self):
         if self.hparams.beta_growth_rule == "arithmetic":
             self.replay_buffer.beta += self.hparams.beta_growth_rate
         elif self.hparams.beta_growth_rule == "geometric":
@@ -188,7 +236,7 @@ class BridgeBuilder(pl.LightningModule):
 
     def get_td_error(self, states, actions, next_states, rewards, finished):
 
-        row_idx = torch.arange(self.env.nA)
+        row_idx = torch.arange(actions.shape[0])
         qvals = self.Q(states)[row_idx, actions]
         with torch.no_grad():
             next_actions = self.Q(next_states).argmax(dim=1)
@@ -197,36 +245,41 @@ class BridgeBuilder(pl.LightningModule):
         return torch.abs(expected_qvals - qvals)
 
     def compute_loss(self, td_errors, weights=None):
-        if weights:
+        if weights is not None:
             td_errors = weights * td_errors
-        # TODO: Change design to clip the gradient rather than the loss
+        # TODO(arvind): Change design to clip the gradient rather than the loss
         return (td_errors.clip(max=self.hparams.update_bound) ** 2).mean()
 
     def training_step(self, batch, batch_idx):
         indices, states, actions, next_states, rewards, finished, weights = batch
         td_errors = self.get_td_error(states, actions, next_states, rewards, finished)
+        if self.hparams.debug:
+            triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
+            for triple in triples:
+                # For debuging only. Averages the td error per (state, action) pair.
+                self.training_history.add_td_error(batch_idx, *triple)
+
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
         # Update replay buffer
         self.replay_buffer.update_priorities(indices, td_errors)
-        self.update_beta()
+        self._update_beta()
 
         return loss
 
-    # TODO: Override hooks to compute non-TD-error metris for val and test
+    # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
     def configure_optimizers(self):
-        # TODO: This should work, but should we say Q.parameters(), or is
-        # that limiting for the future?
+        # TODO(arvind): This should work, but should we say Q.parameters(), or
+        # is that limiting for the future?
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
 
-    @pl.data_loader
     def train_dataloader(self):
         return DataLoader(self.replay_buffer, batch_size=self.hparams.batch_size)
 
-    # TODO: Override hooks to load data appropriately for val and test
+    # TODO(arvind): Override hooks to load data appropriately for val and test
 
     @staticmethod
     def get_hyperparam_parser(parser=None):
@@ -252,4 +305,4 @@ class BridgeBuilder(pl.LightningModule):
                 assert check, f"Required argument {key} not provided"
                 if "default" in val:
                     hparams[key] = val["default"]
-        return DeepDiagnoser(argparse.Namespace(**hparams))
+        return BridgeBuilder(argparse.Namespace(**hparams))
