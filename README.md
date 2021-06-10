@@ -53,15 +53,3 @@ Then, from this repository, call `pip install .` to install this package (`bridg
 
 The main testing entrypoint is to call `bridge_builder.py` from command line. Default arguments are available for all inputs, and can be viewed by calling `bridge_builder.py --help`
 
-### REPL
-
-Set up env: `env = gym.make("gym_bridges.envs:Bridges-v0")`
-
-Create an environment of 3x6 grid `env.setup(3, 6)`
-
-Drop a brick (and print out score) `env.step(0)`
-
-View the current env `env.render()`
-
-
-## Training/debugging panel
