@@ -37,10 +37,9 @@ class BridgeBuilder(pl.LightningModule):
             batch_size=hparams.batch_size,
         )
 
-        self.Q = qfunctions.CNNQ(hparams.env_height, hparams.env_width, self.env.nA)
-        self.target = qfunctions.CNNQ(
-            hparams.env_height, hparams.env_width, self.env.nA
-        )
+        state = self.env.reset()
+        self.Q = qfunctions.CNNQ(*state.shape, self.env.nA)
+        self.target = qfunctions.CNNQ(*state.shape, self.env.nA)
         self.target.load_state_dict(self.Q.state_dict())
         # TODO(lyric): Consider specifying the policy as a hyperparam
         self.policy = policies.EpsilonGreedyPolicy(self.Q)
@@ -57,11 +56,10 @@ class BridgeBuilder(pl.LightningModule):
             self.training_history = training_history.TrainingHistory()
 
     def make_env(self):
-        env = gym.make(self.hparams.env_name)
-        env.setup(
-            self.hparams.env_height,
-            self.hparams.env_width,
-            vary_heights=self.hparams.env_vary_heights,
+        env = gym.make(
+            self.hparams.env_name,
+            width=self.hparams.env_width,
+            force_standard_config=self.hparams.env_force_standard_config,
         )
         return env
 

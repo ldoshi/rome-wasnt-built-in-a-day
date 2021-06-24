@@ -65,9 +65,8 @@ def tiny_world():
 class DebugUtil:
     def __init__(self, environment_name, env, replay_buffer):
         self._replay_buffer = replay_buffer
-        self._debug_env = gym.make(environment_name)
-        self._debug_env.setup(
-            env.shape[0], env.shape[1], vary_heights=(len(env.height_pairs) > 1)
+        self._debug_env = gym.make(
+            environment_name, width=env.shape[1], force_standard_config=True
         )
 
     # Returns the state following the provided series of actions after a reset().
