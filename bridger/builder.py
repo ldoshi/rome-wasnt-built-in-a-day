@@ -37,9 +37,8 @@ class BridgeBuilder(pl.LightningModule):
             batch_size=hparams.batch_size,
         )
 
-        state = self.env.reset()
-        self.Q = qfunctions.CNNQ(*state.shape, self.env.nA)
-        self.target = qfunctions.CNNQ(*state.shape, self.env.nA)
+        self.Q = qfunctions.CNNQ(*self.env.shape, self.env.nA)
+        self.target = qfunctions.CNNQ(*self.env.shape, self.env.nA)
         self.target.load_state_dict(self.Q.state_dict())
         # TODO(lyric): Consider specifying the policy as a hyperparam
         self.policy = policies.EpsilonGreedyPolicy(self.Q)
