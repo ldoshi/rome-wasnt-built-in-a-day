@@ -17,17 +17,16 @@ def tiny_world():
     MAX_EPISODE_LENGTH = 5
 
     model = BridgeBuilder.instantiate(
-        env_height=3,
         env_width=4,
-        env_vary_heights=False,
+        env_force_standard_config=True,
         debug=True,
         max_episode_length=MAX_EPISODE_LENGTH,
     )
 
     panel = training_panel.TrainingPanel(
         states_n=10,
-        state_width=model.hparams.env_width,
-        state_height=model.hparams.env_height,
+        state_width=model.env.shape[1],
+        state_height=model.env.shape[0],
         actions_n=model.env.nA,
     )
 
