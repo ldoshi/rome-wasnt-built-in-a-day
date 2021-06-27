@@ -20,9 +20,9 @@ class DemoCallback(Callback):
     def demo(self, model, episode_length):
         env = model.make_env()
         policy = model.policy
-        state = env.state
+        state = env.reset()
         for t in range(episode_length):
-            state, reward, is_done = env.step(policy(torch.tensor(state)))[:3]
+            state, reward, is_done, _ = env.step(policy(torch.tensor(state)))
             env.render()
             if is_done:
                 print("finished at %d" % t)
