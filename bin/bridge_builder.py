@@ -46,8 +46,8 @@ def test():
             PanelCallback(
                 steps_per_update=MAX_STEPS,
                 states_n=20,
-                state_width=hparams.env_width,
-                state_height=hparams.env_height,
+                state_width=model.env.shape[1],
+                state_height=model.env.shape[0],
                 actions_n=model.env.nA,
             ),
             DemoCallback(

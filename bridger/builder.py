@@ -61,6 +61,7 @@ class BridgeBuilder(pl.LightningModule):
         self.memories = self._memory_generator()
 
         self.next_action = None
+        self.state = self.env.reset()
         self._breakpoint = {"step": 0, "episode": 0}
 
         if hparams.debug:
@@ -124,7 +125,7 @@ class BridgeBuilder(pl.LightningModule):
                 self._checkpoint({"episode": episode_idx, "step": total_step_idx})
                 start_state, action, end_state, reward, finished = self()
                 if self.hparams.debug:
-                    self.training_history.increment_visit_count(start_state)
+                    self.training_history.increment_visit_count(end_state)
                 yield (
                     episode_idx,
                     step_idx,
@@ -138,7 +139,7 @@ class BridgeBuilder(pl.LightningModule):
                 if finished:
                     break
             self._update_epsilon()
-            self.env.reset()
+            self.state = self.env.reset()
             episode_idx += 1
 
     def _checkpoint(self, thresholds):
@@ -206,14 +207,17 @@ class BridgeBuilder(pl.LightningModule):
         IPython.core.getipython.get_ipython().exiter()
 
     def forward(self):
-        state = self.env.state
+        state = self.state
         if self.hparams.interactive_mode and self.next_action is not None:
             action = self.next_action
         else:
             action = self.policy(
                 torch.as_tensor(state, dtype=torch.float), epsilon=self.epsilon
             )
-        result = (state, action, *self.env.step(action)[:3])
+
+        next_state, reward, done, _ = self.env.step(action)
+        self.state = next_state
+        result = (state, action, next_state, reward, done)
         self.replay_buffer.add_new_experience(*result)
 
         if self.hparams.env_display:
@@ -245,13 +249,13 @@ class BridgeBuilder(pl.LightningModule):
             next_actions = self.Q(next_states).argmax(dim=1)
             next_vals = self.target(next_states)[row_idx, next_actions]
             expected_qvals = rewards + (~finished) * self.hparams.gamma * next_vals
-        return torch.abs(expected_qvals - qvals)
+        return expected_qvals - qvals
 
     def compute_loss(self, td_errors, weights=None):
         if weights is not None:
             td_errors = weights * td_errors
         # TODO(arvind): Change design to clip the gradient rather than the loss
-        return (td_errors.clip(max=self.hparams.update_bound) ** 2).mean()
+        return (td_errors.clip(min=-self.hparams.update_bound, max=self.hparams.update_bound) ** 2).mean()
 
     def training_step(self, batch, batch_idx):
         indices, states, actions, next_states, rewards, finished, weights = batch
