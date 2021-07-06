@@ -243,13 +243,13 @@ class BridgeBuilder(pl.LightningModule):
             next_actions = self.Q(next_states).argmax(dim=1)
             next_vals = self.target(next_states)[row_idx, next_actions]
             expected_qvals = rewards + (~finished) * self.hparams.gamma * next_vals
-        return torch.abs(expected_qvals - qvals)
+        return expected_qvals - qvals
 
     def compute_loss(self, td_errors, weights=None):
         if weights is not None:
             td_errors = weights * td_errors
         # TODO(arvind): Change design to clip the gradient rather than the loss
-        return (td_errors.clip(max=self.hparams.update_bound) ** 2).mean()
+        return (td_errors.clip(min=-self.hparams.update_bound, max=self.hparams.update_bound) ** 2).mean()
 
     def training_step(self, batch, batch_idx):
         indices, states, actions, next_states, rewards, finished, weights = batch
