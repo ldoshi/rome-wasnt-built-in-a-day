@@ -1,12 +1,10 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-
-from bridger.training_history import TrainingHistory
-from bridger.training_history_test import build_test_history
-
 import numpy as np
 
+from bridger import builder
+from bridger.training_history import TrainingHistory
 
 def equally_spaced_indices(length, n):
     return np.round(np.linspace(0, length - 1, n)).astype(int)
@@ -90,7 +88,14 @@ class TrainingPanel:
 
 
 if __name__ == "__main__":
-    history = build_test_history()
-    training_panel = TrainingPanel(3, 2, 2, 3)
+    parser = builder.get_hyperparam_parser()
+    hparams = parser.parse_args()
 
-    training_panel.update_panel(history.get_history_by_visit_count())
+    
+    panel = TrainingPanel(states_n=20,
+                          state_width=hparams.env_width,
+                          state_height=hparams.env_height,
+                          # Assume nA matches width for now.
+                          actions_n=hparams.env.width)
+
+#    training_panel.update_panel(history.get_history_by_visit_count())
