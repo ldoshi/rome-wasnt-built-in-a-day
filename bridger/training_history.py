@@ -1,7 +1,12 @@
 import copy
 import numpy as np
+import pathlib
+import pickle
+import time
 
 from collections import defaultdict
+
+_TRAINING_HISTORY_PREFIX = "training_history_entry_{}"
 
 
 class StateTrainingHistoryDataSeries:
@@ -68,9 +73,23 @@ class StateTrainingHistory:
 
 
 class TrainingHistory:
-    def __init__(self, state_hash=lambda state: str(np.array(state))):
+    def __init__(
+        self,
+        serialization_dir=None,
+        deserialization_dir=None,
+        state_hash=lambda state: str(np.array(state)),
+    ):
         self._training_history = {}
         self._state_hash = state_hash
+        self._serialization_dir = serialization_dir
+        if serialization_dir:
+            path = pathlib.Path(self._serialization_dir)
+            path.mkdir(parents=True, exist_ok=True)
+            for filepath in path.iterdir():
+                filepath.unlink()
+
+        self._deserialization_dir = deserialization_dir
+        self._most_recently_deserialized = None
 
     def _add_if_missing(self, state):
         key = self._state_hash(state) if self._state_hash else state
@@ -90,6 +109,51 @@ class TrainingHistory:
 
     def increment_visit_count(self, state):
         self._training_history[self._add_if_missing(state)].increment_visit_count()
+
+    # TODO(lyric): Consider making the serialization an async background task.
+    #
+    # TODO(lyric): The current serialization rewrites full state each
+    # time, which can grow the file quickly. This makes the write load
+    # closer to n^2 rather than n. The next improvement will be to
+    # clear history after each serialization and then reassemble the
+    # compontents during deserialize.
+    def serialize(self):
+        assert self._serialization_dir, "serialization_dir must be provided"
+        id = int(time.time() * 1e6)
+        path = pathlib.Path(
+            self._serialization_dir, _TRAINING_HISTORY_PREFIX.format(id)
+        )
+        with path.open(mode="wb") as f:
+            pickle.dump(self._training_history, f)
+
+    def deserialize_latest(self):
+        """Deserializes the latest file available in the _serialization_dir.
+
+        Returns false if a new file was not detected and the content
+        of training history is unchanged.
+
+        """
+        # TODO(lyric): This current loads the most recent file. If we
+        # instead serialize in chunks and reassemble during
+        # deserialization, this code will need to be adjusted.
+        files = [x for x in pathlib.Path(self._deserialization_dir).iterdir()]
+        if not files:
+            return False
+
+        filepath = max(files)
+        if filepath == self._most_recently_deserialized:
+            return False
+
+        try:
+            with filepath.open(mode="rb") as f:
+                self._training_history = pickle.load(f)
+        except (pickle.UnpicklingError, EOFError) as e:
+            # We likely started reading the file before it was fully
+            # written. Try again next time.
+            return False
+
+        self._most_recently_deserialized = filepath
+        return True
 
     # These are sorted in descending order.
     def get_history_by_visit_count(self, n=None):

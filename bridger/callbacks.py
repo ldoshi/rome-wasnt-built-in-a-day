@@ -45,4 +45,4 @@ class PanelCallback(Callback):
         self, trainer, model, outputs, batch, batch_idx, dataloader_idx
     ):
         if (batch_idx + 1) % self.frequency == 0:
-            self.panel.update_panel(model.training_history.get_history_by_visit_count())
+            model.training_history.serialize()

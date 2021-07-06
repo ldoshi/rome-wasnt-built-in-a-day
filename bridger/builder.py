@@ -67,7 +67,8 @@ class BridgeBuilder(pl.LightningModule):
         if hparams.debug:
             # TODO(arvind): Move as much of this functionality as possible into
             # the tensorboard logging already being done here.
-            self.training_history = training_history.TrainingHistory()
+            self.training_history = training_history.TrainingHistory(
+                serialization_dir=hparams.training_history_dir)
 
     def on_train_start(self):
         self.make_memories()
