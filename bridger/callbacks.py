@@ -29,16 +29,9 @@ class DemoCallback(Callback):
                 break
 
 
-class PanelCallback(Callback):
+class HistoryCallback(Callback):
     def __init__(
-        self, steps_per_update, states_n, state_width, state_height, actions_n
-    ):
-        self.panel = training_panel.TrainingPanel(
-            states_n,
-            state_width,
-            state_height,
-            actions_n,
-        )
+        self, steps_per_update):
         self.frequency = steps_per_update
 
     def on_train_batch_end(

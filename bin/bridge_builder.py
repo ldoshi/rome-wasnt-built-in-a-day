@@ -18,7 +18,7 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from bridger import builder
-from bridger.callbacks import DemoCallback, PanelCallback
+from bridger.callbacks import DemoCallback, HistoryCallback
 
 
 def test():
@@ -43,12 +43,8 @@ def test():
     ]
     if hparams.debug:
         callbacks += [
-            PanelCallback(
+            HistoryCallback(
                 steps_per_update=MAX_STEPS,
-                states_n=20,
-                state_width=model.env.shape[1],
-                state_height=model.env.shape[0],
-                actions_n=model.env.nA,
             ),
             DemoCallback(
                 steps_per_update=MAX_STEPS,
