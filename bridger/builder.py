@@ -10,6 +10,20 @@ from torch.utils.data import DataLoader
 
 from bridger import config, policies, qfunctions, replay_buffer, training_history
 
+def get_hyperparam_parser(parser=None):
+    return config.get_hyperparam_parser(
+        config.bridger_config,
+        description="Hyperparameter Parser for the BridgeBuilder Model",
+        parser=parser,
+    )
+
+def make_env(hparams):
+    env = gym.make(
+        hparams.env_name,
+        width=hparams.env_width,
+        force_standard_config=hparams.env_force_standard_config,
+    )
+    return env
 
 # TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
 # mode, debug mode, display mode) as Lightning Callbacks
@@ -19,8 +33,8 @@ class BridgeBuilder(pl.LightningModule):
 
         Args:
             hparams: a Namespace object, of the kind returned by an argparse
-                     ArgumentParser. For more details, see
-                     #get_hyperparam_parser"""
+                     ArgumentParser. For more details, see get_hyperparam_parser.
+        """
 
         super(BridgeBuilder, self).__init__()
         #  TODO(arvind) Simplify once you understand hyperparam handling in PL 1.3
@@ -28,7 +42,7 @@ class BridgeBuilder(pl.LightningModule):
             self.hparams[k] = v
         torch.manual_seed(hparams.seed)
 
-        self.env = self.make_env()
+        self.env = make_env(hparams)
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
             capacity=hparams.capacity,
@@ -53,14 +67,6 @@ class BridgeBuilder(pl.LightningModule):
             # TODO(arvind): Move as much of this functionality as possible into
             # the tensorboard logging already being done here.
             self.training_history = training_history.TrainingHistory()
-
-    def make_env(self):
-        env = gym.make(
-            self.hparams.env_name,
-            width=self.hparams.env_width,
-            force_standard_config=self.hparams.env_force_standard_config,
-        )
-        return env
 
     def on_train_start(self):
         self.make_memories()
@@ -277,14 +283,6 @@ class BridgeBuilder(pl.LightningModule):
         return DataLoader(self.replay_buffer, batch_size=self.hparams.batch_size)
 
     # TODO(arvind): Override hooks to load data appropriately for val and test
-
-    @staticmethod
-    def get_hyperparam_parser(parser=None):
-        return config.get_hyperparam_parser(
-            config.bridger_config,
-            description="Hyperparameter Parser for the BridgeBuilder Model",
-            parser=parser,
-        )
 
     @staticmethod
     def instantiate(**kwargs):
