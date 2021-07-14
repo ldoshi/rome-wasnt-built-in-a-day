@@ -71,7 +71,8 @@ class BridgeBuilder(pl.LightningModule):
                 serialization_dir=hparams.training_history_dir)
 
     def on_train_start(self):
-        self.make_memories()
+        for _ in range(self.hparams.initial_memories_count):
+            self.make_memories()
 
     def on_train_batch_end(self, outputs, batch, batch_idx, dataloader_idx):
         self.update_target()
@@ -285,7 +286,7 @@ class BridgeBuilder(pl.LightningModule):
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
 
     def train_dataloader(self):
-        return DataLoader(self.replay_buffer, batch_size=self.hparams.batch_size)
+        return DataLoader(self.replay_buffer, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
 
     # TODO(arvind): Override hooks to load data appropriately for val and test
 
