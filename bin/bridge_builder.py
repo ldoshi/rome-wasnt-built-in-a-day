@@ -56,7 +56,7 @@ def test():
     # 2. Update callback variable above to reflect the validation logic and pass it
     #    to Trainer init below
     trainer = Trainer(
-        gradient_clip_val=0.5,
+        gradient_clip_val=hparams.gradient_clip_val,
         val_check_interval=int(1e6),
         default_root_dir=hparams.checkpoint_model_dir,
         max_steps=hparams.max_training_batches,
