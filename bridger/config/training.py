@@ -44,3 +44,13 @@ key = "training_history_dir"
 hparam_dict[key] = {"type": str, "default": "training_history"}
 help_str = "Path to folder in which training history will be saved"
 hparam_dict[key]["help"] = help_str
+
+key = "initial_memories_count"
+hparam_dict[key] = {"type": int, "default": hparam_dict['batch_size']['default'] * 10}
+help_str = "The number of memories to initialize the replay buffer with before starting training"
+hparam_dict[key]["help"] = help_str
+
+key = "num_workers"
+hparam_dict[key] = {"type": int, "default": 1}
+help_str = "The number of workers to set for the DataLoader"
+hparam_dict[key]["help"] = help_str
