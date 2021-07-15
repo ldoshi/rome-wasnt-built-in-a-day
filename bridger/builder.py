@@ -127,7 +127,7 @@ class BridgeBuilder(pl.LightningModule):
                 self._checkpoint({"episode": episode_idx, "step": total_step_idx})
                 start_state, action, end_state, reward, finished = self()
                 if self.hparams.debug:
-                    self.training_history.increment_visit_count(start_state)
+                    self.training_history.increment_visit_count(end_state)
                 yield (
                     episode_idx,
                     step_idx,
