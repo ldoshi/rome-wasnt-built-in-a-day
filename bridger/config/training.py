@@ -56,6 +56,6 @@ help_str = "The number of workers to set for the DataLoader"
 hparam_dict[key]["help"] = help_str
 
 key = "gradient_clip_val"
-hparam_dict[key] = {"type": floate, "default": .5}
+hparam_dict[key] = {"type": float, "default": .5}
 help_str = "The gradient_clip_val to provide the Lightning Trainer"
 hparam_dict[key]["help"] = help_str
