@@ -17,8 +17,8 @@ import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from bridger.builder import BridgeBuilder
-from bridger.callbacks import DemoCallback, PanelCallback
+from bridger import builder
+from bridger.callbacks import DemoCallback, HistoryCallback
 
 
 def test():
@@ -26,10 +26,10 @@ def test():
     MAX_DEMO_EPISODE_LENGTH = 50
     # TODO(arvind): split the args into those relevant for the LightningModule
     #               and those relevant for the Trainer/Callbacks
-    parser = BridgeBuilder.get_hyperparam_parser()
+    parser = builder.get_hyperparam_parser()
     hparams = parser.parse_args()
     # hparams.debug = True
-    model = BridgeBuilder(hparams)
+    model = builder.BridgeBuilder(hparams)
 
     callbacks = [
         # Only retains checkpoint with minimum monitored quantity seen so far.
@@ -43,12 +43,8 @@ def test():
     ]
     if hparams.debug:
         callbacks += [
-            PanelCallback(
+            HistoryCallback(
                 steps_per_update=MAX_STEPS,
-                states_n=20,
-                state_width=hparams.env_width,
-                state_height=hparams.env_height,
-                actions_n=model.env.nA,
             ),
             DemoCallback(
                 steps_per_update=MAX_STEPS,

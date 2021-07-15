@@ -39,3 +39,8 @@ key = "debug"
 hparam_dict[key] = {"type": bool, "default": False}
 help_str = "Whether to log to TrainingHistory for debugging purposes"
 hparam_dict[key]["help"] = help_str
+
+key = "training_history_dir"
+hparam_dict[key] = {"type": str, "default": "training_history"}
+help_str = "Path to folder in which training history will be saved"
+hparam_dict[key]["help"] = help_str
