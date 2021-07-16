@@ -14,9 +14,9 @@
 #    returning to the IPython shell
 #
 # Passing the command 'whos' in the ipython shell allows for examination of currently
-# defined variables. When interactive-mode begins, 'whos' command will return the 
-# BridgeBuilder object as 'self' and thresholds, a dict mapping some subset of 
-# 'episode' and 'step' to the current corresponding indices(as tracked by 
+# defined variables. When interactive-mode begins, 'whos' command will return the
+# BridgeBuilder object as 'self' and thresholds, a dict mapping some subset of
+# 'episode' and 'step' to the current corresponding indices(as tracked by
 # `_memory_generator #. See _checkpoint() for more details `
 
 import sys
@@ -67,13 +67,7 @@ def test():
                 mode="min",
                 strict=True,
             ),
-            HistoryCallback(
-                steps_per_update=MAX_STEPS,
-                states_n=20,
-                state_width=model.env.shape[1],
-                state_height=model.env.shape[0],
-                actions_n=model.env.nA,
-            ),
+            HistoryCallback(steps_per_update=MAX_STEPS),
             DemoCallback(
                 steps_per_update=MAX_STEPS,
                 max_episode_length=MAX_DEMO_EPISODE_LENGTH,

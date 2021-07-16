@@ -285,7 +285,7 @@ class BridgeBuilder(pl.LightningModule):
             self.early_stopping_variable,
             on_step=True,
             on_epoch=True,
-            prog_bar=True,
+            prog_bar=False,
             logger=True,
         )
         self.log(
