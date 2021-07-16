@@ -256,8 +256,7 @@ class BridgeBuilder(pl.LightningModule):
     def compute_loss(self, td_errors, weights=None):
         if weights is not None:
             td_errors = weights * td_errors
-        # TODO(arvind): Change design to clip the gradient rather than the loss
-        return (td_errors.clip(min=-self.hparams.update_bound, max=self.hparams.update_bound) ** 2).mean()
+        return (td_errors ** 2).mean()
 
     def training_step(self, batch, batch_idx):
         indices, states, actions, next_states, rewards, finished, weights = batch
