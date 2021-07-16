@@ -10,12 +10,14 @@ from torch.utils.data import DataLoader
 
 from bridger import config, policies, qfunctions, replay_buffer, training_history
 
+
 def get_hyperparam_parser(parser=None):
     return config.get_hyperparam_parser(
         config.bridger_config,
         description="Hyperparameter Parser for the BridgeBuilder Model",
         parser=parser,
     )
+
 
 def make_env(hparams):
     env = gym.make(
@@ -24,6 +26,7 @@ def make_env(hparams):
         force_standard_config=hparams.env_force_standard_config,
     )
     return env
+
 
 # TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
 # mode, debug mode, display mode) as Lightning Callbacks
@@ -37,6 +40,7 @@ class BridgeBuilder(pl.LightningModule):
         """
 
         super(BridgeBuilder, self).__init__()
+
         #  TODO(arvind) Simplify once you understand hyperparam handling in PL 1.3
         for k, v in hparams.__dict__.items():
             self.hparams[k] = v
@@ -64,11 +68,15 @@ class BridgeBuilder(pl.LightningModule):
         self.state = self.env.reset()
         self._breakpoint = {"step": 0, "episode": 0}
 
+        # Set a dummy default stopping metric variable
+        self.early_stopping_variable = 0
+
         if hparams.debug:
             # TODO(arvind): Move as much of this functionality as possible into
             # the tensorboard logging already being done here.
             self.training_history = training_history.TrainingHistory(
-                serialization_dir=hparams.training_history_dir)
+                serialization_dir=hparams.training_history_dir
+            )
 
     def on_train_start(self):
         for _ in range(self.hparams.initial_memories_count):
@@ -264,10 +272,22 @@ class BridgeBuilder(pl.LightningModule):
         if self.hparams.debug:
             triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
             for triple in triples:
-                # For debuging only. Averages the td error per (state, action) pair.
+                # For debugging only. Averages the td error per (state, action) pair.
                 self.training_history.add_td_error(batch_idx, *triple)
 
         loss = self.compute_loss(td_errors, weights=weights)
+
+        # TODO: Increment the early stopping dummy variable which will be implemented by PR #23
+        if self.early_stopping_variable < self.hparams.early_stopping_threshold:
+            self.early_stopping_variable += 1
+        self.log(
+            "early_stopping_variable",
+            self.early_stopping_variable,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
@@ -285,10 +305,13 @@ class BridgeBuilder(pl.LightningModule):
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
 
     def train_dataloader(self):
-        return DataLoader(self.replay_buffer, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
+        return DataLoader(
+            self.replay_buffer,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+        )
 
     # TODO(arvind): Override hooks to load data appropriately for val and test
-
     @staticmethod
     def instantiate(**kwargs):
         missing = [key for key in kwargs if key not in config.bridger_config]
