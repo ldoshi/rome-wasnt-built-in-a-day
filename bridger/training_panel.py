@@ -4,7 +4,6 @@ import matplotlib.gridspec as gridspec
 import numpy as np
 import time
 
-from bridger import builder
 from bridger.training_history import TrainingHistory
 
 
@@ -89,25 +88,3 @@ class TrainingPanel:
         plt.pause(0.001)
 
 
-if __name__ == "__main__":
-    parser = builder.get_hyperparam_parser()
-    hparams = parser.parse_args()
-    env = builder.make_env(hparams)
-
-    panel = TrainingPanel(
-        states_n=10,
-        state_width=env.shape[1],
-        state_height=env.shape[0],
-        actions_n=env.nA,
-    )
-
-    history = TrainingHistory(deserialization_dir=hparams.training_history_dir)
-
-    # A fancier version of this loop could use watchdog to monitor for
-    # new files.
-    while True:
-        new_data = history.deserialize_latest()
-        if new_data:
-            panel.update_panel(history.get_history_by_visit_count())
-
-        time.sleep(1)
