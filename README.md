@@ -53,3 +53,8 @@ Then, from this repository, call `pip install .` to install this package (`bridg
 
 The main testing entrypoint is to call `bridge_builder.py` from command line. Default arguments are available for all inputs, and can be viewed by calling `bridge_builder.py --help`
 
+## Debugging
+
+If the `debug` flag is set, training history details will be stored to the directory indicated by flag `training_history_dir`. 
+
+Run `training_viewer.py` to launch the debugging visualization tool reading data from the directory indicated by flag `training_history_dir`. 
