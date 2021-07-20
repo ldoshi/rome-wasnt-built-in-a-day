@@ -16,8 +16,8 @@
 # Passing the command 'whos' in the ipython shell allows for examination of currently
 # defined variables. When interactive-mode begins, 'whos' command will return the
 # BridgeBuilder object as 'self' and thresholds, a dict mapping some subset of
-# 'episode' and 'step' to the current corresponding indices(as tracked by
-# `_memory_generator #. See _checkpoint() for more details `
+# 'episode' and 'step' to the current corresponding indices (as tracked by
+# `_memory_generator. See _checkpoint() for more details `
 
 import sys
 import torch
@@ -26,7 +26,6 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 from bridger import builder
 from bridger.callbacks import DemoCallback, EarlyStoppingCallback, HistoryCallback
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 
 def test():
@@ -52,19 +51,11 @@ def test():
     if hparams.debug:
         callbacks += [
             EarlyStoppingCallback(
-                monitor="early_stopping_variable_step",
+                monitor="custom_val_loss",
                 min_delta=sys.float_info.epsilon,  # Set to some arbitrarily delta, shouldn't matter how small
                 patience=0,
                 verbose=False,
                 mode="max",
-                strict=True,
-            ),
-            EarlyStoppingCallback(
-                monitor="train_loss_step",
-                min_delta=-float("inf"),
-                patience=0,
-                verbose=False,
-                mode="min",
                 strict=True,
             ),
             HistoryCallback(steps_per_update=MAX_STEPS),

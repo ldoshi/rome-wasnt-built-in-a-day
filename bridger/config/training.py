@@ -55,9 +55,10 @@ hparam_dict[key] = {"type": int, "default": 1}
 help_str = "The number of workers to set for the DataLoader"
 hparam_dict[key]["help"] = help_str
 
-key = "early_stopping_threshold"
-hparam_dict[key] = {"type": int, "default": 50}
-help_str = "Dummy metric for determining early stopping criteria"
+key = "custom_val_loss_threshold"
+hparam_dict[key] = {"type": int, "default": 1e10}
+help_str = "Dummy metric for determining early stopping criteria. Dummy counting starts from 1 and not 0."
+hparam_dict[key]["help"] = help_str
 
 key = "gradient_clip_val"
 hparam_dict[key] = {"type": float, "default": 0.5}

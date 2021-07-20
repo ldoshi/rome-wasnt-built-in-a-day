@@ -69,7 +69,7 @@ class BridgeBuilder(pl.LightningModule):
         self._breakpoint = {"step": 0, "episode": 0}
 
         # Set a dummy default stopping metric variable
-        self.early_stopping_variable = 0
+        self._custom_val_loss = 2
 
         if hparams.debug:
             # TODO(arvind): Move as much of this functionality as possible into
@@ -135,7 +135,7 @@ class BridgeBuilder(pl.LightningModule):
                 self._checkpoint({"episode": episode_idx, "step": total_step_idx})
                 start_state, action, end_state, reward, finished = self()
                 if self.hparams.debug:
-                    self.training_history.increment_visit_count(end_state)
+                    self.training_history.increment_visit_count(start_state)
                 yield (
                     episode_idx,
                     step_idx,
@@ -277,14 +277,14 @@ class BridgeBuilder(pl.LightningModule):
 
         loss = self.compute_loss(td_errors, weights=weights)
 
-        # TODO: Increment the early stopping dummy variable which will be implemented by PR #23
-        if self.early_stopping_variable < self.hparams.early_stopping_threshold:
-            self.early_stopping_variable += 1
+        # TODO(lyric): Replace the early stopping dummy variable which will be implemented by PR #23
+        if self._custom_val_loss < self.hparams.custom_val_loss_threshold:
+            self._custom_val_loss += 1
         self.log(
-            "early_stopping_variable",
-            self.early_stopping_variable,
+            "custom_val_loss",
+            self._custom_val_loss,
             on_step=True,
-            on_epoch=True,
+            on_epoch=False,
             prog_bar=False,
             logger=True,
         )

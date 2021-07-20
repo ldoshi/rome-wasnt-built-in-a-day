@@ -1,11 +1,11 @@
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 import torch
 
 from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+
 
 from bridger import builder
 from bridger import training_panel
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 
 class DemoCallback(Callback):
@@ -33,14 +33,13 @@ class DemoCallback(Callback):
 
 
 class EarlyStoppingCallback(EarlyStopping):
-    def on_validation_end(self, trainer, pl_module):
-        pass
+    """A custom early stopping callback that inherits from the default EarlyStopping. We currently use on_train_batch_end as the hook for the callback, as on_validation_end doesn't get called with our current DQN implementation. The original behavior of the inherited EarlyStopping callback runs at the end of every validation epoch, which never triggers since we only have 1 epoch running at any given time. We use iterations/batches to read from the replay buffer, so we callback on_train_batch_end instead. See note from link: https://pytorch-lightning.readthedocs.io/en/latest/common/early_stopping.html"""
 
     def on_train_batch_end(
         self, trainer, model, outputs, batch, batch_idx, dataloader_idx
     ):
-        # The code will error on the first iteration of training since the model doesn't log train_loss until after the first on_train_batch_end in the training_step() function. For the first step, skip checking for early stopping.
-        if model.early_stopping_variable == 1:
+        """Gets called when train batch ends. The current code will error on the first iteration of training without the if statement since the model doesn't log metrics until after the first on_train_batch_end() in the training_step() function. To fix this, we currently skip checking for early stopping in the first step."""
+        if model._custom_val_loss == 3:
             pass
         else:
             self._run_early_stopping_check(trainer)
