@@ -10,7 +10,7 @@
 #    training without additional IPython breakpoints.
 # 2. follow_policy will run the minimum of a requested number of steps or through
 #    the end of a requested number of episodes before returning to the IPython shell
-# 3. take_action will take the requested action, potentially mutliple times, before
+# 3. take_action will take the requested action, potentially multiple times, before
 #    returning to the IPython shell
 
 import torch

@@ -7,6 +7,8 @@ by the flag `training_history_dir` and displays it via the
 TrainingPanel.
 """
 
+import time
+
 from bridger import builder
 from bridger.training_history import TrainingHistory
 from bridger.training_panel import TrainingPanel

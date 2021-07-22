@@ -2,7 +2,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
-import time
 
 from bridger.training_history import TrainingHistory
 
@@ -86,5 +85,3 @@ class TrainingPanel:
         self._fig.canvas.draw()
         self._fig.canvas.flush_events()
         plt.pause(0.001)
-
-
