@@ -13,15 +13,14 @@
 # 3. take_action will take the requested action, potentially multiple times, before
 #    returning to the IPython shell
 
-import multiprocessing
+import subprocess
 import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from bin.training_viewer import view_training
-
 from bridger import builder
 from bridger.callbacks import DemoCallback, HistoryCallback
+from pathlib import Path
 
 
 def test():
@@ -54,10 +53,11 @@ def test():
                 max_episode_length=MAX_DEMO_EPISODE_LENGTH,
             ),
         ]
-        training_process = multiprocessing.Process(
-            target=view_training, args=(), daemon=True
+        # Open a subprocess
+        subprocess.Popen(
+            args=["python3", "-m", "bin.training_viewer"],
+            cwd=Path.cwd(),
         )
-        training_process.start()
     # TODO: After validation logic has been added to BridgeBuilder,
     # 1. Make val_check_interval below a settable parameter with reasonable default
     # 2. Update callback variable above to reflect the validation logic and pass it
