@@ -46,7 +46,7 @@ help_str = "Path to folder in which training history will be saved"
 hparam_dict[key]["help"] = help_str
 
 key = "initial_memories_count"
-hparam_dict[key] = {"type": int, "default": hparam_dict['batch_size']['default'] * 10}
+hparam_dict[key] = {"type": int, "default": hparam_dict["batch_size"]["default"] * 10}
 help_str = "The number of memories to initialize the replay buffer with before starting training"
 hparam_dict[key]["help"] = help_str
 
@@ -56,6 +56,6 @@ help_str = "The number of workers to set for the DataLoader"
 hparam_dict[key]["help"] = help_str
 
 key = "gradient_clip_val"
-hparam_dict[key] = {"type": float, "default": .5}
+hparam_dict[key] = {"type": float, "default": 0.5}
 help_str = "The gradient_clip_val to provide the Lightning Trainer"
 hparam_dict[key]["help"] = help_str

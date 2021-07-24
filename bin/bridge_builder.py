@@ -10,15 +10,17 @@
 #    training without additional IPython breakpoints.
 # 2. follow_policy will run the minimum of a requested number of steps or through
 #    the end of a requested number of episodes before returning to the IPython shell
-# 3. take_action will take the requested action, potentially mutliple times, before
+# 3. take_action will take the requested action, potentially multiple times, before
 #    returning to the IPython shell
 
+import subprocess
 import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from bridger import builder
 from bridger.callbacks import DemoCallback, HistoryCallback
+from pathlib import Path
 
 
 def test():
@@ -51,6 +53,11 @@ def test():
                 max_episode_length=MAX_DEMO_EPISODE_LENGTH,
             ),
         ]
+        # Open a subprocess
+        subprocess.Popen(
+            args=["python3", "-m", "bin.training_viewer"],
+            cwd=Path.cwd(),
+        )
     # TODO: After validation logic has been added to BridgeBuilder,
     # 1. Make val_check_interval below a settable parameter with reasonable default
     # 2. Update callback variable above to reflect the validation logic and pass it
