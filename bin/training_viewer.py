@@ -35,7 +35,7 @@ def view_training():
         if new_data:
             panel.update_panel(history.get_history_by_visit_count())
 
-        time.sleep(1)
+        time.sleep(30)
 
 if __name__ == "__main__":
     view_training()
