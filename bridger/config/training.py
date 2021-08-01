@@ -59,3 +59,14 @@ key = "gradient_clip_val"
 hparam_dict[key] = {"type": float, "default": 0.5}
 help_str = "The gradient_clip_val to provide the Lightning Trainer"
 hparam_dict[key]["help"] = help_str
+
+key = "val_check_interval"
+hparam_dict[key] = {"type": int, "default": 1000}
+help_str = "The val_check_interval to provide the Lightning Trainer"
+hparam_dict[key]["help"] = help_str
+
+key = "val_batch_size"
+hparam_dict[key] = {"type": int, "default": 1000}
+help_str = "The number of episodes to sample in each validation batch"
+hparam_dict[key]["help"] = help_str
+

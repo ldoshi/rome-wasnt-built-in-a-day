@@ -64,7 +64,10 @@ def test():
     #    to Trainer init below
     trainer = Trainer(
         gradient_clip_val=hparams.gradient_clip_val,
-        val_check_interval=int(1e6),
+        val_check_interval=hparams.val_check_interval,
+        # The validation batch size can be adjusted via a config, but
+        # we only need a single batch.
+        limit_val_batches=1,
         default_root_dir=hparams.checkpoint_model_dir,
         max_steps=hparams.max_training_batches,
         callbacks=callbacks,
