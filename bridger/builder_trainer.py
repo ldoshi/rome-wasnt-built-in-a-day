@@ -10,12 +10,14 @@ from torch.utils.data import DataLoader
 
 from bridger import config, policies, qfunctions, replay_buffer, training_history
 
+
 def get_hyperparam_parser(parser=None):
     return config.get_hyperparam_parser(
         config.bridger_config,
-        description="Hyperparameter Parser for the BridgeBuilder Model",
+        description="Hyperparameter Parser for the BridgeBuilderTrainer Model",
         parser=parser,
     )
+
 
 def make_env(hparams):
     env = gym.make(
@@ -25,18 +27,19 @@ def make_env(hparams):
     )
     return env
 
+
 # TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
 # mode, debug mode, display mode) as Lightning Callbacks
-class BridgeBuilder(pl.LightningModule):
+class BridgeBuilderTrainer(pl.LightningModule):
     def __init__(self, hparams):
-        """Constructor for the BridgeBuilder Module
+        """Constructor for the BridgeBuilderTrainer Module
 
         Args:
             hparams: a Namespace object, of the kind returned by an argparse
                      ArgumentParser. For more details, see get_hyperparam_parser.
         """
 
-        super(BridgeBuilder, self).__init__()
+        super(BridgeBuilderTrainer, self).__init__()
         #  TODO(arvind) Simplify once you understand hyperparam handling in PL 1.3
         for k, v in hparams.__dict__.items():
             self.hparams[k] = v
@@ -68,7 +71,8 @@ class BridgeBuilder(pl.LightningModule):
             # TODO(arvind): Move as much of this functionality as possible into
             # the tensorboard logging already being done here.
             self.training_history = training_history.TrainingHistory(
-                serialization_dir=hparams.training_history_dir)
+                serialization_dir=hparams.training_history_dir
+            )
 
     def on_train_start(self):
         for _ in range(self.hparams.initial_memories_count):
@@ -285,7 +289,11 @@ class BridgeBuilder(pl.LightningModule):
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
 
     def train_dataloader(self):
-        return DataLoader(self.replay_buffer, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
+        return DataLoader(
+            self.replay_buffer,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+        )
 
     # TODO(arvind): Override hooks to load data appropriately for val and test
 
@@ -296,7 +304,7 @@ class BridgeBuilder(pl.LightningModule):
             missing = ",".join(missing)
             print(
                 "WARNING: The following are not recognized hyperparameters "
-                f"for BridgeBuilder: {missing}"
+                f"for BridgeBuilderTrainer: {missing}"
             )
         hparams = dict(**kwargs)
         for key, val in config.bridger_config.items():
@@ -305,4 +313,4 @@ class BridgeBuilder(pl.LightningModule):
                 assert check, f"Required argument {key} not provided"
                 if "default" in val:
                     hparams[key] = val["default"]
-        return BridgeBuilder(argparse.Namespace(**hparams))
+        return BridgeBuilderTrainer(argparse.Namespace(**hparams))

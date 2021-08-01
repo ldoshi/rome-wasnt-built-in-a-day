@@ -18,7 +18,7 @@ import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from bridger import builder
+from bridger import builder_trainer
 from bridger.callbacks import DemoCallback, HistoryCallback
 from pathlib import Path
 
@@ -28,10 +28,10 @@ def test():
     MAX_DEMO_EPISODE_LENGTH = 50
     # TODO(arvind): split the args into those relevant for the LightningModule
     #               and those relevant for the Trainer/Callbacks
-    parser = builder.get_hyperparam_parser()
+    parser = builder_trainer.get_hyperparam_parser()
     hparams = parser.parse_args()
     # hparams.debug = True
-    model = builder.BridgeBuilder(hparams)
+    model = builder_trainer.BridgeBuilderTrainer(hparams)
 
     callbacks = [
         # Only retains checkpoint with minimum monitored quantity seen so far.
@@ -58,7 +58,7 @@ def test():
             args=["python3", "-m", "bin.training_viewer"],
             cwd=Path.cwd(),
         )
-    # TODO: After validation logic has been added to BridgeBuilder,
+    # TODO: After validation logic has been added to BridgeBuilderTrainer,
     # 1. Make val_check_interval below a settable parameter with reasonable default
     # 2. Update callback variable above to reflect the validation logic and pass it
     #    to Trainer init below
