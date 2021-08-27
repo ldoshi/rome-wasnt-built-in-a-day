@@ -2,8 +2,9 @@ import torch
 
 from pytorch_lightning.callbacks import Callback
 
-from bridger import builder
+from bridger import builder_trainer
 from bridger import training_panel
+
 
 class DemoCallback(Callback):
     def __init__(self, steps_per_update, max_episode_length):
@@ -18,7 +19,7 @@ class DemoCallback(Callback):
                 self.demo(model, self.max_episode_length)
 
     def demo(self, model, episode_length):
-        env = builder.make_env(model.hparams)
+        env = builder_trainer.make_env(model.hparams)
         policy = model.policy
         state = env.reset()
         for t in range(episode_length):
@@ -30,8 +31,7 @@ class DemoCallback(Callback):
 
 
 class HistoryCallback(Callback):
-    def __init__(
-        self, steps_per_update):
+    def __init__(self, steps_per_update):
         self.frequency = steps_per_update
 
     def on_train_batch_end(
