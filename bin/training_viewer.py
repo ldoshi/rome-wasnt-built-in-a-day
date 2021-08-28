@@ -9,15 +9,15 @@ TrainingPanel.
 
 import time
 
-from bridger import builder
+from bridger import builder_trainer
 from bridger.training_history import TrainingHistory
 from bridger.training_panel import TrainingPanel
 
 
 def view_training():
-    parser = builder.get_hyperparam_parser()
+    parser = builder_trainer.get_hyperparam_parser()
     hparams = parser.parse_args()
-    env = builder.make_env(hparams)
+    env = builder_trainer.make_env(hparams)
 
     panel = TrainingPanel(
         states_n=10,
@@ -36,6 +36,7 @@ def view_training():
             panel.update_panel(history.get_history_by_visit_count())
 
         time.sleep(30)
+
 
 if __name__ == "__main__":
     view_training()
