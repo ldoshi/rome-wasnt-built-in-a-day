@@ -221,10 +221,10 @@ class TestReplayBuffer(unittest.TestCase):
                 actions,
                 next_states,
                 rewards,
-                is_dones,
+                finisheds,
                 weights,
             ) = _sample_replay_buffer(replay_buffer, i + 1, beta)
-            combined_list = [indices, states, actions, next_states, rewards, is_dones]
+            combined_list = [indices, states, actions, next_states, rewards, finisheds]
 
             for combined_list_member in combined_list:
                 self.assertEqual(len(combined_list_member), i + 1)
