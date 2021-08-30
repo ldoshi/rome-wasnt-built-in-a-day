@@ -19,7 +19,7 @@ from bridger import policies
 #pylint: disable=missing-class-docstring
 @dataclasses.dataclass
 class BuildResult:
-    is_done: bool
+    finished: bool
     reward: float
     steps: int
 
@@ -54,11 +54,11 @@ class Builder:
         for i in range(episode_length):
             # This lint error seems to be a torch+pylint issue in general.
             #pylint: disable=not-callable
-            state, reward, is_done, _ = self._env.step(policy(torch.tensor(state)))
+            state, reward, finished, _ = self._env.step(policy(torch.tensor(state)))
             total_reward += reward
             if render:
                 self._env.render()
-            if is_done:
+            if finished:
                 break
 
-        return BuildResult(is_done=is_done, reward=total_reward, steps=i + 1)
+        return BuildResult(finished=finished, reward=total_reward, steps=i + 1)

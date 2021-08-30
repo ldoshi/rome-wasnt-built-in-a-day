@@ -20,11 +20,11 @@ def get_hyperparam_parser(parser=None):
     )
 
 
-def make_env(hparams):
+def make_env(name: str, width: int, force_standard_config: bool) -> gym.Env:
     env = gym.make(
-        hparams.env_name,
-        width=hparams.env_width,
-        force_standard_config=hparams.env_force_standard_config,
+        name,
+        width=width,
+        force_standard_config=force_standard_config,
     )
     return env
 
@@ -64,8 +64,16 @@ class BridgeBuilderTrainer(pl.LightningModule):
             self.hparams[k] = v
         torch.manual_seed(hparams.seed)
 
-        self.env = make_env(hparams)
-        self._validation_env = make_env(hparams)
+        self.env = make_env(
+            name=hparams.env_name,
+            width=hparams.env_width,
+            force_standard_config=hparams.env_force_standard_config,
+        )
+        self._validation_env = make_env(
+            name=hparams.env_name,
+            width=hparams.env_width,
+            force_standard_config=hparams.env_force_standard_config,
+        )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
             capacity=hparams.capacity,
