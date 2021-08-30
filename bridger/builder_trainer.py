@@ -307,7 +307,7 @@ class BridgeBuilderTrainer(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         finished, rewards, steps = batch
-        self.log('val_loss', torch.Tensor.float(rewards).mean())
+        self.log('val_reward', torch.Tensor.float(rewards).mean())
     
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 

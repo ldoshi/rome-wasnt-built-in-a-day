@@ -70,3 +70,7 @@ hparam_dict[key] = {"type": int, "default": 1000}
 help_str = "The number of episodes to sample in each validation batch"
 hparam_dict[key]["help"] = help_str
 
+key = "early_stopping_patience"
+hparam_dict[key] = {"type": int, "default": 10}
+help_str = "The number of checks with no improvement after which training will be stopped"
+hparam_dict[key]["help"] = help_str

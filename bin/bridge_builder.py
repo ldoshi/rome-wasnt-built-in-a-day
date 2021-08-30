@@ -17,6 +17,7 @@ import subprocess
 import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import EarlyStopping
 
 from bridger import builder_trainer
 from bridger.callbacks import DemoCallback, HistoryCallback
@@ -31,6 +32,7 @@ def test():
     parser = builder_trainer.get_hyperparam_parser()
     hparams = parser.parse_args()
     # hparams.debug = True
+    print(hparams)
     model = builder_trainer.BridgeBuilderTrainer(hparams)
 
     callbacks = [
@@ -42,6 +44,7 @@ def test():
             monitor=None,  # Should show a quantity, e.g. "train_loss"
             every_n_train_steps=hparams.checkpoint_interval,
         ),
+        EarlyStopping(monitor="val_reward", patience=hparams.early_stopping_patience, mode="max", strict=True)
     ]
     if hparams.debug:
         callbacks += [
