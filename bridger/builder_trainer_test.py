@@ -1,14 +1,62 @@
 """Tests for core building and training components."""
 import unittest
-
+from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.callbacks import EarlyStopping
 import torch
 
 from bridger import builder
 from bridger import builder_trainer
+from bridger import config
 from bridger import policies
 
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 
+
+class BridgeBuilderTrainerTest(unittest.TestCase):
+    """Verifies training hooks and structure."""
+
+    def test_early_stopping(self):
+        """Checks early stopping callback actually stops training."""
+
+        class CountingCallback(Callback):
+            def __init__(self):
+                self.count = 0
+
+            def on_train_batch_end(
+                    self, trainer, model, outputs, batch, batch_idx, dataloader_idx):
+                self.count += 1
+
+
+        def get_model():
+            return builder_trainer.BridgeBuilderTrainer.instantiate(
+                env_width=3,
+                env_force_standard_config=True,
+                max_episode_length=1,
+                val_batch_size=1)
+
+        def get_trainer(callbacks):
+            return Trainer(
+                val_check_interval=1,
+                # The validation batch size can be adjusted via a config, but
+                # we only need a single batch.
+                limit_val_batches=1,
+                max_steps=max_steps,
+                callbacks=callbacks)
+
+        
+        max_steps = 5
+        
+        callbacks = [CountingCallback()]
+        get_trainer(callbacks).fit(get_model())
+        self.assertEqual(callbacks[0].count, max_steps)
+
+        callbacks = [CountingCallback(),
+                     EarlyStopping(monitor="val_reward", patience=1, mode="max", strict=True)]
+        get_trainer(callbacks).fit(get_model())
+        self.assertEqual(callbacks[0].count, 3)
+
+        
 
 class BuilderTest(unittest.TestCase):
     """Verifies the builder's execution of a policy."""

@@ -62,10 +62,6 @@ def test():
             args=["python3", "-m", "bin.training_viewer"],
             cwd=Path.cwd(),
         )
-    # TODO: After validation logic has been added to BridgeBuilderTrainer,
-    # 1. Make val_check_interval below a settable parameter with reasonable default
-    # 2. Update callback variable above to reflect the validation logic and pass it
-    #    to Trainer init below
     trainer = Trainer(
         gradient_clip_val=hparams.gradient_clip_val,
         val_check_interval=hparams.val_check_interval,
