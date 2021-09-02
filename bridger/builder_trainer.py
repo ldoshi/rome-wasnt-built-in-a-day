@@ -45,7 +45,7 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
         """Yields the result of a single building episode each call."""
         while True:
             build_result = self._builder.build(self._policy, self._episode_length, render=False)
-            yield [build_result.is_done, build_result.reward, build_result.steps]
+            yield [build_result.finished, build_result.reward, build_result.steps]
 
 # TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
 # mode, debug mode, display mode) as Lightning Callbacks
