@@ -31,11 +31,12 @@ def make_env(name: str, width: int, force_standard_config: bool) -> gym.Env:
 
 class ValidationBuilder(torch.utils.data.IterableDataset):
     """Produces build results using a policy based on the current model.
-    
+
     The model underpinning the policy refers to the same one being
     trained and will thus evolve over time.
 
     """
+
     def __init__(self, env: gym.Env, policy: policies.Policy, episode_length: int):
         self._builder = builder.Builder(env)
         self._policy = policy
@@ -44,8 +45,11 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
     def __iter__(self):
         """Yields the result of a single building episode each call."""
         while True:
-            build_result = self._builder.build(self._policy, self._episode_length, render=False)
+            build_result = self._builder.build(
+                self._policy, self._episode_length, render=False
+            )
             yield [build_result.finished, build_result.reward, build_result.steps]
+
 
 # TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
 # mode, debug mode, display mode) as Lightning Callbacks
@@ -315,8 +319,8 @@ class BridgeBuilderTrainer(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         finished, rewards, steps = batch
-        self.log('val_reward', torch.Tensor.float(rewards).mean())
-    
+        self.log("val_reward", torch.Tensor.float(rewards).mean())
+
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
     def configure_optimizers(self):
@@ -331,9 +335,13 @@ class BridgeBuilderTrainer(pl.LightningModule):
             num_workers=self.hparams.num_workers,
         )
 
-    def val_dataloader(self):
+    def val_dataloader(self) -> DataLoader:
         return DataLoader(
-            ValidationBuilder(env=self._validation_env,policy=self._validation_policy,episode_length=self.hparams.max_episode_length),
+            ValidationBuilder(
+                env=self._validation_env,
+                policy=self._validation_policy,
+                episode_length=self.hparams.max_episode_length,
+            ),
             batch_size=self.hparams.val_batch_size,
             num_workers=self.hparams.num_workers,
         )
