@@ -10,7 +10,7 @@ from bridger import policies
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 
 
-class Builder(unittest.TestCase):
+class BuilderTest(unittest.TestCase):
     """Verifies the builder's execution of a policy."""
 
     def test_builder(self):
