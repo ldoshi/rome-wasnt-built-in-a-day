@@ -16,6 +16,28 @@ _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 class BridgeBuilderTrainerTest(unittest.TestCase):
     """Verifies training hooks and structure."""
 
+    def test_validation_builder(self):
+        """Ensures ValidationBuilder keeps building and returning results."""
+        env = builder_trainer.make_env(
+            name=_ENV_NAME, width=4, force_standard_config=True)
+
+        def _constant_estimator(state) -> torch.Tensor:
+            return torch.tensor([1, 0, 0, 0])
+
+        # Get an arbitrary number of results. The ValidationBuilder
+        # will keep producing results until we stop asking.
+        count = 0
+        counter = 10
+        for build_result in builder_trainer.ValidationBuilder(env=env, policy=policies.GreedyPolicy(_constant_estimator), episode_length=1):
+            self.assertFalse(build_result[0])
+            self.assertEqual(build_result[1], -1)
+            self.assertEqual(build_result[2], 1)
+            count += 1
+            if count == counter:
+                break
+
+        self.assertEqual(count, counter)
+    
     def test_early_stopping(self):
         """Checks early stopping callback actually stops training."""
 
