@@ -32,7 +32,6 @@ def test():
     parser = builder_trainer.get_hyperparam_parser()
     hparams = parser.parse_args()
     # hparams.debug = True
-    print(hparams)
     model = builder_trainer.BridgeBuilderTrainer(hparams)
 
     callbacks = [
