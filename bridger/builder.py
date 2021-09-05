@@ -12,6 +12,7 @@ using the provided policy.
 import dataclasses
 import gym
 import torch
+from typing import Any
 
 from bridger import policies
 
@@ -25,10 +26,13 @@ class BuildEvaluator:
     policies.
     """
     def __init__(self, env: gym.Env, policy: policies.Policy, build_count: int, episode_length: int):
+        self._env = env
+        self._build_count = build_count
+        self._episode_length = episode_length
         self._build_results = []
         builder = Builder(env)
-        for _ in range(build_count):
-            build_results.append(build(policy=policy, episode_length=episode_length, render=False))
+        for _ in range(self._build_count):
+            build_results.append(build(policy=policy, episode_length=self._episode_length, render=False))
 
     @property
     def success_rate(self):
@@ -75,8 +79,33 @@ class BuildEvaluator:
         """
         return [build_result.reward for build_result in self._build_results]
 
-    add one more metric that invovles builder callback?
+    @property
+    def height_of_highest_block_mean(self):
+        """Demo metric using the final state. 
+
+        Computes the height of the highest brick. This metric should
+        be replaced as we find more intereting ones to evaluate the
+        constructed bridge.
+
+        """
+        # The following computes whether each row of the final_state
+        # contains a brick and then selects the lowest array row which
+        # contains a brick. In the inverted representation, a lower
+        # row in final_state array corresponds to the higher row in
+        # the rendered env. The inversion to translate to bridge
+        # height is computed before returning.
+        return np.mean(
+            [(len(build_result.final_state) - 1) - np.argmax((build_results.final_state == self._env.StateType.BRICK).any(axis=1)) for build_result in self._build_results])
     
+    def print_report(self):
+        print("Build Evaluation Summary\n"
+              f"{self._build_count} build episodes of up to {self._episode_length}"
+              "steps each.\n"
+              f"Success rate: {self.success_rate:.2f}\n"
+              f"Mean height of highest block: {self.height_of_highest_block_mean:.2f}\n"
+              f"On Success:\n"
+              f"  Mean Rewards: {self.reward_on_success_mean:.2f}\n"
+              f"  Build Steps: {self.build_steps_on_success_mean:.2f}")
 
 #pylint: disable=missing-class-docstring
 @dataclasses.dataclass
@@ -84,6 +113,7 @@ class BuildResult:
     success: bool
     reward: float
     steps: int
+    final_state: Any
 
 #pylint: disable=too-few-public-methods
 class Builder:
@@ -123,4 +153,4 @@ class Builder:
             if success:
                 break
 
-        return BuildResult(success=success, reward=total_reward, steps=i + 1)
+        return BuildResult(success=success, reward=total_reward, steps=i + 1,final_state=state)

@@ -132,6 +132,31 @@ class BuilderTest(unittest.TestCase):
         self.assertEqual(build_result.reward, 99)
         self.assertEqual(build_result.steps, 2)
 
+class BuildEvaluator(unittest.TestCase):
+    """Verifies the build evaluation metric computation."""
+
+    def test_build_evaluator(self):
+        """Checks metrics after some simple builds."""
+        env =  builder_trainer.make_env(
+                name=_ENV_NAME, width=4, seed=12345
+        )
+
+        build_count = 10
+        episode_length = 4
+
+        alternator = False
+        def _alternating_estimator(state) -> torch.Tensor:
+            nonlocal alternator
+            alternator = not alternator
+            if alternator:
+                return torch.tensor([1, 0, 0, 0])
+
+            return torch.tensor([0, 0, 1, 0])
+
+        build_evaluator = BuildEvaluator(env=env,             policy=policies.GreedyPolicy(_alternating_estimator),build_count=build_count, episode_length=episode_length)
+
+        build_evaluator.print_report()
+
 
 if __name__ == "__main__":
     unittest.main()
