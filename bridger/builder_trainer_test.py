@@ -30,7 +30,7 @@ class BuilderTest(unittest.TestCase):
             episode_length=episode_length,
             render=False,
         )
-        self.assertFalse(build_result.finished)
+        self.assertFalse(build_result.success)
         self.assertEqual(build_result.reward, -1 * episode_length)
         self.assertEqual(build_result.steps, episode_length)
 
@@ -50,7 +50,7 @@ class BuilderTest(unittest.TestCase):
             episode_length=episode_length,
             render=False,
         )
-        self.assertTrue(build_result.finished)
+        self.assertTrue(build_result.success)
         # The first gives -1 reward. Then we get a 100 completion bonus.
         self.assertEqual(build_result.reward, 99)
         self.assertEqual(build_result.steps, 2)
