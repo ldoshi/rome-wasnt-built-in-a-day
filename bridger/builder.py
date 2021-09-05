@@ -15,6 +15,68 @@ import torch
 
 from bridger import policies
 
+class BuildEvaluator:
+    """The BuildEvaluator scores the quality of a building policy.
+
+    The BuildEvaluator executes the requested number of builds using a
+    provided policy and calculates a series of stats to rate the
+    policy. The goal is to provide both an absolute notion of the
+    building policy as well as enable relative comparisons between
+    policies.
+    """
+    def __init__(self, env: gym.Env, policy: policies.Policy, build_count: int, episode_length: int):
+        self._build_results = []
+        builder = Builder(env)
+        for _ in range(build_count):
+            build_results.append(build(policy=policy, episode_length=episode_length, render=False))
+
+    @property
+    def success_rate(self):
+        """Returns the rate of successful builds vs build attempts."""
+        return np.sum(success_distribution) / len(self._build_results)
+
+    @property
+    def successes(self):
+        """Returns whether the build was successful for all episodes in episode order.
+
+        Returning the full ordered list enables comparing success and
+        failure points for different policies.
+
+        """
+        return [build_result.success for build_result in self._build_results]
+
+    @property
+    def build_steps_on_success_mean(self):
+        """Returns the mean of build steps taken on successful builds only."""
+        return np.mean([build_result.steps for build_result in self._build_results if build_result.success])
+        
+    @property
+    def build_steps(self):
+        """Returns the build steps taken from all episodes in episode order.
+
+        Returning the full ordered list enables comparing success and
+        failure points for different policies.
+
+        """
+        return [build_result.steps for build_result in self._build_results]
+
+    @property
+    def reward_on_success_mean(self):
+        """Returns the mean of build steps taken on successful builds only."""
+        return np.mean([build_result.reward for build_result in self._build_results if build_result.success])
+    
+    @property
+    def rewards(self):
+        """Returns rewards from all episodes in episode order.
+
+        Returning the full ordered list enables comparing success and
+        failure points for different policies.
+
+        """
+        return [build_result.reward for build_result in self._build_results]
+
+    add one more metric that invovles builder callback?
+    
 
 #pylint: disable=missing-class-docstring
 @dataclasses.dataclass
@@ -62,3 +124,4 @@ class Builder:
                 break
 
         return BuildResult(finished=finished, reward=total_reward, steps=i + 1)
+
