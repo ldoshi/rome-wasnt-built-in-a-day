@@ -27,7 +27,7 @@ class DemoCallback(Callback):
                 build_result = self._builder.build(
                     model.policy, self._max_episode_length
                 )
-                if build_result.finished:
+                if build_result.success:
                     print(
                         f"Built in {build_result.steps} steps with reward {build_result.reward}."
                     )
