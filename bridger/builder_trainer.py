@@ -48,7 +48,7 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
             build_result = self._builder.build(
                 self._policy, self._episode_length, render=False
             )
-            yield [build_result.finished, build_result.reward, build_result.steps]
+            yield [build_result.success, build_result.reward, build_result.steps]
 
 
 # TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
@@ -318,7 +318,7 @@ class BridgeBuilderTrainer(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        finished, rewards, steps = batch
+        success, rewards, steps = batch
         self.log("val_reward", torch.Tensor.float(rewards).mean())
 
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
