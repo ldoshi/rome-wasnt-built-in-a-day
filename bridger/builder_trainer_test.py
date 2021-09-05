@@ -132,16 +132,16 @@ class BuilderTest(unittest.TestCase):
         self.assertEqual(build_result.reward, 99)
         self.assertEqual(build_result.steps, 2)
 
-class BuildEvaluator(unittest.TestCase):
+class BuildEvaluatorTest(unittest.TestCase):
     """Verifies the build evaluation metric computation."""
 
     def test_build_evaluator(self):
         """Checks metrics after some simple builds."""
         env =  builder_trainer.make_env(
-                name=_ENV_NAME, width=4, seed=12345
+                name=_ENV_NAME, width=4, force_standard_config=False, seed=12345
         )
 
-        build_count = 10
+        build_count = 5
         episode_length = 4
 
         alternator = False
@@ -153,10 +153,53 @@ class BuildEvaluator(unittest.TestCase):
 
             return torch.tensor([0, 0, 1, 0])
 
-        build_evaluator = BuildEvaluator(env=env,             policy=policies.GreedyPolicy(_alternating_estimator),build_count=build_count, episode_length=episode_length)
+        build_evaluator = builder.BuildEvaluator(env=env, policy=policies.GreedyPolicy(_alternating_estimator),build_count=build_count, episode_length=episode_length)
 
-        build_evaluator.print_report()
-
+        # Stats manually verified from the following:
+        #
+        # [BuildResult(success=True, reward=99, steps=2, final_state=array([
+        # [0., 0., 0., 0.],
+        # [0., 0., 0., 0.],
+        # [2., 2., 2., 2.],
+        # [1., 0., 0., 1.],
+        # [1., 0., 0., 1.],
+        # [1., 0., 0., 1.]])),
+        # BuildResult(success=True, reward=97, steps=4, final_state=array([
+        # [0., 0., 0., 0.],
+        # [0., 0., 0., 0.],
+        # [2., 2., 0., 0.],
+        # [2., 2., 2., 2.],
+        # [1., 0., 2., 2.],
+        # [1., 0., 1., 1.]])),
+        # BuildResult(success=True, reward=99, steps=2, final_state=array([
+        # [0., 0., 0., 0.],
+        # [0., 0., 0., 0.],
+        # [0., 0., 0., 0.],
+        # [2., 2., 0., 0.],
+        # [1., 1., 2., 2.],
+        # [1., 1., 0., 1.]])),
+        # BuildResult(success=True, reward=100, steps=1, final_state=array([
+        # [0., 0., 0., 0.],
+        # [0., 0., 0., 0.],
+        # [0., 0., 0., 0.],
+        # [2., 2., 1., 1.],
+        # [1., 0., 1., 1.],
+        # [1., 0., 1., 1.]])),
+        # BuildResult(success=False, reward=-4, steps=4, final_state=array([
+        # [0., 0., 0., 0.],
+        # [2., 2., 0., 0.],
+        # [2., 2., 0., 0.],
+        # [1., 0., 2., 2.],
+        # [1., 0., 2., 2.],
+        # [1., 0., 0., 1.]]))]
+        
+        self.assertEqual(build_evaluator.success_rate, .8)
+        self.assertListEqual(build_evaluator.successes, [True, True, True, True, False])
+        self.assertEqual(build_evaluator.build_steps_on_success_mean, 2.25)
+        self.assertListEqual(build_evaluator.build_steps, [2, 4, 2, 1, 4])
+        self.assertEqual(build_evaluator.reward_on_success_mean, 98.75)
+        self.assertListEqual(build_evaluator.rewards, [99, 97, 99, 100, -4])
+        self.assertEqual(build_evaluator.height_of_highest_block_mean, 2.8)
 
 if __name__ == "__main__":
     unittest.main()

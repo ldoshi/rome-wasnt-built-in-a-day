@@ -6,6 +6,7 @@ import numpy as np
 from bridger import builder
 import pytorch_lightning as pl
 import torch
+from typing import Union
 
 from torch.utils.data import DataLoader
 
@@ -20,11 +21,12 @@ def get_hyperparam_parser(parser=None):
     )
 
 
-def make_env(name: str, width: int, force_standard_config: bool) -> gym.Env:
+def make_env(name: str, width: int, force_standard_config: bool, seed: Union[int, None] = None) -> gym.Env:
     env = gym.make(
         name,
         width=width,
         force_standard_config=force_standard_config,
+        seed=seed
     )
     return env
 

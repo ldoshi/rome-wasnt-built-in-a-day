@@ -11,6 +11,7 @@ using the provided policy.
 
 import dataclasses
 import gym
+import numpy as np
 import torch
 from typing import Any
 
@@ -32,12 +33,12 @@ class BuildEvaluator:
         self._build_results = []
         builder = Builder(env)
         for _ in range(self._build_count):
-            build_results.append(build(policy=policy, episode_length=self._episode_length, render=False))
+            self._build_results.append(builder.build(policy=policy, episode_length=self._episode_length, render=False))
 
     @property
     def success_rate(self):
         """Returns the rate of successful builds vs build attempts."""
-        return np.sum(success_distribution) / len(self._build_results)
+        return np.sum(self.successes) / len(self._build_results)
 
     @property
     def successes(self):
@@ -95,11 +96,11 @@ class BuildEvaluator:
         # the rendered env. The inversion to translate to bridge
         # height is computed before returning.
         return np.mean(
-            [(len(build_result.final_state) - 1) - np.argmax((build_results.final_state == self._env.StateType.BRICK).any(axis=1)) for build_result in self._build_results])
+            [(len(build_result.final_state) - 1) - np.argmax((build_result.final_state == self._env.StateType.BRICK).any(axis=1)) for build_result in self._build_results])
     
     def print_report(self):
         print("Build Evaluation Summary\n"
-              f"{self._build_count} build episodes of up to {self._episode_length}"
+              f"{self._build_count} build episodes of up to {self._episode_length} "
               "steps each.\n"
               f"Success rate: {self.success_rate:.2f}\n"
               f"Mean height of highest block: {self.height_of_highest_block_mean:.2f}\n"
