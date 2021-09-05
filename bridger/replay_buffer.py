@@ -249,8 +249,8 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
                 weight = pow(prob_min / probability, self.beta)
                 yield (index, *self._content[index], weight)
 
-    def add_new_experience(self, start_state, action, end_state, reward, finished):
-        experience = [start_state, action, end_state, reward, finished]
+    def add_new_experience(self, start_state, action, end_state, reward, success):
+        experience = [start_state, action, end_state, reward, success]
         if len(self._content) == self._capacity:
             self._content[self._index] = experience
         else:
