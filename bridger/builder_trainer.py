@@ -19,11 +19,11 @@ def get_hyperparam_parser(parser=None):
     )
 
 
-def make_env(hparams):
+def make_env(name: str, width: int, force_standard_config: bool) -> gym.Env:
     env = gym.make(
-        hparams.env_name,
-        width=hparams.env_width,
-        force_standard_config=hparams.env_force_standard_config,
+        name,
+        width=width,
+        force_standard_config=force_standard_config,
     )
     return env
 
@@ -45,7 +45,11 @@ class BridgeBuilderTrainer(pl.LightningModule):
             self.hparams[k] = v
         torch.manual_seed(hparams.seed)
 
-        self.env = make_env(hparams)
+        self.env = make_env(
+            name=hparams.env_name,
+            width=hparams.env_width,
+            force_standard_config=hparams.env_force_standard_config,
+        )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
             capacity=hparams.capacity,
@@ -122,14 +126,14 @@ class BridgeBuilderTrainer(pl.LightningModule):
          action:      the action taken during the transition
          end_state:   the state at the end of the transition
          reward:      the reward gained through the transition
-         finished:    whether the transition marked the end of the episode"""
+         success:    whether the transition marked the end of the episode"""
 
         episode_idx = 0
         total_step_idx = 0
         while True:
             for step_idx in range(self.hparams.max_episode_length):
                 self._checkpoint({"episode": episode_idx, "step": total_step_idx})
-                start_state, action, end_state, reward, finished = self()
+                start_state, action, end_state, reward, success = self()
                 if self.hparams.debug:
                     self.training_history.increment_visit_count(start_state)
                 yield (
@@ -139,10 +143,10 @@ class BridgeBuilderTrainer(pl.LightningModule):
                     action,
                     end_state,
                     reward,
-                    finished,
+                    success,
                 )
                 total_step_idx += 1
-                if finished:
+                if success:
                     break
             self._update_epsilon()
             self.state = self.env.reset()
@@ -190,7 +194,7 @@ class BridgeBuilderTrainer(pl.LightningModule):
     def follow_policy(self, num_actions=None, num_episodes=1):
         """Exits the current breakpoint and draws actions from the policy.
         Reenters a breakpoint only after either `num_actions` steps have been
-        taken or `num_episodes` episodes have newly finished.
+        taken or `num_episodes` episodes have newly succeeded.
 
         Note: it is expected that only one of `num_actions` and `num_episodes`
               are set. If `num_actions` is set, these actions will be preempted
@@ -247,14 +251,14 @@ class BridgeBuilderTrainer(pl.LightningModule):
             self.replay_buffer.beta, self.hparams.beta_training_end
         )
 
-    def get_td_error(self, states, actions, next_states, rewards, finished):
+    def get_td_error(self, states, actions, next_states, rewards, success):
 
         row_idx = torch.arange(actions.shape[0])
         qvals = self.Q(states)[row_idx, actions]
         with torch.no_grad():
             next_actions = self.Q(next_states).argmax(dim=1)
             next_vals = self.target(next_states)[row_idx, next_actions]
-            expected_qvals = rewards + (~finished) * self.hparams.gamma * next_vals
+            expected_qvals = rewards + (~success) * self.hparams.gamma * next_vals
         return expected_qvals - qvals
 
     def compute_loss(self, td_errors, weights=None):
@@ -263,8 +267,8 @@ class BridgeBuilderTrainer(pl.LightningModule):
         return (td_errors ** 2).mean()
 
     def training_step(self, batch, batch_idx):
-        indices, states, actions, next_states, rewards, finished, weights = batch
-        td_errors = self.get_td_error(states, actions, next_states, rewards, finished)
+        indices, states, actions, next_states, rewards, success, weights = batch
+        td_errors = self.get_td_error(states, actions, next_states, rewards, success)
         if self.hparams.debug:
             triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
             for triple in triples:
