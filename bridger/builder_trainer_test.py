@@ -1,9 +1,11 @@
 """Tests for core building and training components."""
 import unittest
+
 from typing import List
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.callbacks import EarlyStopping
+
 import torch
 
 from bridger import builder

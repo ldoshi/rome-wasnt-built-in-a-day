@@ -47,7 +47,7 @@ class Builder:
           A BuildResult summarizing whether the construction was
           successful, the total reward for the construction, and how
           many steps were actually taken. The steps taken may be less
-          episode_length if the construction is successful.
+          than episode_length if the construction is successful.
         """
         state = self._env.reset()
         total_reward = 0
