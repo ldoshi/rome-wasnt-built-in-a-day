@@ -17,6 +17,7 @@ from typing import Any
 
 from bridger import policies
 
+
 class BuildEvaluator:
     """The BuildEvaluator scores the quality of a building policy.
 
@@ -26,14 +27,25 @@ class BuildEvaluator:
     building policy as well as enable relative comparisons between
     policies.
     """
-    def __init__(self, env: gym.Env, policy: policies.Policy, build_count: int, episode_length: int):
+
+    def __init__(
+        self,
+        env: gym.Env,
+        policy: policies.Policy,
+        build_count: int,
+        episode_length: int,
+    ):
         self._env = env
         self._build_count = build_count
         self._episode_length = episode_length
         self._build_results = []
         builder = Builder(env)
         for _ in range(self._build_count):
-            self._build_results.append(builder.build(policy=policy, episode_length=self._episode_length, render=False))
+            self._build_results.append(
+                builder.build(
+                    policy=policy, episode_length=self._episode_length, render=False
+                )
+            )
 
     @property
     def success_rate(self):
@@ -53,8 +65,14 @@ class BuildEvaluator:
     @property
     def build_steps_on_success_mean(self):
         """Returns the mean of build steps taken on successful builds only."""
-        return np.mean([build_result.steps for build_result in self._build_results if build_result.success])
-        
+        return np.mean(
+            [
+                build_result.steps
+                for build_result in self._build_results
+                if build_result.success
+            ]
+        )
+
     @property
     def build_steps(self):
         """Returns the build steps taken from all episodes in episode order.
@@ -68,8 +86,14 @@ class BuildEvaluator:
     @property
     def reward_on_success_mean(self):
         """Returns the mean of build steps taken on successful builds only."""
-        return np.mean([build_result.reward for build_result in self._build_results if build_result.success])
-    
+        return np.mean(
+            [
+                build_result.reward
+                for build_result in self._build_results
+                if build_result.success
+            ]
+        )
+
     @property
     def rewards(self):
         """Returns rewards from all episodes in episode order.
@@ -82,7 +106,7 @@ class BuildEvaluator:
 
     @property
     def height_of_highest_block_mean(self):
-        """Demo metric using the final state. 
+        """Demo metric using the final state.
 
         Computes the height of the highest brick. This metric should
         be replaced as we find more intereting ones to evaluate the
@@ -96,19 +120,29 @@ class BuildEvaluator:
         # the rendered env. The inversion to translate to bridge
         # height is computed before returning.
         return np.mean(
-            [(len(build_result.final_state) - 1) - np.argmax((build_result.final_state == self._env.StateType.BRICK).any(axis=1)) for build_result in self._build_results])
-    
-    def print_report(self):
-        print("Build Evaluation Summary\n"
-              f"{self._build_count} build episodes of up to {self._episode_length} "
-              "steps each.\n"
-              f"Success rate: {self.success_rate:.2f}\n"
-              f"Mean height of highest block: {self.height_of_highest_block_mean:.2f}\n"
-              f"On Success:\n"
-              f"  Mean Rewards: {self.reward_on_success_mean:.2f}\n"
-              f"  Build Steps: {self.build_steps_on_success_mean:.2f}")
+            [
+                (len(build_result.final_state) - 1)
+                - np.argmax(
+                    (build_result.final_state == self._env.StateType.BRICK).any(axis=1)
+                )
+                for build_result in self._build_results
+            ]
+        )
 
-#pylint: disable=missing-class-docstring
+    def print_report(self):
+        print(
+            "Build Evaluation Summary\n"
+            f"{self._build_count} build episodes of up to {self._episode_length} "
+            "steps each.\n"
+            f"Success rate: {self.success_rate:.2f}\n"
+            f"Mean height of highest block: {self.height_of_highest_block_mean:.2f}\n"
+            f"On Success:\n"
+            f"  Mean Rewards: {self.reward_on_success_mean:.2f}\n"
+            f"  Build Steps: {self.build_steps_on_success_mean:.2f}"
+        )
+
+
+# pylint: disable=missing-class-docstring
 @dataclasses.dataclass
 class BuildResult:
     success: bool
@@ -116,7 +150,8 @@ class BuildResult:
     steps: int
     final_state: Any
 
-#pylint: disable=too-few-public-methods
+
+# pylint: disable=too-few-public-methods
 class Builder:
     """The Builder supports repeated construction in the provided env."""
 
@@ -146,7 +181,7 @@ class Builder:
         total_reward = 0
         for i in range(episode_length):
             # This lint error seems to be a torch+pylint issue in general.
-            #pylint: disable=not-callable
+            # pylint: disable=not-callable
             state, reward, success, _ = self._env.step(policy(torch.tensor(state)))
             total_reward += reward
             if render:
@@ -154,4 +189,6 @@ class Builder:
             if success:
                 break
 
-        return BuildResult(success=success, reward=total_reward, steps=i + 1,final_state=state)
+        return BuildResult(
+            success=success, reward=total_reward, steps=i + 1, final_state=state
+        )
