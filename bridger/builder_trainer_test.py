@@ -1,9 +1,13 @@
 """Tests for core building and training components."""
 import unittest
+
+import itertools
 from typing import List
+from parameterized import parameterized
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.callbacks import EarlyStopping
+
 import torch
 
 from bridger import builder
@@ -27,21 +31,33 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         # Get an arbitrary number of results. The ValidationBuilder
         # will keep producing results until we stop asking.
-        count = 0
-        counter = 10
-        for build_result in builder_trainer.ValidationBuilder(
+        for build_result in itertools.islice(builder_trainer.ValidationBuilder(
             env=env, policy=policies.GreedyPolicy(_constant_estimator), episode_length=1
-        ):
+        ), 10):
             self.assertFalse(build_result[0])
             self.assertEqual(build_result[1], -1)
             self.assertEqual(build_result[2], 1)
-            count += 1
-            if count == counter:
-                break
 
-        self.assertEqual(count, counter)
-
-    def test_early_stopping(self):
+    @parameterized.expand(
+        [
+            ("No Early Stopping", [], 5),
+            (
+                "Early Stopping",
+                [
+                    EarlyStopping(
+                        monitor="val_reward", patience=1, mode="max", strict=True
+                    )
+                ],
+                3,
+            ),
+        ]
+    )
+    def test_early_stopping(
+        self,
+        name: str,
+        early_stopping_callback: List[Callback],
+        expected_calls_count: int,
+    ):
         """Checks early stopping callback actually stops training."""
 
         class CountingCallback(Callback):
@@ -69,22 +85,13 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 # The validation batch size can be adjusted via a config, but
                 # we only need a single batch.
                 limit_val_batches=1,
-                max_steps=max_steps,
+                max_steps=5,
                 callbacks=callbacks,
             )
 
-        max_steps = 5
-
-        callbacks = [CountingCallback()]
+        callbacks = [CountingCallback()] + early_stopping_callback
         get_trainer(callbacks).fit(get_model())
-        self.assertEqual(callbacks[0].count, max_steps)
-
-        callbacks = [
-            CountingCallback(),
-            EarlyStopping(monitor="val_reward", patience=1, mode="max", strict=True),
-        ]
-        get_trainer(callbacks).fit(get_model())
-        self.assertEqual(callbacks[0].count, 3)
+        self.assertEqual(callbacks[0].count, expected_calls_count)
 
 
 class BuilderTest(unittest.TestCase):
