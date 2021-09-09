@@ -1,7 +1,7 @@
 """Tests for core building and training components."""
 import unittest
 
-import itertools 
+import itertools
 from typing import List
 from parameterized import parameterized
 from pytorch_lightning import Trainer
