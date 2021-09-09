@@ -2,8 +2,8 @@
 import unittest
 
 import itertools
-import numpy as np
 from typing import List
+import numpy as np
 from parameterized import parameterized
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
