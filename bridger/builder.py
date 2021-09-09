@@ -38,19 +38,18 @@ class BuildEvaluator:
         self._env = env
         self._build_count = build_count
         self._episode_length = episode_length
-        self._build_results = []
         builder = Builder(env)
-        for _ in range(self._build_count):
-            self._build_results.append(
-                builder.build(
-                    policy=policy, episode_length=self._episode_length, render=False
-                )
+        self._build_results = [
+            builder.build(
+                policy=policy, episode_length=self._episode_length, render=False
             )
+            for _ in range(self._build_count)
+        ]
 
     @property
     def success_rate(self):
         """Returns the rate of successful builds vs build attempts."""
-        return np.sum(self.successes) / len(self._build_results)
+        return self.successes.mean()
 
     @property
     def successes(self):
@@ -60,18 +59,12 @@ class BuildEvaluator:
         failure points for different policies.
 
         """
-        return [build_result.success for build_result in self._build_results]
+        return np.array([build_result.success for build_result in self._build_results])
 
     @property
     def build_steps_on_success_mean(self):
         """Returns the mean of build steps taken on successful builds only."""
-        return np.mean(
-            [
-                build_result.steps
-                for build_result in self._build_results
-                if build_result.success
-            ]
-        )
+        return self.build_steps.mean(where=self.successes)
 
     @property
     def build_steps(self):
@@ -81,18 +74,12 @@ class BuildEvaluator:
         failure points for different policies.
 
         """
-        return [build_result.steps for build_result in self._build_results]
+        return np.array([build_result.steps for build_result in self._build_results])
 
     @property
     def reward_on_success_mean(self):
         """Returns the mean of build steps taken on successful builds only."""
-        return np.mean(
-            [
-                build_result.reward
-                for build_result in self._build_results
-                if build_result.success
-            ]
-        )
+        return self.rewards.mean(where=self.successes)
 
     @property
     def rewards(self):
@@ -102,14 +89,14 @@ class BuildEvaluator:
         failure points for different policies.
 
         """
-        return [build_result.reward for build_result in self._build_results]
+        return np.array([build_result.reward for build_result in self._build_results])
 
     @property
     def height_of_highest_block_mean(self):
         """Demo metric using the final state.
 
         Computes the height of the highest brick. This metric should
-        be replaced as we find more intereting ones to evaluate the
+        be replaced as we find more interesting ones to evaluate the
         constructed bridge.
 
         """

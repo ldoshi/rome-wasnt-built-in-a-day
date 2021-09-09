@@ -2,6 +2,7 @@
 import unittest
 
 import itertools
+import numpy as np
 from typing import List
 from parameterized import parameterized
 from pytorch_lightning import Trainer
@@ -208,11 +209,11 @@ class BuildEvaluatorTest(unittest.TestCase):
         # [1., 0., 0., 1.]]))]
 
         self.assertEqual(build_evaluator.success_rate, 0.8)
-        self.assertListEqual(build_evaluator.successes, [True, True, True, True, False])
+        np.testing.assert_array_equal(build_evaluator.successes, [True, True, True, True, False])
         self.assertEqual(build_evaluator.build_steps_on_success_mean, 2.25)
-        self.assertListEqual(build_evaluator.build_steps, [2, 4, 2, 1, 4])
+        np.testing.assert_array_equal(build_evaluator.build_steps, [2, 4, 2, 1, 4])
         self.assertEqual(build_evaluator.reward_on_success_mean, 98.75)
-        self.assertListEqual(build_evaluator.rewards, [99, 97, 99, 100, -4])
+        np.testing.assert_array_equal(build_evaluator.rewards, [99, 97, 99, 100, -4])
         self.assertEqual(build_evaluator.height_of_highest_block_mean, 2.8)
 
 
