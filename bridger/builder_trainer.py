@@ -346,7 +346,7 @@ class BridgeBuilderTrainer(pl.LightningModule):
             num_workers=self.hparams.num_workers,
         )
 
-    # TODO(arvind): Override hooks to load data appropriately for val and test
+    # TODO(arvind): Override hooks to load data appropriately for test
 
     @staticmethod
     def instantiate(**kwargs):

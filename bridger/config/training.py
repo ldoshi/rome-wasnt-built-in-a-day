@@ -62,7 +62,7 @@ hparam_dict[key]["help"] = help_str
 
 key = "val_check_interval"
 hparam_dict[key] = {"type": int, "default": 1000}
-help_str = "The val_check_interval to provide the Lightning Trainer"
+help_str = "The val_check_interval to provide the Lightning Trainer. Set to an integer value to run validation every n steps (batches) since we have a streaming use-case running a single training epoch."
 hparam_dict[key]["help"] = help_str
 
 key = "val_batch_size"
