@@ -1,6 +1,7 @@
 """Tests for core building and training components."""
 import unittest
 
+import itertools 
 from typing import List
 from parameterized import parameterized
 from pytorch_lightning import Trainer
@@ -30,19 +31,12 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         # Get an arbitrary number of results. The ValidationBuilder
         # will keep producing results until we stop asking.
-        count = 0
-        counter = 10
-        for build_result in builder_trainer.ValidationBuilder(
+        for build_result in itertools.islice(builder_trainer.ValidationBuilder(
             env=env, policy=policies.GreedyPolicy(_constant_estimator), episode_length=1
-        ):
+        ), 10):
             self.assertFalse(build_result[0])
             self.assertEqual(build_result[1], -1)
             self.assertEqual(build_result[2], 1)
-            count += 1
-            if count == counter:
-                break
-
-        self.assertEqual(count, counter)
 
     @parameterized.expand(
         [
