@@ -47,10 +47,23 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
     @parameterized.expand(
         [
             ("No Early Stopping", [], 5),
-            ("Early Stopping", [EarlyStopping(monitor="val_reward", patience=1, mode="max", strict=True)], 3),
+            (
+                "Early Stopping",
+                [
+                    EarlyStopping(
+                        monitor="val_reward", patience=1, mode="max", strict=True
+                    )
+                ],
+                3,
+            ),
         ]
     )
-    def test_early_stopping(self, name: str, early_stopping_callback: List[Callback], expected_calls_count: int):
+    def test_early_stopping(
+        self,
+        name: str,
+        early_stopping_callback: List[Callback],
+        expected_calls_count: int,
+    ):
         """Checks early stopping callback actually stops training."""
 
         class CountingCallback(Callback):
@@ -85,6 +98,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         callbacks = [CountingCallback()] + early_stopping_callback
         get_trainer(callbacks).fit(get_model())
         self.assertEqual(callbacks[0].count, expected_calls_count)
+
 
 class BuilderTest(unittest.TestCase):
     """Verifies the builder's execution of a policy."""
