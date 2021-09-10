@@ -17,6 +17,7 @@ import subprocess
 import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import EarlyStopping
 
 from bridger import builder_trainer
 from bridger.callbacks import DemoCallback, HistoryCallback
@@ -49,6 +50,12 @@ def test():
             monitor=None,  # Should show a quantity, e.g. "train_loss"
             every_n_train_steps=hparams.checkpoint_interval,
         ),
+        EarlyStopping(
+            monitor="val_reward",
+            patience=hparams.early_stopping_patience,
+            mode="max",
+            strict=True,
+        ),
     ]
     if hparams.debug:
         callbacks += [
@@ -56,6 +63,7 @@ def test():
                 steps_per_update=MAX_STEPS,
             ),
             DemoCallback(
+                hparams,
                 steps_per_update=MAX_STEPS,
                 max_episode_length=MAX_DEMO_EPISODE_LENGTH,
             ),
@@ -65,13 +73,12 @@ def test():
             args=["training_viewer.py"],
             cwd=Path.cwd(),
         )
-    # TODO: After validation logic has been added to BridgeBuilderTrainer,
-    # 1. Make val_check_interval below a settable parameter with reasonable default
-    # 2. Update callback variable above to reflect the validation logic and pass it
-    #    to Trainer init below
     trainer = Trainer(
         gradient_clip_val=hparams.gradient_clip_val,
-        val_check_interval=int(1e6),
+        val_check_interval=hparams.val_check_interval,
+        # The validation batch size can be adjusted via a config, but
+        # we only need a single batch.
+        limit_val_batches=1,
         default_root_dir=hparams.checkpoint_model_dir,
         max_steps=hparams.max_training_batches,
         callbacks=callbacks,

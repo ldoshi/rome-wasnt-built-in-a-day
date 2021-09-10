@@ -3,6 +3,7 @@ import IPython
 import gym
 import gym_bridges.envs
 import numpy as np
+from bridger import builder
 import pytorch_lightning as pl
 import torch
 
@@ -28,6 +29,28 @@ def make_env(name: str, width: int, force_standard_config: bool) -> gym.Env:
         force_standard_config=force_standard_config,
     )
     return env
+
+
+class ValidationBuilder(torch.utils.data.IterableDataset):
+    """Produces build results using a policy based on the current model.
+
+    The model underpinning the policy refers to the same one being
+    trained and will thus evolve over time.
+
+    """
+
+    def __init__(self, env: gym.Env, policy: policies.Policy, episode_length: int):
+        self._builder = builder.Builder(env)
+        self._policy = policy
+        self._episode_length = episode_length
+
+    def __iter__(self):
+        """Yields the result of a single building episode each call."""
+        while True:
+            build_result = self._builder.build(
+                self._policy, self._episode_length, render=False
+            )
+            yield [build_result.success, build_result.reward, build_result.steps]
 
 
 # TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
@@ -58,6 +81,11 @@ class BridgeBuilderTrainer(pl.LightningModule):
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
         )
+        self._validation_env = make_env(
+            name=hparams.env_name,
+            width=hparams.env_width,
+            force_standard_config=hparams.env_force_standard_config,
+        )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
             capacity=self.hparams.capacity,
@@ -71,6 +99,10 @@ class BridgeBuilderTrainer(pl.LightningModule):
         self.target.load_state_dict(self.Q.state_dict())
         # TODO(lyric): Consider specifying the policy as a hyperparam
         self.policy = policies.EpsilonGreedyPolicy(self.Q)
+        # At this time, the world is static once the initial
+        # conditions are set. The agent is not navigating a dynamic
+        # environment.
+        self._validation_policy = policies.GreedyPolicy(self.Q)
 
         self.epsilon = self.hparams.epsilon_training_start
         self.memories = self._memory_generator()
@@ -293,6 +325,10 @@ class BridgeBuilderTrainer(pl.LightningModule):
 
         return loss
 
+    def validation_step(self, batch, batch_idx):
+        success, rewards, steps = batch
+        self.log("val_reward", torch.Tensor.float(rewards).mean())
+
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
     def configure_optimizers(self):
@@ -307,4 +343,15 @@ class BridgeBuilderTrainer(pl.LightningModule):
             num_workers=self.hparams.num_workers,
         )
 
-    # TODO(arvind): Override hooks to load data appropriately for val and test
+    def val_dataloader(self) -> DataLoader:
+        return DataLoader(
+            ValidationBuilder(
+                env=self._validation_env,
+                policy=self._validation_policy,
+                episode_length=self.hparams.max_episode_length,
+            ),
+            batch_size=self.hparams.val_batch_size,
+            num_workers=self.hparams.num_workers,
+        )
+
+    # TODO(arvind): Override hooks to load data appropriately for test

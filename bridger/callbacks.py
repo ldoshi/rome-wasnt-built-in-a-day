@@ -27,7 +27,7 @@ class DemoCallback(Callback):
                     force_standard_config=model.hparams.env_force_standard_config,
                 )
             )
-        
+
         if (batch_idx + 1) % self._frequency == 0:
             with torch.no_grad():
                 build_result = self._builder.build(
