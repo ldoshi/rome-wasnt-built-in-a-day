@@ -8,7 +8,9 @@ import torch
 
 from torch.utils.data import DataLoader
 
-from bridger import config, policies, qfunctions, replay_buffer, training_history
+from bridger import config, policies, qfunctions, replay_buffer, training_history, utils
+
+import IPython
 
 
 def get_hyperparam_parser(parser=None):
@@ -30,32 +32,38 @@ def make_env(name: str, width: int, force_standard_config: bool) -> gym.Env:
 
 # TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
 # mode, debug mode, display mode) as Lightning Callbacks
+
+# pylint: disable=too-many-instance-attributes
 class BridgeBuilderTrainer(pl.LightningModule):
-    def __init__(self, hparams):
+    @utils.prepare_input
+    @utils.validate_input("BridgeBuilderTrainer", config.bridger_config)
+    def __init__(self, *args, **kwargs):
         """Constructor for the BridgeBuilderTrainer Module
 
-        Args:
-            hparams: a Namespace object, of the kind returned by an argparse
-                     ArgumentParser. For more details, see get_hyperparam_parser.
-        """
+        Args: should be empty (will be guaranteed by the two decorators) but
+            needs to be listed here because of brittle implementation of
+            `save_hyperparameters#` in PyTorch Lightning
 
-        super(BridgeBuilderTrainer, self).__init__()
-        #  TODO(arvind) Simplify once you understand hyperparam handling in PL 1.3
-        for k, v in hparams.__dict__.items():
-            self.hparams[k] = v
-        torch.manual_seed(hparams.seed)
+        Keyword Args (hparams): a dictionary containing all of the
+            hyperparameters needed to initialize this LightningModule"""
+
+        super().__init__()
+        assert not args
+        self.save_hyperparameters(kwargs)
+
+        torch.manual_seed(self.hparams.seed)
 
         self.env = make_env(
-            name=hparams.env_name,
-            width=hparams.env_width,
-            force_standard_config=hparams.env_force_standard_config,
+            name=self.hparams.env_name,
+            width=self.hparams.env_width,
+            force_standard_config=self.hparams.env_force_standard_config,
         )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
-            capacity=hparams.capacity,
-            alpha=hparams.alpha,
-            beta=hparams.beta_training_start,
-            batch_size=hparams.batch_size,
+            capacity=self.hparams.capacity,
+            alpha=self.hparams.alpha,
+            beta=self.hparams.beta_training_start,
+            batch_size=self.hparams.batch_size,
         )
 
         self.Q = qfunctions.CNNQ(*self.env.shape, self.env.nA)
@@ -64,18 +72,18 @@ class BridgeBuilderTrainer(pl.LightningModule):
         # TODO(lyric): Consider specifying the policy as a hyperparam
         self.policy = policies.EpsilonGreedyPolicy(self.Q)
 
-        self.epsilon = hparams.epsilon_training_start
+        self.epsilon = self.hparams.epsilon_training_start
         self.memories = self._memory_generator()
 
         self.next_action = None
         self.state = self.env.reset()
         self._breakpoint = {"step": 0, "episode": 0}
 
-        if hparams.debug:
+        if self.hparams.debug:
             # TODO(arvind): Move as much of this functionality as possible into
             # the tensorboard logging already being done here.
             self.training_history = training_history.TrainingHistory(
-                serialization_dir=hparams.training_history_dir
+                serialization_dir=self.hparams.training_history_dir
             )
 
     def on_train_start(self):
@@ -300,21 +308,3 @@ class BridgeBuilderTrainer(pl.LightningModule):
         )
 
     # TODO(arvind): Override hooks to load data appropriately for val and test
-
-    @staticmethod
-    def instantiate(**kwargs):
-        missing = [key for key in kwargs if key not in config.bridger_config]
-        if len(missing) > 0:
-            missing = ",".join(missing)
-            print(
-                "WARNING: The following are not recognized hyperparameters "
-                f"for BridgeBuilderTrainer: {missing}"
-            )
-        hparams = dict(**kwargs)
-        for key, val in config.bridger_config.items():
-            if key not in hparams:
-                check = not val.get("required", False)
-                assert check, f"Required argument {key} not provided"
-                if "default" in val:
-                    hparams[key] = val["default"]
-        return BridgeBuilderTrainer(argparse.Namespace(**hparams))

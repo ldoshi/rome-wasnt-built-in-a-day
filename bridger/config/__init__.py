@@ -1,4 +1,5 @@
 import argparse
+from typing import Any, Dict
 
 from bridger.config.agent import hparam_dict as agent_config
 from bridger.config.buffer import hparam_dict as buffer_config
@@ -14,7 +15,7 @@ bridger_config = dict(
     **buffer_config,
     **checkpoint_config,
     **{"env_" + k: v for k, v in env_config.items()},
-    **training_config
+    **training_config,
 )
 
 
@@ -24,3 +25,35 @@ def get_hyperparam_parser(config, description="", parser=None):
     for key, kwargs in config.items():
         parser.add_argument("--" + key.replace("_", "-"), **kwargs)
     return parser
+
+
+def validate_kwargs(
+    module_name: str, cfg: Dict[str, Dict[str, Any]], **kwargs
+) -> Dict[str, Any]:
+    """Validates keyword arguments using a config of expected arguments.
+
+    Reports on extraneous inputs, ensures that all required inputs are present,
+    and populates with default values for all optional arguments.
+
+    Args:
+        module_name: the name of the callable meant to take these inputs
+        cfg: a config dictionary, mapping input names to property dictionaries
+             that would be used by argparse.ArgumentParser
+    Keyword Args: all the arguments to be validated
+
+    Returns a dictionary containing a validated set of keyword args to pass as
+        inputs to the intended callable.
+    """
+    missing = ",".join([key for key in kwargs if key not in cfg])
+    if missing:
+        print(
+            "INFO: The following are not recognized hyperparameters "
+            f"for (and will be disregarded by) {module_name}: {missing}"
+        )
+    for key, val in cfg.items():
+        if key not in kwargs:
+            check = not val.get("required", False)
+            assert check, f"Required argument {key} not provided for {module_name}"
+            if "default" in val:
+                kwargs[key] = val["default"]
+    return kwargs
