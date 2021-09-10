@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import IPython
 import gym
 import gym_bridges.envs
@@ -11,7 +12,7 @@ import torch
 from typing import Union
 
 from torch.utils.data import DataLoader
-from typing import Any, Union, Generator
+from typing import Any, Union, Generator, Optional
 
 
 from bridger import config, policies, qfunctions, replay_buffer, training_history, utils
@@ -51,7 +52,7 @@ def make_env(
     """Function that instantiates an instance of the environment with the appropriate arguments.
 
     Args:
-        name: environment name to pass custom environment name
+        name: name of environment to construct
         width: width of the bridge_builder environment
         force_standard_config: whether to only use the standard environment configuration
 
@@ -222,11 +223,10 @@ class BridgeBuilderModel(pl.LightningModule):
         self,
     ) -> Generator[tuple[int, int, Any, Any, Any, Any, Any], None, None]:
         """A generator that serves up sequential transitions experienced by the
-        agent. When an episode ends, a new one starts immediately. Each item
-        yielded is a tuple with the following elements (in order):
+        agent. When an episode ends, a new one starts immediately.
 
         Returns:
-            Generator object yielding a tuple with the following values:
+            Generator object yielding tuples with the following values:
 
             episode_idx: starting from 0, incremented every time an episode ends
                         and another begins
@@ -301,7 +301,7 @@ class BridgeBuilderModel(pl.LightningModule):
         """Disables interactive mode."""
         self.hparams.interactive_mode = False
 
-    def take_action(self, action: torch.Tensor, repetitions: int = 1):
+    def take_action(self, action: int, repetitions: int = 1):
         """Exits the current breakpoint and reenters one only after the input
         `action` has been taken `repetitions` times (or the current episode
         has ended)."""
@@ -312,7 +312,9 @@ class BridgeBuilderModel(pl.LightningModule):
         # Exits current breakpoint
         IPython.core.getipython.get_ipython().exiter()
 
-    def follow_policy(self, num_actions=None, num_episodes=1) -> None:
+    def follow_policy(
+        self, num_actions: Optional[int] = None, num_episodes: int = 1
+    ) -> None:
         """Exits the current breakpoint and draws actions from the policy.
         Reenters a breakpoint only after either `num_actions` steps have been
         taken or `num_episodes` episodes have newly succeeded.
@@ -333,12 +335,12 @@ class BridgeBuilderModel(pl.LightningModule):
         self._breakpoint["episode"] += num_episodes
         IPython.core.getipython.get_ipython().exiter()
 
-    def return_to_training(self):
+    def return_to_training(self) -> None:
         """Exits the current breakpoint."""
         self.disable_interactive_mode()
         IPython.core.getipython.get_ipython().exiter()
 
-    def forward(self):
+    def forward(self) -> None:
         """Forward propagation of the model. If in interactive mode, the user can provide the next action with `take_action`. Otherwise, action is determined by policy. (Currently defaults to EpsilonGreedy)"""
         state = self.state
         if self.hparams.interactive_mode and self.next_action is not None:
@@ -358,16 +360,16 @@ class BridgeBuilderModel(pl.LightningModule):
 
         return result
 
-    def _update_epsilon(self):
-        """Selects the rule by which epsilon changes in the Epsilon Greedy algorithm. By default, set to "arithmetic". See `_memory_generator` for usage."""
+    def _update_epsilon(self) -> None:
+        """Selects the rule by which epsilon changes in the Epsilon Greedy algorithm. See `_memory_generator` for usage."""
         if self.hparams.epsilon_decay_rule == "arithmetic":
             self.epsilon -= self.hparams.epsilon_decay_rate
         elif self.hparams.epsilon_decay_rule == "geometric":
             self.epsilon /= self.hparams.epsilon_decay_rate
         self.epsilon = max(self.epsilon, self.hparams.epsilon)
 
-    def _update_beta(self):
-        """Selects the rule by which beta changes. Beta is a parameter in importance-sampling weights for prioritized replay and helps the model transition away from use of prioritized replay. Normally annealed to 1 over the duration of training. See: https://datascience.stackexchange.com/questions/32873/prioritized-replay-what-does-importance-sampling-really-do"""
+    def _update_beta(self) -> None:
+        """Updates beta according to pre-specified hyperparameters. Beta is a measure of how much prioritized memories in the replay buffer should be preferred. For more information, look up Gibbs sampling or importance sampling"""
         if self.hparams.beta_growth_rule == "arithmetic":
             self.replay_buffer.beta += self.hparams.beta_growth_rate
         elif self.hparams.beta_growth_rule == "geometric":
@@ -424,13 +426,13 @@ class BridgeBuilderModel(pl.LightningModule):
 
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> None:
         """Allows for use of different optimizers, currently defaults to the Adam optimizer."""
         # TODO(arvind): This should work, but should we say Q.parameters(), or
         # is that limiting for the future?
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
 
-    def train_dataloader(self):
+    def train_dataloader(self) -> None:
         """Trains using the DataLoader, which allows for multiprocessed data generation. Used to prevent early bottlenecking in the model at data generation step and allows for computations to be split across multiple source files."""
         return DataLoader(
             self.replay_buffer,
