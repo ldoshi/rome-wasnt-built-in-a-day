@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import IPython
 import gym
@@ -9,11 +11,30 @@ import torch
 from typing import Union
 
 from torch.utils.data import DataLoader
+from typing import Any, Union, Generator
+
 
 from bridger import config, policies, qfunctions, replay_buffer, training_history, utils
 
 
-def get_hyperparam_parser(parser=None):
+def get_hyperparam_parser(parser=None) -> argparse.ArgumentParser:
+    """Hyperparameter parser for the BridgeBuilderTrainer Model, reads hyperparameters from bridger.config as well as environment parameters for setup. Arguments can also be passed directly to the command-line explicitly (i.e. --tau=0.1).
+
+    Reads from the following files:
+
+    Config file:            Content:
+    agent.py:               hyperparameters
+    buffer.py:              hyperparameters
+    checkpointing.py:       checkpoint parameters
+    env.py:                 Gym environment parameters
+    training.py:            hyperparameters and environment parameters
+
+    Args:
+        parser: an optional argument for parsing the command line. Currently, config.get_hyperparam_parser uses an ArgumentParser if None is passed.
+
+    Returns:
+        argparse.ArgumentParser: A parser with the loaded config parameters.
+    """
     return config.get_hyperparam_parser(
         config.bridger_config,
         description="Hyperparameter Parser for the BridgeBuilderModel",
@@ -27,6 +48,16 @@ def make_env(
     force_standard_config: bool,
     seed: Union[int, float, None] = None,
 ) -> gym.Env:
+    """Function that instantiates an instance of the environment with the appropriate arguments.
+
+    Args:
+        name: environment name to pass custom environment name
+        width: width of the bridge_builder environment
+        force_standard_config: whether to only use the standard environment configuration
+
+    Returns:
+        gym.Env: instantiated gym environment
+    """
     env = gym.make(
         name, width=width, force_standard_config=force_standard_config, seed=seed
     )
@@ -133,20 +164,41 @@ class BridgeBuilderModel(pl.LightningModule):
     def on_train_start(self):
         self.make_memories(self.hparams.initial_memories_count)
 
-    def on_train_batch_end(self, outputs, batch, batch_idx, dataloader_idx):
+    def on_train_batch_end(
+        self,
+        outputs: Union[torch.Tensor, dict[str, Any]],
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int,
+    ) -> None:
+        """Called when the training batch ends.
+
+        Args:
+            outputs: the output of a training step, type defined in pytorch_lightning/utilities/types.py
+            batch: a group of memories, size determined by `hparams.initial_memories_count`
+            batch_idx: the current batch index
+            dataloader_idx: the index of the dataloader
+        """
         self.update_target()
         if self.hparams.debug:
             self.record_q_values(batch_idx)
         self.make_memories()
 
-    def update_target(self):
+    def update_target(self) -> None:
+        """Called when training batch ends. A state dict is a Python dictionary object that maps each layer to its parameter tensor that only works for convolutional layers and linear layers. `params` are directly updated by adding the parameter tensors multiplied by tau."""
         params = self.target.state_dict()
         update = self.Q.state_dict()
         for param in params:
             params[param] += self.hparams.tau * (update[param] - params[param])
         self.target.load_state_dict(params)
 
-    def record_q_values(self, training_step):
+    def record_q_values(self, training_step: int) -> None:
+        """Record q values in a TrainingHistory object and add them to `self.training_history`.
+
+        Args:
+            training_step: this is the end of our current training step, which is our call to on_train_batch_end.
+        """
+        # TODO(joseph): Ask Lyric about this docstring since it uses TrainingHistory
         visited_state_histories = self.training_history.get_history_by_visit_count(100)
         states = [
             visited_state_history.state
@@ -160,29 +212,31 @@ class BridgeBuilderModel(pl.LightningModule):
             self.training_history.add_q_values(training_step, *triple)
 
     def make_memories(self, requested_memory_count=None):
-        memory_count = (
-            requested_memory_count
-            if requested_memory_count
-            else self.hparams.inter_training_steps
-        )
+        """Obtains memories from _memory_generator. Called in on_train_start and on_train_batch_end."""
+        memory_count = requested_memory_count if requested_memory_count else self.hparams.inter_training_steps
         with torch.no_grad():
             for _ in range(memory_count):
                 next(self.memories)
 
-    def _memory_generator(self):
+    def _memory_generator(
+        self,
+    ) -> Generator[tuple[int, int, Any, Any, Any, Any, Any], None, None]:
         """A generator that serves up sequential transitions experienced by the
         agent. When an episode ends, a new one starts immediately. Each item
         yielded is a tuple with the following elements (in order):
 
-         episode_idx: starting from 0, incremented every time an episode ends
-                      and another begins
-         step_idx:    starting from 0, incremented with each transition,
-                      irrespective of the episode it is in
-         start_state: the state at the beginning of the transition
-         action:      the action taken during the transition
-         end_state:   the state at the end of the transition
-         reward:      the reward gained through the transition
-         success:    whether the transition marked the end of the episode"""
+        Returns:
+            Generator object yielding a tuple with the following values:
+
+            episode_idx: starting from 0, incremented every time an episode ends
+                        and another begins
+            step_idx:    starting from 0, incremented with each transition,
+                        irrespective of the episode it is in
+            start_state: the state at the beginning of the transition
+            action:      the action taken during the transition
+            end_state:   the state at the end of the transition
+            reward:      the reward gained through the transition
+            success:    whether the transition marked the end of the episode"""
 
         episode_idx = 0
         total_step_idx = 0
@@ -208,7 +262,7 @@ class BridgeBuilderModel(pl.LightningModule):
             self.state = self.env.reset()
             episode_idx += 1
 
-    def _checkpoint(self, thresholds):
+    def _checkpoint(self, thresholds: dict[str, int]) -> None:
         """A checkpointer that compares instance-state breakpoints to method
         inputs to determine whether to enter a breakpoint. This only runs while
         interactive mode is enabled.
@@ -230,13 +284,24 @@ class BridgeBuilderModel(pl.LightningModule):
             self.next_action = None
             IPython.embed()
 
-    def enable_interactive_mode(self):
+    def enable_interactive_mode(self) -> None:
+        """Enables interactive mode. Sets a flag to enable an interactive shell with IPython that can be used as an interpreter during training, allowing introspection into the current Namespace. See `bridge_builder.py` for an example of usage.
+
+        If this is called with command line arg "interactive-mode" set to True, then the Trainer will intermittently enter an IPython shell, allowing you to inspect model state at your leisure. This shell can be exited by calling one of three model commands:
+
+        1. return_to_training will disable interactive mode and complete the requested training without additional IPython breakpoints.
+
+        2. follow_policy will run the minimum of a requested number of steps or through the end of a requested number of episodes before returning to the IPython shell
+
+        3. take_action will take the requested action, potentially multiple times, before returning to the IPython shell
+        """
         self.hparams.interactive_mode = True
 
-    def disable_interactive_mode(self):
+    def disable_interactive_mode(self) -> None:
+        """Disables interactive mode."""
         self.hparams.interactive_mode = False
 
-    def take_action(self, action, repetitions=1):
+    def take_action(self, action: torch.Tensor, repetitions: int = 1):
         """Exits the current breakpoint and reenters one only after the input
         `action` has been taken `repetitions` times (or the current episode
         has ended)."""
@@ -247,7 +312,7 @@ class BridgeBuilderModel(pl.LightningModule):
         # Exits current breakpoint
         IPython.core.getipython.get_ipython().exiter()
 
-    def follow_policy(self, num_actions=None, num_episodes=1):
+    def follow_policy(self, num_actions=None, num_episodes=1) -> None:
         """Exits the current breakpoint and draws actions from the policy.
         Reenters a breakpoint only after either `num_actions` steps have been
         taken or `num_episodes` episodes have newly succeeded.
@@ -269,10 +334,12 @@ class BridgeBuilderModel(pl.LightningModule):
         IPython.core.getipython.get_ipython().exiter()
 
     def return_to_training(self):
+        """Exits the current breakpoint."""
         self.disable_interactive_mode()
         IPython.core.getipython.get_ipython().exiter()
 
     def forward(self):
+        """Forward propagation of the model. If in interactive mode, the user can provide the next action with `take_action`. Otherwise, action is determined by policy. (Currently defaults to EpsilonGreedy)"""
         state = self.state
         if self.hparams.interactive_mode and self.next_action is not None:
             action = self.next_action
@@ -292,6 +359,7 @@ class BridgeBuilderModel(pl.LightningModule):
         return result
 
     def _update_epsilon(self):
+        """Selects the rule by which epsilon changes in the Epsilon Greedy algorithm. By default, set to "arithmetic". See `_memory_generator` for usage."""
         if self.hparams.epsilon_decay_rule == "arithmetic":
             self.epsilon -= self.hparams.epsilon_decay_rate
         elif self.hparams.epsilon_decay_rule == "geometric":
@@ -299,6 +367,7 @@ class BridgeBuilderModel(pl.LightningModule):
         self.epsilon = max(self.epsilon, self.hparams.epsilon)
 
     def _update_beta(self):
+        """Selects the rule by which beta changes. Beta is a parameter in importance-sampling weights for prioritized replay and helps the model transition away from use of prioritized replay. Normally annealed to 1 over the duration of training. See: https://datascience.stackexchange.com/questions/32873/prioritized-replay-what-does-importance-sampling-really-do"""
         if self.hparams.beta_growth_rule == "arithmetic":
             self.replay_buffer.beta += self.hparams.beta_growth_rate
         elif self.hparams.beta_growth_rule == "geometric":
@@ -307,8 +376,15 @@ class BridgeBuilderModel(pl.LightningModule):
             self.replay_buffer.beta, self.hparams.beta_training_end
         )
 
-    def get_td_error(self, states, actions, next_states, rewards, success):
-
+    def get_td_error(
+        self,
+        states: torch.Tensor,
+        actions: torch.Tensor,
+        next_states: torch.Tensor,
+        rewards: torch.Tensor,
+        success: torch.Tensor,
+    ) -> torch.Tensor:
+        """Calculates TD error during training. Estimates the state-value function of Markov decision process under a policy."""
         row_idx = torch.arange(actions.shape[0])
         qvals = self.Q(states)[row_idx, actions]
         with torch.no_grad():
@@ -317,18 +393,20 @@ class BridgeBuilderModel(pl.LightningModule):
             expected_qvals = rewards + (~success) * self.hparams.gamma * next_vals
         return expected_qvals - qvals
 
-    def compute_loss(self, td_errors, weights=None):
+    def compute_loss(self, td_errors: torch.Tensor, weights=None) -> torch.Tensor:
+        """Computes loss using td errors in training."""
         if weights is not None:
             td_errors = weights * td_errors
         return (td_errors ** 2).mean()
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch: list[torch.Tensor], batch_idx: int) -> torch.Tensor:
+        """Performs a single training step."""
         indices, states, actions, next_states, rewards, success, weights = batch
         td_errors = self.get_td_error(states, actions, next_states, rewards, success)
         if self.hparams.debug:
             triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
             for triple in triples:
-                # For debuging only. Averages the td error per (state, action) pair.
+                # For debugging only. Averages the td error per (state, action) pair.
                 self.training_history.add_td_error(batch_idx, *triple)
 
         loss = self.compute_loss(td_errors, weights=weights)
@@ -338,7 +416,6 @@ class BridgeBuilderModel(pl.LightningModule):
         # Update replay buffer
         self.replay_buffer.update_priorities(indices, td_errors)
         self._update_beta()
-
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -348,11 +425,13 @@ class BridgeBuilderModel(pl.LightningModule):
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
     def configure_optimizers(self):
+        """Allows for use of different optimizers, currently defaults to the Adam optimizer."""
         # TODO(arvind): This should work, but should we say Q.parameters(), or
         # is that limiting for the future?
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
 
     def train_dataloader(self):
+        """Trains using the DataLoader, which allows for multiprocessed data generation. Used to prevent early bottlenecking in the model at data generation step and allows for computations to be split across multiple source files."""
         return DataLoader(
             self.replay_buffer,
             batch_size=self.hparams.batch_size,

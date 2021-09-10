@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 
 class CNNQ(torch.nn.Module):
+    """Base class for CNN Q-function neural network module."""
     def __init__(self, image_height, image_width, num_actions):
         super(CNNQ, self).__init__()
         self.image_height = image_height
