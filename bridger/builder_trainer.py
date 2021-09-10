@@ -11,8 +11,6 @@ from torch.utils.data import DataLoader
 
 from bridger import config, policies, qfunctions, replay_buffer, training_history, utils
 
-import IPython
-
 
 def get_hyperparam_parser(parser=None):
     return config.get_hyperparam_parser(
@@ -58,21 +56,21 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
 
 # pylint: disable=too-many-instance-attributes
 class BridgeBuilderTrainer(pl.LightningModule):
-    @utils.prepare_input
     @utils.validate_input("BridgeBuilderTrainer", config.bridger_config)
-    def __init__(self, *args, **kwargs):
+    def __init__(self, hparams=None, **kwargs):
         """Constructor for the BridgeBuilderTrainer Module
 
-        Args: should be empty (will be guaranteed by the two decorators) but
-            needs to be listed here because of brittle implementation of
-            `save_hyperparameters#` in PyTorch Lightning
+        Args: hparams will be a dictionary or argparse.Namespace object
+            containing all the hyperparameters needed for initialization
 
-        Keyword Args (hparams): a dictionary containing all of the
+        Keyword Args: a dictionary containing all of the
             hyperparameters needed to initialize this LightningModule"""
 
         super().__init__()
-        assert not args
-        self.save_hyperparameters(kwargs)
+        if hparams:
+            self.save_hyperparameters(hparams)
+        if kwargs:
+            self.save_hyperparameters(kwargs)
 
         torch.manual_seed(self.hparams.seed)
 
@@ -82,9 +80,9 @@ class BridgeBuilderTrainer(pl.LightningModule):
             force_standard_config=self.hparams.env_force_standard_config,
         )
         self._validation_env = make_env(
-            name=hparams.env_name,
-            width=hparams.env_width,
-            force_standard_config=hparams.env_force_standard_config,
+            name=self.hparams.env_name,
+            width=self.hparams.env_width,
+            force_standard_config=self.hparams.env_force_standard_config,
         )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
