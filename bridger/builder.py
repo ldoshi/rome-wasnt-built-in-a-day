@@ -101,20 +101,16 @@ class BuildEvaluator:
 
         """
         # The following computes whether each row of the final_state
-        # contains a brick and then selects the lowest array row which
+        # contains a brick and then selects the lowest state row which
         # contains a brick. In the inverted representation, a lower
-        # row in final_state array corresponds to the higher row in
-        # the rendered env. The inversion to translate to bridge
-        # height is computed before returning.
-        return np.mean(
-            [
-                (len(build_result.final_state) - 1)
-                - np.argmax(
-                    (build_result.final_state == self._env.StateType.BRICK).any(axis=1)
-                )
-                for build_result in self._build_results
-            ]
+        # row in final_state corresponds to the higher row in the
+        # rendered env. The inversion to translate to bridge height is
+        # computed before returning.
+        end_states = np.stack(
+            [build_result.final_state for build_result in self._build_results]
         )
+        inverted_heights = (end_states == self._env.StateType.BRICK).any(-1).argmax(-1)
+        return end_states.shape[1] - 1 - inverted_heights.mean()
 
     def print_report(self):
         print(
