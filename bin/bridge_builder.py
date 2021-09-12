@@ -19,6 +19,7 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import EarlyStopping
 
+from bridger import builder
 from bridger import builder_trainer
 from bridger.callbacks import DemoCallback, HistoryCallback
 from pathlib import Path
@@ -85,6 +86,26 @@ def test():
     )
 
     trainer.fit(model)
+
+    # TODO(lyric): Temporary code until we decide how to track and
+    # store evaluation results.
+    build_count = 1000
+    # TODO(lyric): Choose and persist a set seed value used for
+    # evaluations to ensure they are repeatable and comparable.
+    seed = 123456
+    evaluation_env = builder_trainer.make_env(
+        name=hparams.env_name,
+        width=hparams.env_width,
+        force_standard_config=hparams.env_force_standard_config,
+        seed=seed,
+    )
+    build_evaluator = builder.BuildEvaluator(
+        env=evaluation_env,
+        policy=model.trained_policy,
+        build_count=build_count,
+        episode_length=MAX_DEMO_EPISODE_LENGTH,
+    )
+    build_evaluator.print_report()
 
 
 if __name__ == "__main__":

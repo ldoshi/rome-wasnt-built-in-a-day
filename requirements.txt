@@ -44,7 +44,7 @@ multidict==5.1.0
 mypy-extensions==0.4.3
 networkx==2.6.2
 ninja==1.10.2
-numpy==1.18.5
+numpy==1.21.2
 oauthlib==3.1.0
 opt-einsum==3.3.0
 packaging==20.9
