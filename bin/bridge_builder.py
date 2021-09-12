@@ -32,8 +32,15 @@ def test():
     #               and those relevant for the Trainer/Callbacks
     parser = builder_trainer.get_hyperparam_parser()
     hparams = parser.parse_args()
-    # hparams.debug = True
-    model = builder_trainer.BridgeBuilderTrainer(hparams)
+    if hparams.load_checkpoint_path:
+        # TODO(arvind): Decide on and implement the functionality we'd like to
+        #               support in terms of loading weights from a checkpoint
+        #               while using newly specified config hyperparameters
+        model = builder_trainer.BridgeBuilderTrainer.load_from_checkpoint(
+            hparams.load_checkpoint_path, hparams=hparams
+        )
+    else:
+        model = builder_trainer.BridgeBuilderTrainer(hparams)
 
     callbacks = [
         # Only retains checkpoint with minimum monitored quantity seen so far.
@@ -64,7 +71,7 @@ def test():
         ]
         # Open a subprocess
         subprocess.Popen(
-            args=["python3", "-m", "bin.training_viewer"],
+            args=["training_viewer.py"],
             cwd=Path.cwd(),
         )
     trainer = Trainer(
