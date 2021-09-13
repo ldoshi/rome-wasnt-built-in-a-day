@@ -28,7 +28,7 @@ Today, the bot is learning to build simple bridges across a gap on a 2D grid.
 
 You will need the [gym-bridges](https://github.com/ldoshi/gym-bridges) repo for running the environment.
 
-* Create a virtualenv with _Python 3.8.5_, and activate it.
+* Create a virtualenv with _Python 3.9.6_, and activate it.
   * If you're using python directly
 
     `python3 -m venv venv`
@@ -37,11 +37,11 @@ You will need the [gym-bridges](https://github.com/ldoshi/gym-bridges) repo for 
 
   * If you're using miniconda
 
-    `conda create -n myenv python=3.8.5`
+    `conda create -n myenv python=3.9.6`
 
     `conda activate myenv`
 
-* Install dependencies `pip install -r requirements.txt`
+* Install dependencies `pip3 install -e .`
 
 This project currently uses black to autoformat all code. Highly recommend using black as well to prevent spurious diffs.
 
