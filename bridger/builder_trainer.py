@@ -19,19 +19,20 @@ from bridger import config, policies, qfunctions, replay_buffer, training_histor
 
 
 def get_hyperparam_parser(parser=None) -> argparse.ArgumentParser:
-    """Hyperparameter parser for the BridgeBuilderTrainer Model, reads
-    hyperparameters from bridger.config as well as environment parameters for
-    setup. Arguments can also be passed directly to the command-line explicitly
-    (i.e. --tau=0.1).
+    """Hyperparameter parser for the BridgeBuilderTrainer Model.
+
+    Reads hyperparameters from bridger.config as well as environment parameters
+    for setup. Arguments can also be passed directly to the command-line
+    explicitly (i.e. --tau=0.1).
 
     Reads from the following files:
 
-    Config file:            Content: 
+    Config file:            Content:
     agent.py               hyperparameters
-    buffer.py              hyperparameters 
-    checkpointing.py       checkpoint parameters 
-    env.py                 Gym environment parameters 
-    training.py             hyperparameters and environment parameters
+    buffer.py              hyperparameters
+    checkpointing.py       checkpoint parameters
+    env.py                 Gym environment parameters
+    training.py            hyperparameters and environment parameters
 
     Args: parser: an optional argument for parsing the command line. Currently,
         config.get_hyperparam_parser uses an ArgumentParser if None is passed.
@@ -174,11 +175,11 @@ class BridgeBuilderModel(pl.LightningModule):
     ) -> None:
         """Called when the training batch ends.
 
-        Args: 
+        Args:
             outputs: the output of a training step, type defined in
-            pytorch_lightning/utilities/types.py. 
+            pytorch_lightning/utilities/types.py.
             batch: a group of memories,
-            size determined by `hparams.initial_memories_count`. 
+            size determined by `hparams.initial_memories_count`.
             batch_idx: the
             current batch index. dataloader_idx: the index of the dataloader.
         """
@@ -188,10 +189,12 @@ class BridgeBuilderModel(pl.LightningModule):
         self.make_memories()
 
     def update_target(self) -> None:
-        """Called when training batch ends. A state dict is a Python dictionary
-        object that maps each layer to its parameter tensor that only works for
-        convolutional layers and linear layers. `params` are directly updated by
-        adding the parameter tensors multiplied by tau."""
+        """Called when training batch ends.
+
+        A state dict is a Python dictionary object that maps each layer to its
+        parameter tensor that only works for convolutional layers and linear
+        layers. `params` are directly updated by adding the parameter tensors
+        multiplied by tau."""
         params = self.target.state_dict()
         update = self.Q.state_dict()
         for param in params:
@@ -202,7 +205,7 @@ class BridgeBuilderModel(pl.LightningModule):
         """Record q values in a TrainingHistory object and add them to
         `self.training_history`.
 
-        Args: 
+        Args:
             training_step: this is the end of our current training step, which
             is our call to on_train_batch_end.
         """
@@ -269,10 +272,10 @@ class BridgeBuilderModel(pl.LightningModule):
 
     def _checkpoint(self, thresholds: dict[str, int]) -> None:
         """A checkpointer that compares instance-state breakpoints to method
-        inputs to determine whether to enter a breakpoint. This only runs while
+        inputs to determine whether to enter a breakpoint and only runs while
         interactive mode is enabled.
 
-        Args: 
+        Args:
             thresholds: a dict mapping some subset of 'episode' and 'step' to
             the current corresponding indices (as tracked by `_memory_generator#`)
 
@@ -386,10 +389,11 @@ class BridgeBuilderModel(pl.LightningModule):
         self.epsilon = max(self.epsilon, self.hparams.epsilon)
 
     def _update_beta(self) -> None:
-        """Updates beta according to pre-specified hyperparameters. Beta is a
-        measure of how much prioritized memories in the replay buffer should be
-        preferred. For more information, look up Gibbs sampling or importance
-        sampling."""
+        """Updates beta according to pre-specified hyperparameters.
+
+        Beta is a measure of how much prioritized memories in the replay buffer
+        should be preferred. For more information, look up Gibbs sampling or
+        importance sampling."""
         if self.hparams.beta_growth_rule == "arithmetic":
             self.replay_buffer.beta += self.hparams.beta_growth_rate
         elif self.hparams.beta_growth_rule == "geometric":
@@ -406,7 +410,7 @@ class BridgeBuilderModel(pl.LightningModule):
         rewards: torch.Tensor,
         success: torch.Tensor,
     ) -> torch.Tensor:
-        """Calculates TD error during training. Estimates the state-value
+        """Calculates TD error during training and estimates the state-value
         function of Markov decision process under a policy."""
         row_idx = torch.arange(actions.shape[0])
         qvals = self.Q(states)[row_idx, actions]
@@ -455,9 +459,10 @@ class BridgeBuilderModel(pl.LightningModule):
 
     def train_dataloader(self) -> None:
         """Trains using the DataLoader, which allows for multiprocessed data
-        generation. Used to prevent early bottlenecking in the model at data
-        generation step and allows for computations to be split across multiple
-        source files."""
+        generation.
+
+        Used to prevent early bottlenecking in the model at data generation step
+        and allows for computations to be split across multiple source files."""
         return DataLoader(
             self.replay_buffer,
             batch_size=self.hparams.batch_size,
