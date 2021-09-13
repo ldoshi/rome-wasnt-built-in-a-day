@@ -120,7 +120,7 @@ class BuilderTest(unittest.TestCase):
     """Verifies the builder's execution of a policy."""
 
     def test_builder(self):
-        """Checks an unsucessful and successful build on the same env."""
+        """Checks an unsuccessful and successful build on the same env."""
         test_builder = builder.Builder(
             builder_trainer.make_env(
                 name=_ENV_NAME, width=4, force_standard_config=True
@@ -128,7 +128,7 @@ class BuilderTest(unittest.TestCase):
         )
 
         def _constant_estimator(state) -> torch.Tensor:
-            """Returns a policy that always adds a brick to the left side"""
+            """Returns a policy that always adds a brick to the left side."""
             return torch.tensor([1, 0, 0, 0])
 
         episode_length = 4
