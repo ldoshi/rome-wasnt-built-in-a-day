@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 
 
 class CNNQ(torch.nn.Module):
@@ -10,7 +11,7 @@ class CNNQ(torch.nn.Module):
         paddings = [1, 1]
         strides = [2, 1]
         kernel_sizes = [3, 3]
-        channel_nums = [1, 4, 8]
+        channel_nums = [3, 4, 8]
 
         args_iter = zip(
             channel_nums[:-1], channel_nums[1:], kernel_sizes, strides, paddings
@@ -27,9 +28,8 @@ class CNNQ(torch.nn.Module):
         self.DNN = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
 
     def forward(self, x):
-        x = x.reshape(
-            -1, self.CNN[0].in_channels, self.image_height, self.image_width
-        ).float()
+        x = x.reshape(-1, self.image_height, self.image_width)
+        x = _encode_state_to_channels_second_one_hot(x, self.CNN[0].in_channels).float()
         for layer in self.CNN:
             x = torch.relu(layer(x))
         x = self.DNN[0](x.reshape(x.shape[0], -1))
@@ -37,6 +37,14 @@ class CNNQ(torch.nn.Module):
             x = layer(torch.relu(x))
         return x
 
+
+def _encode_state_to_channels_second_one_hot(
+    state_tensor: torch.Tensor, num_channels: int
+):
+    """Takes a 3-dim state tensor and returns a one-hot tensor with a new channels
+    dimension as the second dimension (batch, channels, height, width)"""
+    x = F.one_hot(state_tensor.long(), num_channels)
+    return x.permute(0, 3, 1, 2)
 
 # This architecture has not yet been validated (and is likely poor).
 choices = {"default": CNNQ}
