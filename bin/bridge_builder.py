@@ -64,7 +64,6 @@ def test():
                 steps_per_update=MAX_STEPS,
             ),
             DemoCallback(
-                hparams,
                 steps_per_update=MAX_STEPS,
                 max_episode_length=MAX_DEMO_EPISODE_LENGTH,
             ),
