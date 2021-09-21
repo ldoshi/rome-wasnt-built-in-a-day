@@ -6,6 +6,7 @@ import numpy as np
 from bridger import builder
 import pytorch_lightning as pl
 import torch
+from typing import Union
 
 from torch.utils.data import DataLoader
 
@@ -20,11 +21,11 @@ def get_hyperparam_parser(parser=None):
     )
 
 
-def make_env(name: str, width: int, force_standard_config: bool) -> gym.Env:
+def make_env(
+    name: str, width: int, force_standard_config: bool, seed: Union[int, None] = None
+) -> gym.Env:
     env = gym.make(
-        name,
-        width=width,
-        force_standard_config=force_standard_config,
+        name, width=width, force_standard_config=force_standard_config, seed=seed
     )
     return env
 
@@ -115,6 +116,10 @@ class BridgeBuilderTrainer(pl.LightningModule):
             self.training_history = training_history.TrainingHistory(
                 serialization_dir=self.hparams.training_history_dir
             )
+
+    @property
+    def trained_policy(self):
+        return policies.GreedyPolicy(self.Q)
 
     def on_train_start(self):
         for _ in range(self.hparams.initial_memories_count):
