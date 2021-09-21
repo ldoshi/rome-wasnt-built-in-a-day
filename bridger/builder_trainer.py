@@ -62,10 +62,13 @@ class BridgeBuilderTrainer(pl.LightningModule):
         """Constructor for the BridgeBuilderTrainer Module
 
         Args: hparams will be a dictionary or argparse.Namespace object
-            containing all the hyperparameters needed for initialization
+            containing hyperparameters to be used for initialization
 
-        Keyword Args: a dictionary containing all of the
-            hyperparameters needed to initialize this LightningModule"""
+        Keyword Args: a dictionary containing hyperparameters to be used for
+            initializing this LightningModule
+
+        Note - if a key is found in both `hparams` and `kwargs`, the value in
+            `kwargs` will be used"""
 
         super().__init__()
         if hparams:

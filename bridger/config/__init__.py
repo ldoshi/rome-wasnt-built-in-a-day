@@ -28,7 +28,7 @@ def get_hyperparam_parser(config, description="", parser=None):
 
 
 def validate_kwargs(
-    module_name: str, cfg: Dict[str, Dict[str, Any]], **kwargs
+    module_name: str, config: Dict[str, Dict[str, Any]], **kwargs
 ) -> Dict[str, Any]:
     """Validates keyword arguments using a config of expected arguments.
 
@@ -37,20 +37,20 @@ def validate_kwargs(
 
     Args:
         module_name: the name of the callable meant to take these inputs
-        cfg: a config dictionary, mapping input names to property dictionaries
+        config: a config dictionary, mapping input names to property dictionaries
              that would be used by argparse.ArgumentParser
     Keyword Args: all the arguments to be validated
 
     Returns a dictionary containing a validated set of keyword args to pass as
         inputs to the intended callable.
     """
-    missing = ",".join([key for key in kwargs if key not in cfg])
+    missing = ",".join([key for key in kwargs if key not in config])
     if missing:
         print(
             "INFO: The following are not recognized hyperparameters "
             f"for (and will be disregarded by) {module_name}: {missing}"
         )
-    for key, val in cfg.items():
+    for key, val in config.items():
         if key not in kwargs:
             check = not val.get("required", False)
             assert check, f"Required argument {key} not provided for {module_name}"
