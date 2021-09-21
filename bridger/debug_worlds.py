@@ -16,7 +16,7 @@ def tiny_world():
 
     MAX_EPISODE_LENGTH = 5
 
-    model = BridgeBuilderTrainer.instantiate(
+    model = BridgeBuilderTrainer(
         env_width=4,
         env_force_standard_config=True,
         debug=True,
