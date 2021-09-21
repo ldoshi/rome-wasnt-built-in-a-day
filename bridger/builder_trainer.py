@@ -216,7 +216,7 @@ class BridgeBuilderTrainer(pl.LightningModule):
         while self.hparams.interactive_mode:
             if all(self._breakpoint[k] > v for k, v in thresholds.items()):
                 break  # Don't stop for a breakpoint
-            self._breakpoint.update(thresholds)
+            self._breakpoint |= thresholds
             self.next_action = None
             IPython.embed()
 

@@ -1,5 +1,5 @@
 import argparse
-from typing import Any, Dict
+from typing import Any
 
 from bridger.config.agent import hparam_dict as agent_config
 from bridger.config.buffer import hparam_dict as buffer_config
@@ -28,8 +28,8 @@ def get_hyperparam_parser(config, description="", parser=None):
 
 
 def validate_kwargs(
-    module_name: str, config: Dict[str, Dict[str, Any]], **kwargs
-) -> Dict[str, Any]:
+    module_name: str, config: dict[str, dict[str, Any]], **kwargs
+) -> dict[str, Any]:
     """Validates keyword arguments using a config of expected arguments.
 
     Reports on extraneous inputs, ensures that all required inputs are present,

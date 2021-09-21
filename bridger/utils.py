@@ -1,12 +1,12 @@
 """A set of utility functions"""
 
-from typing import Any, Dict
+from typing import Any
 from collections.abc import Callable
 
 from bridger.config import validate_kwargs
 
 
-def validate_input(module_name: str, config: Dict[str, Dict[str, Any]]) -> Callable:
+def validate_input(module_name: str, config: dict[str, dict[str, Any]]) -> Callable:
     """A function to generate decorators that validate the input for a
        LightningModule constructor.
 
@@ -26,9 +26,10 @@ def validate_input(module_name: str, config: Dict[str, Dict[str, Any]]) -> Calla
     def decorator_function(func: Callable) -> Callable:
         def wrapper(self, hparams=None, **kwargs):
             if hparams:
-                hparams = vars(hparams)
-                hparams.update(kwargs)
-                kwargs = hparams
+                # TODO: Remove disable when pytype catches up with Python3.9
+                # pytype: disable=unsupported-operands
+                kwargs = vars(hparams) | kwargs
+                # pytype: enable=unsupported-operands
 
             return func(self, validate_kwargs(module_name, config, **kwargs))
 

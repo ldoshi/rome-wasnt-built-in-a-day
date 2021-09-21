@@ -1,5 +1,7 @@
 # Training scenarios used for debugging.
 
+import gym
+
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 
