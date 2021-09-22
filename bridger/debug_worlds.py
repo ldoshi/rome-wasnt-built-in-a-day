@@ -1,5 +1,7 @@
 # Training scenarios used for debugging.
 
+import gym
+
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 
@@ -16,7 +18,7 @@ def tiny_world():
 
     MAX_EPISODE_LENGTH = 5
 
-    model = BridgeBuilderTrainer.instantiate(
+    model = BridgeBuilderTrainer(
         env_width=4,
         env_force_standard_config=True,
         debug=True,

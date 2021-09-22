@@ -2,8 +2,8 @@
 import unittest
 
 import itertools
-from typing import List
 import numpy as np
+import shutil
 from parameterized import parameterized
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
@@ -32,9 +32,14 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         # Get an arbitrary number of results. The ValidationBuilder
         # will keep producing results until we stop asking.
-        for build_result in itertools.islice(builder_trainer.ValidationBuilder(
-            env=env, policy=policies.GreedyPolicy(_constant_estimator), episode_length=1
-        ), 10):
+        for build_result in itertools.islice(
+            builder_trainer.ValidationBuilder(
+                env=env,
+                policy=policies.GreedyPolicy(_constant_estimator),
+                episode_length=1,
+            ),
+            10,
+        ):
             self.assertFalse(build_result[0])
             self.assertEqual(build_result[1], -1)
             self.assertEqual(build_result[2], 1)
@@ -56,7 +61,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
     def test_early_stopping(
         self,
         name: str,
-        early_stopping_callback: List[Callback],
+        early_stopping_callback: list[Callback],
         expected_calls_count: int,
     ):
         """Checks early stopping callback actually stops training."""
@@ -73,14 +78,14 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 self.count += 1
 
         def get_model() -> builder_trainer.BridgeBuilderTrainer:
-            return builder_trainer.BridgeBuilderTrainer.instantiate(
+            return builder_trainer.BridgeBuilderTrainer(
                 env_width=3,
                 env_force_standard_config=True,
                 max_episode_length=1,
                 val_batch_size=1,
             )
 
-        def get_trainer(callbacks: List[Callback]) -> Trainer:
+        def get_trainer(callbacks: list[Callback]) -> Trainer:
             return Trainer(
                 val_check_interval=1,
                 # The validation batch size can be adjusted via a config, but
@@ -93,6 +98,9 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         callbacks = [CountingCallback()] + early_stopping_callback
         get_trainer(callbacks).fit(get_model())
         self.assertEqual(callbacks[0].count, expected_calls_count)
+        # TODO: Make a more coherent plan for writing test output to a temp dir
+        #       and retaining it on failure
+        shutil.rmtree("lightning_logs")
 
 
 class BuilderTest(unittest.TestCase):
@@ -209,7 +217,9 @@ class BuildEvaluatorTest(unittest.TestCase):
         # [1., 0., 0., 1.]]))]
 
         self.assertEqual(build_evaluator.success_rate, 0.8)
-        np.testing.assert_array_equal(build_evaluator.successes, [True, True, True, True, False])
+        np.testing.assert_array_equal(
+            build_evaluator.successes, [True, True, True, True, False]
+        )
         self.assertEqual(build_evaluator.build_steps_on_success_mean, 2.25)
         np.testing.assert_array_equal(build_evaluator.build_steps, [2, 4, 2, 1, 4])
         self.assertEqual(build_evaluator.reward_on_success_mean, 98.75)
