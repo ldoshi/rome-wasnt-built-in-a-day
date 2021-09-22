@@ -32,9 +32,14 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         # Get an arbitrary number of results. The ValidationBuilder
         # will keep producing results until we stop asking.
-        for build_result in itertools.islice(builder_trainer.ValidationBuilder(
-            env=env, policy=policies.GreedyPolicy(_constant_estimator), episode_length=1
-        ), 10):
+        for build_result in itertools.islice(
+            builder_trainer.ValidationBuilder(
+                env=env,
+                policy=policies.GreedyPolicy(_constant_estimator),
+                episode_length=1,
+            ),
+            10,
+        ):
             self.assertFalse(build_result[0])
             self.assertEqual(build_result[1], -1)
             self.assertEqual(build_result[2], 1)
@@ -46,7 +51,10 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 "Early Stopping",
                 [
                     EarlyStopping(
-                        monitor="val_reward", patience=1, mode="max", strict=True
+                        monitor="val_reward",
+                        patience=1,
+                        mode="max",
+                        check_on_train_epoch_end=False,
                     )
                 ],
                 3,
@@ -67,10 +75,9 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             def __init__(self):
                 self.count = 0
 
-            def on_train_batch_end(
-                self, trainer, model, outputs, batch, batch_idx, dataloader_idx
-            ):
-                self.count += 1
+            def on_validation_end(self, trainer, model):
+                if not trainer.sanity_checking:
+                    self.count += 1
 
         def get_model() -> builder_trainer.BridgeBuilderTrainer:
             return builder_trainer.BridgeBuilderTrainer.instantiate(
@@ -209,7 +216,9 @@ class BuildEvaluatorTest(unittest.TestCase):
         # [1., 0., 0., 1.]]))]
 
         self.assertEqual(build_evaluator.success_rate, 0.8)
-        np.testing.assert_array_equal(build_evaluator.successes, [True, True, True, True, False])
+        np.testing.assert_array_equal(
+            build_evaluator.successes, [True, True, True, True, False]
+        )
         self.assertEqual(build_evaluator.build_steps_on_success_mean, 2.25)
         np.testing.assert_array_equal(build_evaluator.build_steps, [2, 4, 2, 1, 4])
         self.assertEqual(build_evaluator.reward_on_success_mean, 98.75)
