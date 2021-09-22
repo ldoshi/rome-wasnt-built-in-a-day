@@ -54,6 +54,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                         monitor="val_reward",
                         patience=1,
                         mode="max",
+                        strict=True,
                         check_on_train_epoch_end=False,
                     )
                 ],

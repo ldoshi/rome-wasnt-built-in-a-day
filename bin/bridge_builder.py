@@ -56,6 +56,7 @@ def test():
             patience=hparams.early_stopping_patience,
             mode="max",
             strict=True,
+            check_on_train_epoch_end=False,
         ),
     ]
     if hparams.debug:
