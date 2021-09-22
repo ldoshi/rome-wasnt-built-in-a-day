@@ -54,6 +54,10 @@ def validate_kwargs(
         if key not in kwargs:
             check = not val.get("required", False)
             assert check, f"Required argument {key} not provided for {module_name}"
-            if "default" in val:
+            # The assert below need not be true in principle - if you're hitting
+            # this and think your use case case is valid, remove the assert
+            has_default = "default" in val
+            assert has_default, f"Default not provided for optional argument {key}"
+            if has_default:
                 kwargs[key] = val["default"]
     return kwargs
