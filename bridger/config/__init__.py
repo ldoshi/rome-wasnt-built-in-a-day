@@ -1,4 +1,5 @@
 import argparse
+from typing import Any
 
 from bridger.config.agent import hparam_dict as agent_config
 from bridger.config.buffer import hparam_dict as buffer_config
@@ -14,7 +15,7 @@ bridger_config = dict(
     **buffer_config,
     **checkpoint_config,
     **{"env_" + k: v for k, v in env_config.items()},
-    **training_config
+    **training_config,
 )
 
 
@@ -24,3 +25,39 @@ def get_hyperparam_parser(config, description="", parser=None):
     for key, kwargs in config.items():
         parser.add_argument("--" + key.replace("_", "-"), **kwargs)
     return parser
+
+
+def validate_kwargs(
+    module_name: str, config: dict[str, dict[str, Any]], **kwargs
+) -> dict[str, Any]:
+    """Validates keyword arguments using a config of expected arguments.
+
+    Reports on extraneous inputs, ensures that all required inputs are present,
+    and populates with default values for all optional arguments.
+
+    Args:
+        module_name: the name of the callable meant to take these inputs
+        config: a config dictionary, mapping input names to property dictionaries
+             that would be used by argparse.ArgumentParser
+    Keyword Args: all the arguments to be validated
+
+    Returns a dictionary containing a validated set of keyword args to pass as
+        inputs to the intended callable.
+    """
+    missing = ",".join([key for key in kwargs if key not in config])
+    if missing:
+        print(
+            "INFO: The following are not recognized hyperparameters "
+            f"for (and will be disregarded by) {module_name}: {missing}"
+        )
+    for key, val in config.items():
+        if key not in kwargs:
+            check = not val.get("required", False)
+            assert check, f"Required argument {key} not provided for {module_name}"
+            # The assert below need not be true in principle - if you're hitting
+            # this and think your use case case is valid, remove the assert
+            has_default = "default" in val
+            assert has_default, f"Default not provided for optional argument {key}"
+            if has_default:
+                kwargs[key] = val["default"]
+    return kwargs

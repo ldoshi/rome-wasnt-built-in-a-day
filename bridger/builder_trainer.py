@@ -10,7 +10,7 @@ from typing import Union
 
 from torch.utils.data import DataLoader
 
-from bridger import config, policies, qfunctions, replay_buffer, training_history
+from bridger import config, policies, qfunctions, replay_buffer, training_history, utils
 
 
 def get_hyperparam_parser(parser=None):
@@ -54,37 +54,46 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
 
 # TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
 # mode, debug mode, display mode) as Lightning Callbacks
+
+# pylint: disable=too-many-instance-attributes
 class BridgeBuilderTrainer(pl.LightningModule):
-    def __init__(self, hparams):
+    @utils.validate_input("BridgeBuilderTrainer", config.bridger_config)
+    def __init__(self, hparams=None, **kwargs):
         """Constructor for the BridgeBuilderTrainer Module
 
-        Args:
-            hparams: a Namespace object, of the kind returned by an argparse
-                     ArgumentParser. For more details, see get_hyperparam_parser.
-        """
+        Args: hparams will be a dictionary or argparse.Namespace object
+            containing hyperparameters to be used for initialization
 
-        super(BridgeBuilderTrainer, self).__init__()
-        #  TODO(arvind) Simplify once you understand hyperparam handling in PL 1.3
-        for k, v in hparams.__dict__.items():
-            self.hparams[k] = v
-        torch.manual_seed(hparams.seed)
+        Keyword Args: a dictionary containing hyperparameters to be used for
+            initializing this LightningModule
+
+        Note - if a key is found in both `hparams` and `kwargs`, the value in
+            `kwargs` will be used"""
+
+        super().__init__()
+        if hparams:
+            self.save_hyperparameters(hparams)
+        if kwargs:
+            self.save_hyperparameters(kwargs)
+
+        torch.manual_seed(self.hparams.seed)
 
         self.env = make_env(
-            name=hparams.env_name,
-            width=hparams.env_width,
-            force_standard_config=hparams.env_force_standard_config,
+            name=self.hparams.env_name,
+            width=self.hparams.env_width,
+            force_standard_config=self.hparams.env_force_standard_config,
         )
         self._validation_env = make_env(
-            name=hparams.env_name,
-            width=hparams.env_width,
-            force_standard_config=hparams.env_force_standard_config,
+            name=self.hparams.env_name,
+            width=self.hparams.env_width,
+            force_standard_config=self.hparams.env_force_standard_config,
         )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
-            capacity=hparams.capacity,
-            alpha=hparams.alpha,
-            beta=hparams.beta_training_start,
-            batch_size=hparams.batch_size,
+            capacity=self.hparams.capacity,
+            alpha=self.hparams.alpha,
+            beta=self.hparams.beta_training_start,
+            batch_size=self.hparams.batch_size,
         )
 
         self.Q = qfunctions.CNNQ(*self.env.shape, self.env.nA)
@@ -97,18 +106,18 @@ class BridgeBuilderTrainer(pl.LightningModule):
         # environment.
         self._validation_policy = policies.GreedyPolicy(self.Q)
 
-        self.epsilon = hparams.epsilon_training_start
+        self.epsilon = self.hparams.epsilon_training_start
         self.memories = self._memory_generator()
 
         self.next_action = None
         self.state = self.env.reset()
         self._breakpoint = {"step": 0, "episode": 0}
 
-        if hparams.debug:
+        if self.hparams.debug:
             # TODO(arvind): Move as much of this functionality as possible into
             # the tensorboard logging already being done here.
             self.training_history = training_history.TrainingHistory(
-                serialization_dir=hparams.training_history_dir
+                serialization_dir=self.hparams.training_history_dir
             )
 
     @property
@@ -207,7 +216,7 @@ class BridgeBuilderTrainer(pl.LightningModule):
         while self.hparams.interactive_mode:
             if all(self._breakpoint[k] > v for k, v in thresholds.items()):
                 break  # Don't stop for a breakpoint
-            self._breakpoint.update(thresholds)
+            self._breakpoint |= thresholds
             self.next_action = None
             IPython.embed()
 
@@ -352,21 +361,3 @@ class BridgeBuilderTrainer(pl.LightningModule):
         )
 
     # TODO(arvind): Override hooks to load data appropriately for test
-
-    @staticmethod
-    def instantiate(**kwargs):
-        missing = [key for key in kwargs if key not in config.bridger_config]
-        if len(missing) > 0:
-            missing = ",".join(missing)
-            print(
-                "WARNING: The following are not recognized hyperparameters "
-                f"for BridgeBuilderTrainer: {missing}"
-            )
-        hparams = dict(**kwargs)
-        for key, val in config.bridger_config.items():
-            if key not in hparams:
-                check = not val.get("required", False)
-                assert check, f"Required argument {key} not provided"
-                if "default" in val:
-                    hparams[key] = val["default"]
-        return BridgeBuilderTrainer(argparse.Namespace(**hparams))
