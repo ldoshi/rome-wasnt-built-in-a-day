@@ -51,7 +51,11 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 "Early Stopping",
                 [
                     EarlyStopping(
-                        monitor="val_reward", patience=1, mode="max", strict=True
+                        monitor="val_reward",
+                        patience=1,
+                        mode="max",
+                        strict=True,
+                        check_on_train_epoch_end=False,
                     )
                 ],
                 3,
@@ -72,10 +76,9 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             def __init__(self):
                 self.count = 0
 
-            def on_train_batch_end(
-                self, trainer, model, outputs, batch, batch_idx, dataloader_idx
-            ):
-                self.count += 1
+            def on_validation_end(self, trainer, model):
+                if not trainer.sanity_checking:
+                    self.count += 1
 
         def get_model() -> builder_trainer.BridgeBuilderTrainer:
             return builder_trainer.BridgeBuilderTrainer(
