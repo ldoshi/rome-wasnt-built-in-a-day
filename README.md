@@ -14,7 +14,7 @@ The bot must also learn to combine skills to accomplish higher level tasks, e.g 
 
 To make the world interesting, the bot will also need to learn notions of creativity and style. For example, instead of building the minimum bridge for a span, it may opt to build a covered bridge or a bridge with arches.
 
-We will need to hone a neural architecture that allows the bot to incrementally pick up new skills and understanding. Just as a human reads a Wikipedia page about a new type of bridge, we will create an interface that allows us to easily expand the bot's knowledgebase, whether its learning a new style or facing a new challenge in its environment.
+We will need to hone a neural architecture that allows the bot to incrementally pick up new skills and understanding. Just as a human reads a Wikipedia page about a new type of bridges, we will create an interface that allows us to easily expand the bot's knowledgebase, whether its learning a new style or facing a new challenge in its environment.
 
 Throughout the process, we will also build tools to make our bot development, training and debugging more efficient.
 
