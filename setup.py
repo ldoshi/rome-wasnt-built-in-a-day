@@ -16,7 +16,7 @@ setup(
         "matplotlib>=3.3.2",
         "parameterized>=0.8.1",
         "pytest>=6.2.2",
-        "pytorch-lightning==1.4.7",
+        "pytorch-lightning==1.3.0",
         "torch>=1.8.0",
     ],
     # TODO: add metadata kwargs if uploading to PyPI
