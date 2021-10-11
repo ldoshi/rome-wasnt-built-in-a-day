@@ -16,7 +16,7 @@ from bridger import config, policies, qfunctions, replay_buffer, training_histor
 def get_hyperparam_parser(parser=None):
     return config.get_hyperparam_parser(
         config.bridger_config,
-        description="Hyperparameter Parser for the BridgeBuilderTrainer Model",
+        description="Hyperparameter Parser for the BridgeBuilderModel",
         parser=parser,
     )
 
@@ -56,10 +56,10 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
 # mode, debug mode, display mode) as Lightning Callbacks
 
 # pylint: disable=too-many-instance-attributes
-class BridgeBuilderTrainer(pl.LightningModule):
-    @utils.validate_input("BridgeBuilderTrainer", config.bridger_config)
+class BridgeBuilderModel(pl.LightningModule):
+    @utils.validate_input("BridgeBuilderModel", config.bridger_config)
     def __init__(self, hparams=None, **kwargs):
-        """Constructor for the BridgeBuilderTrainer Module
+        """Constructor for the BridgeBuilderModel Module
 
         Args: hparams will be a dictionary or argparse.Namespace object
             containing hyperparameters to be used for initialization
