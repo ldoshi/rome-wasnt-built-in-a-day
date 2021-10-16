@@ -80,8 +80,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 if not trainer.sanity_checking:
                     self.count += 1
 
-        def get_model() -> builder_trainer.BridgeBuilderTrainer:
-            return builder_trainer.BridgeBuilderTrainer(
+        def get_model() -> builder_trainer.BridgeBuilderModel:
+            return builder_trainer.BridgeBuilderModel(
                 env_width=3,
                 env_force_standard_config=True,
                 max_episode_length=1,

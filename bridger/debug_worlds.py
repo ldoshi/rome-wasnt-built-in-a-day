@@ -6,7 +6,7 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 
 from bridger import training_panel
-from bridger.builder_trainer import BridgeBuilderTrainer
+from bridger.builder_trainer import BridgeBuilderModel
 
 # Creates the smallest world where a bridge can be built. Cycles
 # through a series of actions to build simple episodes into the
@@ -18,7 +18,7 @@ def tiny_world():
 
     MAX_EPISODE_LENGTH = 5
 
-    model = BridgeBuilderTrainer(
+    model = BridgeBuilderModel(
         env_width=4,
         env_force_standard_config=True,
         debug=True,

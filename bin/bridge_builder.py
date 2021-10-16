@@ -36,11 +36,11 @@ def test():
         # TODO(arvind): Decide on and implement the functionality we'd like to
         #               support in terms of loading weights from a checkpoint
         #               while using newly specified config hyperparameters
-        model = builder_trainer.BridgeBuilderTrainer.load_from_checkpoint(
+        model = builder_trainer.BridgeBuilderModel.load_from_checkpoint(
             hparams.load_checkpoint_path, hparams=hparams
         )
     else:
-        model = builder_trainer.BridgeBuilderTrainer(hparams)
+        model = builder_trainer.BridgeBuilderModel(hparams)
 
     callbacks = [
         # Only retains checkpoint with minimum monitored quantity seen so far.
