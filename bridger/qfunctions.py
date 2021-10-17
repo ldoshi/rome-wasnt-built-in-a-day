@@ -29,7 +29,7 @@ class CNNQ(torch.nn.Module):
 
     def forward(self, x):
         x = x.reshape(-1, self.image_height, self.image_width)
-        x = _encode_state_to_channels_second_one_hot(x, self.CNN[0].in_channels).float()
+        x = encode_enum_state_to_channels(x, self.CNN[0].in_channels).float()
         for layer in self.CNN:
             x = torch.relu(layer(x))
         x = self.DNN[0](x.reshape(x.shape[0], -1))
@@ -38,11 +38,12 @@ class CNNQ(torch.nn.Module):
         return x
 
 
-def _encode_state_to_channels_second_one_hot(
+def encode_enum_state_to_channels(
     state_tensor: torch.Tensor, num_channels: int
 ):
     """Takes a 3-dim state tensor and returns a one-hot tensor with a new channels
     dimension as the second dimension (batch, channels, height, width)"""
+    # Note: if memory-usage problems, consider alternatives to int64 tensor
     x = F.one_hot(state_tensor.long(), num_channels)
     return x.permute(0, 3, 1, 2)
 
