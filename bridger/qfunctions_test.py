@@ -16,7 +16,7 @@ class QFunctionsTest(unittest.TestCase):
              [[0, 1, 0], [1, 0, 1]],
              [[0, 0, 1], [0, 0, 0]]]]
         )
-        one_hot = qfunctions._encode_state_to_channels_second_one_hot(index_tensor, 3)
+        one_hot = qfunctions.encode_enum_state_to_channels(index_tensor, 3)
         self.assertTrue(torch.equal(one_hot, expected_tensor))
 
 
@@ -29,7 +29,7 @@ class QFunctionsTest(unittest.TestCase):
                 [[[0,0]], [[0,1]], [[1,0]]]
             ]
         )
-        one_hot = qfunctions._encode_state_to_channels_second_one_hot(index_tensor, 3)
+        one_hot = qfunctions.encode_enum_state_to_channels(index_tensor, 3)
         self.assertTrue(torch.equal(one_hot, expected_tensor))
 
 
