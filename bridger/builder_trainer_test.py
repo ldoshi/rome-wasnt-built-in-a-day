@@ -58,7 +58,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                         check_on_train_epoch_end=False,
                     )
                 ],
-                3,
+                2,
             ),
         ]
     )
@@ -84,6 +84,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             return builder_trainer.BridgeBuilderModel(
                 env_width=3,
                 env_force_standard_config=True,
+                seed=12345,
                 max_episode_length=1,
                 val_batch_size=1,
             )
