@@ -46,7 +46,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("No Early Stopping", [], 5),
+            ("No Early Stopping", []),
             (
                 "Early Stopping",
                 [
@@ -58,7 +58,6 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                         check_on_train_epoch_end=False,
                     )
                 ],
-                3,
             ),
         ]
     )
@@ -66,9 +65,13 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         self,
         name: str,
         early_stopping_callback: list[Callback],
-        expected_calls_count: int,
     ):
-        """Checks early stopping callback actually stops training."""
+        """Checks early stopping callback actually stops training.
+
+        The training should stop before max_steps if early stopping is
+        triggered. The exact number of steps may vary as the network
+        architecture evolves.
+        """
 
         class CountingCallback(Callback):
             """Callback that counts the number of training batches."""
@@ -84,9 +87,12 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             return builder_trainer.BridgeBuilderModel(
                 env_width=3,
                 env_force_standard_config=True,
+                seed=12345,
                 max_episode_length=1,
                 val_batch_size=1,
             )
+
+        max_steps = 50
 
         def get_trainer(callbacks: list[Callback]) -> Trainer:
             return Trainer(
@@ -94,13 +100,17 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 # The validation batch size can be adjusted via a config, but
                 # we only need a single batch.
                 limit_val_batches=1,
-                max_steps=5,
+                max_steps=max_steps,
                 callbacks=callbacks,
             )
 
         callbacks = [CountingCallback()] + early_stopping_callback
         get_trainer(callbacks).fit(get_model())
-        self.assertEqual(callbacks[0].count, expected_calls_count)
+
+        if early_stopping_callback:
+            self.assertLess(callbacks[0].count, max_steps)
+        else:
+            self.assertEqual(callbacks[0].count, max_steps)
         # TODO: Make a more coherent plan for writing test output to a temp dir
         #       and retaining it on failure
         shutil.rmtree("lightning_logs")
