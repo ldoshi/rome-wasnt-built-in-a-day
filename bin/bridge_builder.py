@@ -70,8 +70,13 @@ def test():
             ),
         ]
         # Open a subprocess
+        training_viewer_args = ["training_viewer.py"]
+        for key, value in vars(hparams).items():
+            training_viewer_args.append("--" + key.replace("_", "-"))
+            training_viewer_args.append(str(value))
+        
         subprocess.Popen(
-            args=["training_viewer.py"],
+            args=training_viewer_args,
             cwd=Path.cwd(),
         )
     trainer = Trainer(
