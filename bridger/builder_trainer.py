@@ -22,7 +22,7 @@ def get_hyperparam_parser(parser=None):
 
 
 def make_env(
-    name: str, width: int, force_standard_config: bool, seed: Union[int, None] = None
+    name: str, width: int, force_standard_config: bool, seed: Union[int, float, None] = None
 ) -> gym.Env:
     env = gym.make(
         name, width=width, force_standard_config=force_standard_config, seed=seed
