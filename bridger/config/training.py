@@ -1,3 +1,5 @@
+from argparse import BooleanOptionalAction
+
 hparam_dict = dict()
 
 key = "inter_training_steps"
@@ -36,7 +38,7 @@ help_str = "Random seed for training"
 hparam_dict[key]["help"] = help_str
 
 key = "debug"
-hparam_dict[key] = {"type": bool, "default": False}
+hparam_dict[key] = {"type": bool, "default": False, "action": BooleanOptionalAction}
 help_str = "Whether to log to TrainingHistory for debugging purposes"
 hparam_dict[key]["help"] = help_str
 

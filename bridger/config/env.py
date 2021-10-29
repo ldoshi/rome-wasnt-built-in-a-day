@@ -18,6 +18,6 @@ help_str = "Whether to use only the standard environment configuration."
 hparam_dict[key]["help"] = help_str
 
 key = "display"
-hparam_dict[key] = {"type": bool, "default": False}
+hparam_dict[key] = {"type": bool, "default": False, "action": BooleanOptionalAction}
 help_str = "Whether to render the environment after every action taken"
 hparam_dict[key]["help"] = help_str
