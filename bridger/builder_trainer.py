@@ -125,8 +125,7 @@ class BridgeBuilderModel(pl.LightningModule):
         return policies.GreedyPolicy(self.Q)
 
     def on_train_start(self):
-        for _ in range(self.hparams.initial_memories_count):
-            self.make_memories()
+        self.make_memories(self.hparams.initial_memories_count)
 
     def on_train_batch_end(self, outputs, batch, batch_idx, dataloader_idx):
         self.update_target()
@@ -154,9 +153,10 @@ class BridgeBuilderModel(pl.LightningModule):
         for triple in triples:
             self.training_history.add_q_values(training_step, *triple)
 
-    def make_memories(self):
+    def make_memories(self, requested_memory_count=None):
+        memory_count = requested_memory_count if requested_memory_count else self.hparams.inter_training_steps
         with torch.no_grad():
-            for i in range(self.hparams.inter_training_steps):
+            for _ in range(memory_count):
                 next(self.memories)
 
     def _memory_generator(self):
