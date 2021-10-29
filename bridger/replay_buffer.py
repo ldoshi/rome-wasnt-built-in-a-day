@@ -177,11 +177,12 @@ class SumTree:
         if n == 0:
             return []
 
+        random_values = torch.rand(n).numpy()
         if stratified:
             # Sorted by construction.
-            target_values = (np.random.rand(n) + np.arange(n)) / n
+            target_values = (random_values + np.arange(n)) / n
         else:
-            target_values = np.sort(np.random.rand(n))
+            target_values = np.sort(random_values)
 
         return self._sample_collector(target_values * self._tree_total_value)
 
