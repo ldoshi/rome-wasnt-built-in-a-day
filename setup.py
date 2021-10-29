@@ -14,8 +14,6 @@ setup(
         "gym-bridges>=0.0.1",
         "numpy>=1.18.5",
         "matplotlib>=3.3.2",
-        "parameterized>=0.8.1",
-        "pytest>=6.2.2",
         "pytorch-lightning==1.4.7",
         "torch>=1.8.0",
     ],
