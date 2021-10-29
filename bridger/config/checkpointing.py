@@ -1,3 +1,5 @@
+from argparse import BooleanOptionalAction
+
 hparam_dict = dict()
 
 key = "checkpoint_model_dir"
@@ -16,6 +18,6 @@ help_str = "Number of training batch steps per checkpoint creation"
 hparam_dict[key]["help"] = help_str
 
 key = "interactive_mode"
-hparam_dict[key] = {"type": bool, "default": False}
+hparam_dict[key] = {"type": bool, "default": False, "action": BooleanOptionalAction}
 help_str = "Boolean indicating whether to run training interactively"
 hparam_dict[key]["help"] = help_str

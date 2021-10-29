@@ -69,11 +69,24 @@ def test():
                 max_episode_length=MAX_DEMO_EPISODE_LENGTH,
             ),
         ]
+
+        # TODO(lyric): Replace with multiprocessing.
+        #
         # Open a subprocess
         training_viewer_args = ["training_viewer.py"]
         for key, value in vars(hparams).items():
-            training_viewer_args.append("--" + key.replace("_", "-"))
-            training_viewer_args.append(str(value))
+            # Special handling for bool because of
+            # BooleanOptionalAction and the inability to pass False to a
+            # boolean flag in argparse.
+            if value is False:
+                training_viewer_args.append("--no-" + key.replace("_", "-"))
+            else:
+                training_viewer_args.append("--" + key.replace("_", "-"))
+                if value is True:
+                    # No value is provided for boolean True flags.
+                    continue
+                
+                training_viewer_args.append(str(value))
         
         subprocess.Popen(
             args=training_viewer_args,
