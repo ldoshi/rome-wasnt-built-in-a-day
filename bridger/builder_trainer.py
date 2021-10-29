@@ -77,16 +77,19 @@ class BridgeBuilderModel(pl.LightningModule):
             self.save_hyperparameters(kwargs)
 
         torch.manual_seed(self.hparams.seed)
+        np.random.seed(self.hparams.seed)
 
         self.env = make_env(
             name=self.hparams.env_name,
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
+            seed=torch.rand(1).item()
         )
         self._validation_env = make_env(
             name=self.hparams.env_name,
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
+            seed=torch.rand(1).item()
         )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
