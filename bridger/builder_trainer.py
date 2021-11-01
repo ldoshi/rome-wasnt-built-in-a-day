@@ -22,7 +22,10 @@ def get_hyperparam_parser(parser=None):
 
 
 def make_env(
-    name: str, width: int, force_standard_config: bool, seed: Union[int, float, None] = None
+    name: str,
+    width: int,
+    force_standard_config: bool,
+    seed: Union[int, float, None] = None,
 ) -> gym.Env:
     env = gym.make(
         name, width=width, force_standard_config=force_standard_config, seed=seed
@@ -83,13 +86,13 @@ class BridgeBuilderModel(pl.LightningModule):
             name=self.hparams.env_name,
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
-            seed=torch.rand(1).item()
+            seed=torch.rand(1).item(),
         )
         self._validation_env = make_env(
             name=self.hparams.env_name,
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
-            seed=torch.rand(1).item()
+            seed=torch.rand(1).item(),
         )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
@@ -157,7 +160,11 @@ class BridgeBuilderModel(pl.LightningModule):
             self.training_history.add_q_values(training_step, *triple)
 
     def make_memories(self, requested_memory_count=None):
-        memory_count = requested_memory_count if requested_memory_count else self.hparams.inter_training_steps
+        memory_count = (
+            requested_memory_count
+            if requested_memory_count
+            else self.hparams.inter_training_steps
+        )
         with torch.no_grad():
             for _ in range(memory_count):
                 next(self.memories)
@@ -315,6 +322,36 @@ class BridgeBuilderModel(pl.LightningModule):
             td_errors = weights * td_errors
         return (td_errors ** 2).mean()
 
+    def log_batch(self, batch, batch_idx):
+        tensorboard = self.logger.experiment
+        indices, states, actions, next_states, rewards, success, weights = batch
+        imgs = torch.stack([states, next_states, torch.zeros(size=states.shape)], dim=1)
+        imgs = torch.nn.functional.pad(imgs, (1, 1, 1, 1))
+        imgs[:, :, 0, :] = 2
+        imgs[:, :, -1, :] = 2
+        imgs[:, :, :, 0] = 2
+        imgs[:, :, :, -1] = 2
+        imgs = torch.nn.functional.interpolate(imgs, scale_factor=10)
+
+        tensorboard.add_images(
+            "Transition",
+            imgs,
+            global_step=batch_idx,
+            dataformats="NCHW",
+        )
+        for i in range(len(indices)):
+            tensorboard.add_scalars(
+                f"batch_{batch_idx}",
+                {
+                    "index": indices[i],
+                    "action": actions[i],
+                    "reward": rewards[i],
+                    "success": success[i],
+                    "weights": weights[i],
+                },
+                global_step=i,
+            )
+
     def training_step(self, batch, batch_idx):
         indices, states, actions, next_states, rewards, success, weights = batch
         td_errors = self.get_td_error(states, actions, next_states, rewards, success)
@@ -328,6 +365,7 @@ class BridgeBuilderModel(pl.LightningModule):
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
+        self.log_batch(batch, batch_idx)
         # Update replay buffer
         self.replay_buffer.update_priorities(indices, td_errors)
         self._update_beta()
