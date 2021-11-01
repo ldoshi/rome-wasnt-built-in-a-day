@@ -4,14 +4,18 @@ import gym
 import gym_bridges.envs
 import numpy as np
 from bridger import builder
+import pathlib
+import pickle
 import pytorch_lightning as pl
 import torch
+import time
 from typing import Union
 
 from torch.utils.data import DataLoader
 
-from bridger import config, policies, qfunctions, replay_buffer, training_history, utils
+from bridger import config, logging_utils, policies, qfunctions, replay_buffer, training_history, utils
 
+_TRAINING_BATCH_HISTORY_PREFIX = "training_batch_history_entry_{}"
 
 def get_hyperparam_parser(parser=None):
     return config.get_hyperparam_parser(
@@ -122,6 +126,17 @@ class BridgeBuilderModel(pl.LightningModule):
             self.training_history = training_history.TrainingHistory(
                 serialization_dir=self.hparams.training_history_dir
             )
+
+            # TODO(lyric): Refactor serialization to be more generic
+            # in logging utils and shared with training history in a
+            # unified way. Consider handling None serialization_dir as
+            # no-op within the module to simplify usage.
+            if self.hparams.training_batch_history_dir:
+                logging_utils.create_serialization_dir(self.hparams.training_batch_history_dir)
+
+                id = int(time.time() * 1e6)
+                self.training_batch_history_path = pathlib.Path(
+                    self.hparams.training_batch_history_dir, _TRAINING_BATCH_HISTORY_PREFIX.format(id))
 
     @property
     def trained_policy(self):
@@ -315,7 +330,15 @@ class BridgeBuilderModel(pl.LightningModule):
             td_errors = weights * td_errors
         return (td_errors ** 2).mean()
 
+
+    def serialize_training_batch(self, batch) -> None:
+        with self.training_batch_history_path.open(mode="ab") as f:
+            pickle.dump(batch, f)
+    
     def training_step(self, batch, batch_idx):
+        if self.hparams.debug:
+            self.serialize_training_batch(batch)
+        
         indices, states, actions, next_states, rewards, success, weights = batch
         td_errors = self.get_td_error(states, actions, next_states, rewards, success)
         if self.hparams.debug:

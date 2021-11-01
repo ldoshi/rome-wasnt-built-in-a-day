@@ -5,6 +5,7 @@ import pickle
 import time
 
 from collections import defaultdict
+from bridger import logging_utils
 
 _TRAINING_HISTORY_PREFIX = "training_history_entry_{}"
 
@@ -85,11 +86,8 @@ class TrainingHistory:
         self._state_hash = state_hash
         self._serialization_dir = serialization_dir
         if serialization_dir:
-            path = pathlib.Path(self._serialization_dir)
-            path.mkdir(parents=True, exist_ok=True)
-            for filepath in path.iterdir():
-                filepath.unlink()
-
+            logging_utils.create_serialization_dir(serialization_dir)
+            
         self._deserialization_dir = deserialization_dir
         self._most_recently_deserialized = None
 

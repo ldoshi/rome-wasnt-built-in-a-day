@@ -93,6 +93,7 @@ def test():
             cwd=Path.cwd(),
         )
     trainer = Trainer(
+        log_every_n_steps=1,
         gradient_clip_val=hparams.gradient_clip_val,
         val_check_interval=hparams.val_check_interval,
         # The validation batch size can be adjusted via a config, but
