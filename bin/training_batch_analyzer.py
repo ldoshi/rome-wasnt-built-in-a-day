@@ -22,6 +22,7 @@ tbh = training_batch_histories
 
 @dataclasses.dataclass
 class TrainingBatch:
+    batch_idx: int
     indices: torch.Tensor
     states: torch.Tensor
     actions: torch.Tensor
@@ -29,6 +30,7 @@ class TrainingBatch:
     rewards: torch.Tensor
     successes: torch.Tensor
     weights: torch.Tensor
+    loss: torch.Tensor
 
 
 class TrainingBatchHistory:
@@ -38,16 +40,25 @@ class TrainingBatchHistory:
             try:
                 while True:
                     raw_batch = pickle.load(f)
-                    assert len(raw_batch) == 7, raw_batch
+                    assert len(raw_batch) == 9, raw_batch
                     self.batches.append(
                         TrainingBatch(
-                            indices=raw_batch[0],
-                            states=raw_batch[1],
-                            actions=raw_batch[2],
-                            next_states=raw_batch[3],
-                            rewards=raw_batch[4],
-                            successes=raw_batch[5],
-                            weights=raw_batch[6],
+                            **dict(
+                                zip(
+                                    [
+                                        "loss",
+                                        "indices",
+                                        "states",
+                                        "actions",
+                                        "next_states",
+                                        "rewards",
+                                        "successes",
+                                        "weights",
+                                        "batch_idx",
+                                    ],
+                                    raw_batch,
+                                )
+                            )
                         )
                     )
 
@@ -61,47 +72,28 @@ def diff_training_batch_histories(
     """Identifies the first position for which the history_x and history_y differ on at least one field."""
     stop = False
     for step, (x, y) in enumerate(tqdm(zip(history_x.batches, history_y.batches))):
-        if torch.any(x.indices != y.indices):
-            print(f"Indices mismatch at step {step}")
-            print(x.indices)
-            print(y.indices)
-            stop = True
+        for field, container in x.__dataclass_fields__.items():
+            typ = container.type
+            value_x = getattr(x, field)
+            value_y = getattr(y, field)
+            try:
+                if typ == torch.Tensor:
+                    if value_x.type() == "torch.BoolTensor":
+                        if torch.all(value_x == value_y):
+                            continue
+                    elif torch.allclose(value_x, value_y):
+                        continue
+                elif value_x == value_y:
+                    continue
 
-        if torch.any(x.states != y.states):
-            print(f"States mismatch at step {step}")
-            print(x.states)
-            print(y.states)
-            stop = True
+                print(f"Mismatch in {field} at step {step}")
+                print(value_x)
+                print(value_y)
+                stop = True
+            except:
+                import IPython
 
-        if torch.any(x.actions != y.actions):
-            print(f"Actions mismatch at step {step}")
-            print(x.actions)
-            print(y.actions)
-            stop = True
-
-        if torch.any(x.next_states != y.next_states):
-            print(f"Next_States mismatch at step {step}")
-            print(x.next_states)
-            print(y.next_states)
-            stop = True
-
-        if torch.any(x.rewards != y.rewards):
-            print(f"Rewards mismatch at step {step}")
-            print(x.rewards)
-            print(y.rewards)
-            stop = True
-
-        if torch.any(x.successes != y.successes):
-            print(f"Successes mismatch at step {step}")
-            print(x.successes)
-            print(y.successes)
-            stop = True
-
-        if torch.any(x.weights != y.weights):
-            print(f"Weights mismatch at step {step}")
-            print(x.weights)
-            print(y.weights)
-            stop = True
+                IPython.embed()
 
         if stop:
             break
@@ -113,6 +105,8 @@ def main():
         "--files", type=str, nargs="+", help="Training batch history files"
     )
     args = parser.parse_args()
+
+    global training_batch_histories
 
     assert len(args.files) == 2
     training_batch_histories += [
