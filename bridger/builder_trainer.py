@@ -13,9 +13,18 @@ from typing import Union
 
 from torch.utils.data import DataLoader
 
-from bridger import config, logging_utils, policies, qfunctions, replay_buffer, training_history, utils
+from bridger import (
+    config,
+    logging_utils,
+    policies,
+    qfunctions,
+    replay_buffer,
+    training_history,
+    utils,
+)
 
 _TRAINING_BATCH_HISTORY_PREFIX = "training_batch_history_entry_{}"
+
 
 def get_hyperparam_parser(parser=None):
     return config.get_hyperparam_parser(
@@ -26,7 +35,10 @@ def get_hyperparam_parser(parser=None):
 
 
 def make_env(
-    name: str, width: int, force_standard_config: bool, seed: Union[int, float, None] = None
+    name: str,
+    width: int,
+    force_standard_config: bool,
+    seed: Union[int, float, None] = None,
 ) -> gym.Env:
     env = gym.make(
         name, width=width, force_standard_config=force_standard_config, seed=seed
@@ -87,13 +99,13 @@ class BridgeBuilderModel(pl.LightningModule):
             name=self.hparams.env_name,
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
-            seed=torch.rand(1).item()
+            seed=torch.rand(1).item(),
         )
         self._validation_env = make_env(
             name=self.hparams.env_name,
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
-            seed=torch.rand(1).item()
+            seed=torch.rand(1).item(),
         )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
@@ -132,11 +144,15 @@ class BridgeBuilderModel(pl.LightningModule):
             # unified way. Consider handling None serialization_dir as
             # no-op within the module to simplify usage.
             if self.hparams.training_batch_history_dir:
-                logging_utils.create_serialization_dir(self.hparams.training_batch_history_dir)
+                logging_utils.create_serialization_dir(
+                    self.hparams.training_batch_history_dir
+                )
 
                 id = int(time.time() * 1e6)
                 self.training_batch_history_path = pathlib.Path(
-                    self.hparams.training_batch_history_dir, _TRAINING_BATCH_HISTORY_PREFIX.format(id))
+                    self.hparams.training_batch_history_dir,
+                    _TRAINING_BATCH_HISTORY_PREFIX.format(id),
+                )
 
     @property
     def trained_policy(self):
@@ -172,7 +188,11 @@ class BridgeBuilderModel(pl.LightningModule):
             self.training_history.add_q_values(training_step, *triple)
 
     def make_memories(self, requested_memory_count=None):
-        memory_count = requested_memory_count if requested_memory_count else self.hparams.inter_training_steps
+        memory_count = (
+            requested_memory_count
+            if requested_memory_count
+            else self.hparams.inter_training_steps
+        )
         with torch.no_grad():
             for _ in range(memory_count):
                 next(self.memories)
@@ -330,27 +350,26 @@ class BridgeBuilderModel(pl.LightningModule):
             td_errors = weights * td_errors
         return (td_errors ** 2).mean()
 
-
-    def serialize_training_batch(self, batch) -> None:
+    def serialize_training_batch(self, batch, train_loss, batch_idx) -> None:
         with self.training_batch_history_path.open(mode="ab") as f:
-            pickle.dump(batch, f)
-    
+            pickle.dump((batch_idx, *batch, train_loss), f)
+
     def training_step(self, batch, batch_idx):
-        if self.hparams.debug:
-            self.serialize_training_batch(batch)
-        
         indices, states, actions, next_states, rewards, success, weights = batch
         td_errors = self.get_td_error(states, actions, next_states, rewards, success)
-        if self.hparams.debug:
-            triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
-            for triple in triples:
-                # For debuging only. Averages the td error per (state, action) pair.
-                self.training_history.add_td_error(batch_idx, *triple)
 
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
+
+        if self.hparams.debug:
+            self.serialize_training_batch(batch, batch_idx, loss)
+            triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
+            for triple in triples:
+                # For debuging only. Averages the td error per (state, action) pair.
+                self.training_history.add_td_error(batch_idx, *triple)
+
         # Update replay buffer
         self.replay_buffer.update_priorities(indices, td_errors)
         self._update_beta()

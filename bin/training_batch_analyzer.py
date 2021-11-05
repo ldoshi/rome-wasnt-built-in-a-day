@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-"""Display training batch debugging information. 
+"""Display training batch debugging information.
 
 The training batch analyzer reads training batch data from the
-file(s) indicated by the flag `training_batch_history_files` and offers a suite of interactive analysis functions. 
+file(s) indicated by the flag `training_batch_history_files` and offers a suite of interactive analysis functions.
 
 This tool is intended to be run with -i.
 
@@ -14,8 +14,11 @@ import dataclasses
 import pickle
 import torch
 
+from tqdm import tqdm
+
 training_batch_histories = []
 tbh = training_batch_histories
+
 
 @dataclasses.dataclass
 class TrainingBatch:
@@ -27,31 +30,37 @@ class TrainingBatch:
     successes: torch.Tensor
     weights: torch.Tensor
 
-class TrainingBatchHistory:
 
+class TrainingBatchHistory:
     def __init__(self, filename: str):
         self.batches = []
-        with open(filename, 'rb') as f:
+        with open(filename, "rb") as f:
             try:
                 while True:
                     raw_batch = pickle.load(f)
                     assert len(raw_batch) == 7, raw_batch
-                    self.batches.append(TrainingBatch(
-                        indices=raw_batch[0],
-                        states=raw_batch[1],
-                        actions=raw_batch[2],
-                        next_states=raw_batch[3],
-                        rewards=raw_batch[4],
-                        successes=raw_batch[5],
-                        weights=raw_batch[6]))
-                        
+                    self.batches.append(
+                        TrainingBatch(
+                            indices=raw_batch[0],
+                            states=raw_batch[1],
+                            actions=raw_batch[2],
+                            next_states=raw_batch[3],
+                            rewards=raw_batch[4],
+                            successes=raw_batch[5],
+                            weights=raw_batch[6],
+                        )
+                    )
+
             except EOFError:
                 pass
 
-def diff_training_batch_histories(history_x: TrainingBatchHistory, history_y: TrainingBatchHistory) -> None:
+
+def diff_training_batch_histories(
+    history_x: TrainingBatchHistory, history_y: TrainingBatchHistory
+) -> None:
     """Identifies the first position for which the history_x and history_y differ on at least one field."""
     stop = False
-    for step, (x, y) in enumerate(zip(history_x.batches, history_y.batches)):
+    for step, (x, y) in enumerate(tqdm(zip(history_x.batches, history_y.batches))):
         if torch.any(x.indices != y.indices):
             print(f"Indices mismatch at step {step}")
             print(x.indices)
@@ -96,18 +105,23 @@ def diff_training_batch_histories(history_x: TrainingBatchHistory, history_y: Tr
 
         if stop:
             break
-        
-            
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('--files', type=str, nargs='+',
-                        help='Training batch history files')
+    parser = argparse.ArgumentParser(description="Process some integers.")
+    parser.add_argument(
+        "--files", type=str, nargs="+", help="Training batch history files"
+    )
     args = parser.parse_args()
 
-    for filename in args.files:
-        training_batch_histories.append(TrainingBatchHistory(filename))
-    
+    assert len(args.files) == 2
+    training_batch_histories += [
+        TrainingBatchHistory(filename) for filename in args.files
+    ]
+
+    diff_training_batch_histories(*training_batch_histories)
+
 
 if __name__ == "__main__":
-#    app.run(main)
+    #    app.run(main)
     main()

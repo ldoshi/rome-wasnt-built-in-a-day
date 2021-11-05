@@ -7,7 +7,11 @@ setup(
     name="bridger",
     version=__version__,
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
-    scripts=["bin/bridge_builder.py", "bin/training_viewer.py"],
+    scripts=[
+        "bin/bridge_builder.py",
+        "bin/training_viewer.py",
+        "bin/training_batch_analyzer.py",
+    ],
     install_requires=[
         "ipython>=7.21.0",
         "gym>=0.17.3",
