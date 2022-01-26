@@ -1,0 +1,92 @@
+"""Logs pickle-able objects for analysis and debugging.
+
+Usage: To log a new entity, define a LogEntry object in log_entry.py.
+"""
+from typing import Any
+import shutil
+import pickle
+import os
+
+def create_logging_dir(dirname: str) -> None:
+    """Creates directory dirname if it doesn't exist.
+
+    Clears the contents of the directory if the dirname existed previously.
+    
+    Args:
+      dirname: The name of the directory to create.
+    """
+    shutil.rmtree(dirname)
+    os.mkdir(dirname)
+
+class ObjectLogManager():
+    """Provides a unified interface to log any object."""
+
+    def __init__(self, dirname: str):
+        self._dirname = dirname
+        self._object_loggers = {}
+
+    def log(self, log_label: str, log_entry: Any) -> None:
+        """Logs the provided entry to a log file dedicated to log_label.
+        
+        Args:
+          log_label: A unique label describing the log in which to place
+            log_entry. Internally, the log_label is also used as part of the
+            actual log filename.
+          log_entry: The object to be logged.
+        """
+        pass
+    
+# TODO(lyric): Consider changing the buffer size metric to be based on
+# size vs entry count.
+#
+# TODO(lyric): Consider adding enforcement that a given ObjectLogger
+# only logs a single type of entry. Currently this is enforced by
+# convention.
+class ObjectLogger():
+    """Logs pickle-able objects for analysis and debugging."""
+    
+    def __init__(self, dirname: str, log_filename: str, buffer_size=1000):
+        self._dirname = dirname
+        self._log_filename = log_filename
+        self._buffer_size = buffer_size
+        self._buffer = []
+
+    def __enter__(self): 
+        self._log_file = open(os.path.join(self._dirname, self._log_filename), "wb")
+        return self
+        
+    def _flush_buffer(self):
+        if self._buffer:
+            pickle.dump(self._buffer, self._log_file)
+        self._buffer = []
+        
+    def log(self, log_entry: Any) -> None:
+        self._buffer.append(log_entry)
+
+        if len(self._buffer) == self._buffer_size:
+            self._flush_buffer()
+        
+    def __exit__(self,  exc_type,exc_value, exc_traceback):
+        self._flush_buffer()
+        self._log_file.close()
+
+
+def read_object_log(dirname: str, log_filename: str):
+    with open(os.path.join(dirname, log_filename), 'rb') as f:
+        buffer = None
+        while True:
+            try:
+                if not buffer: 
+                    buffer = pickle.load(f)
+
+                for element in buffer:
+                    yield element
+
+                buffer = None
+            except EOFError:
+                break
+    
+
+
+
+
