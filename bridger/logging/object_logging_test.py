@@ -26,12 +26,41 @@ def delete_temp_dir():
     clean_up_dir(path)
     path.rmdir()
 
+_LOG_FILENAME_0 = "log_filename_0"
+_LOG_FILENAME_1 = "log_filename_1"
+
+class TestObjectLogManager(unittest.TestCase):
+
+    def setUp(self):
+        create_temp_dir()
+
+    def tearDown(self):
+        delete_temp_dir()
+
+    def test_object_log_manager_basic(self):
+        log_entries_0 = ["a", "b", "c"]
+        log_entries_1 = ["d"]
+        
+        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+            for log_entry in log_entries_0: 
+                logger.log(_LOG_FILENAME_0, log_entry)
+                
+            for log_entry in log_entries_1: 
+                logger.log(_LOG_FILENAME_1, log_entry)
+
+        for expected_entry, logged_entry in zip(log_entries_0, object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0)):
+            self.assertEqual(expected_entry, logged_entry)
+            
+        for expected_entry, logged_entry in zip(log_entries_1, object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_1)):
+            self.assertEqual(expected_entry, logged_entry)
+
 
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
-    with object_logging.ObjectLogger(dirname=_TMP_DIR, log_filename="test",buffer_size=buffer_size) as object_logger:
-        for entry in entries:
-            object_logger.log(entry)
-    
+    object_logger = object_logging.ObjectLogger(dirname=_TMP_DIR, log_filename="test",buffer_size=buffer_size)
+    for entry in entries:
+        object_logger.log(entry)
+    object_logger.close()
+            
 class TestObjectLogger(unittest.TestCase):
 
     def setUp(self):
@@ -77,7 +106,7 @@ class TestObjectLogger(unittest.TestCase):
             self.assertEqual(expected_entry, logged_entry)
             
             
-            
+
 
 if __name__ == "__main__":
     unittest.main()

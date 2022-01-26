@@ -1,11 +1,18 @@
 """Logs pickle-able objects for analysis and debugging.
 
-Usage: To log a new entity, define a LogEntry object in log_entry.py.
+To log a new entity, define a LogEntry object in log_entry.py.
+
+Usage: 
+  with ObjectLogManager(dirname) as logger:
+    logger.log("history", training_history_event)
+    logger.log("buffer", buffer_event)
+
 """
 from typing import Any
 import shutil
 import pickle
 import os
+import collections
 
 def create_logging_dir(dirname: str) -> None:
     """Creates directory dirname if it doesn't exist.
@@ -19,22 +26,31 @@ def create_logging_dir(dirname: str) -> None:
     os.mkdir(dirname)
 
 class ObjectLogManager():
-    """Provides a unified interface to log any object."""
+    """Provides a unified interface to log pickle-able objects."""
 
     def __init__(self, dirname: str):
         self._dirname = dirname
         self._object_loggers = {}
 
-    def log(self, log_label: str, log_entry: Any) -> None:
-        """Logs the provided entry to a log file dedicated to log_label.
+    def __enter__(self): 
+        return self
+
+    def __exit__(self,  exc_type,exc_value, exc_traceback):
+        for object_logger in self._object_loggers.values():
+            object_logger.close()
+    
+    def log(self, log_filename: str, log_entry: Any) -> None:
+        """Logs the provided entry to a log file named log_filename.
         
         Args:
-          log_label: A unique label describing the log in which to place
-            log_entry. Internally, the log_label is also used as part of the
-            actual log filename.
+          log_filename: A unique label describing the log in which to place
+            log_entry. The label is also the actual log filename.
           log_entry: The object to be logged.
         """
-        pass
+        if log_filename not in self._object_loggers:
+            self._object_loggers[log_filename] = ObjectLogger(dirname=self._dirname, log_filename=log_filename)
+
+        self._object_loggers[log_filename].log(log_entry)        
     
 # TODO(lyric): Consider changing the buffer size metric to be based on
 # size vs entry count.
@@ -50,10 +66,7 @@ class ObjectLogger():
         self._log_filename = log_filename
         self._buffer_size = buffer_size
         self._buffer = []
-
-    def __enter__(self): 
         self._log_file = open(os.path.join(self._dirname, self._log_filename), "wb")
-        return self
         
     def _flush_buffer(self):
         if self._buffer:
@@ -66,7 +79,7 @@ class ObjectLogger():
         if len(self._buffer) == self._buffer_size:
             self._flush_buffer()
         
-    def __exit__(self,  exc_type,exc_value, exc_traceback):
+    def close(self):
         self._flush_buffer()
         self._log_file.close()
 
