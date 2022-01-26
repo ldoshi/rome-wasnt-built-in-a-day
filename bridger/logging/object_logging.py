@@ -14,82 +14,87 @@ import pickle
 import os
 import collections
 
+
 def create_logging_dir(dirname: str) -> None:
     """Creates directory dirname if it doesn't exist.
 
     Clears the contents of the directory if the dirname existed previously.
-    
+
     Args:
       dirname: The name of the directory to create.
     """
     shutil.rmtree(dirname)
     os.mkdir(dirname)
 
-class ObjectLogManager():
+
+class ObjectLogManager:
     """Provides a unified interface to log pickle-able objects."""
 
     def __init__(self, dirname: str):
         self._dirname = dirname
         self._object_loggers = {}
 
-    def __enter__(self): 
+    def __enter__(self):
         return self
 
-    def __exit__(self,  exc_type,exc_value, exc_traceback):
+    def __exit__(self, exc_type, exc_value, exc_traceback):
         for object_logger in self._object_loggers.values():
             object_logger.close()
-    
+
     def log(self, log_filename: str, log_entry: Any) -> None:
         """Logs the provided entry to a log file named log_filename.
-        
+
         Args:
           log_filename: A unique label describing the log in which to place
             log_entry. The label is also the actual log filename.
           log_entry: The object to be logged.
         """
         if log_filename not in self._object_loggers:
-            self._object_loggers[log_filename] = ObjectLogger(dirname=self._dirname, log_filename=log_filename)
+            self._object_loggers[log_filename] = ObjectLogger(
+                dirname=self._dirname, log_filename=log_filename
+            )
 
-        self._object_loggers[log_filename].log(log_entry)        
-    
+        self._object_loggers[log_filename].log(log_entry)
+
+
 # TODO(lyric): Consider changing the buffer size metric to be based on
 # size vs entry count.
 #
 # TODO(lyric): Consider adding enforcement that a given ObjectLogger
 # only logs a single type of entry. Currently this is enforced by
 # convention.
-class ObjectLogger():
+class ObjectLogger:
     """Logs pickle-able objects for analysis and debugging."""
-    
+
     def __init__(self, dirname: str, log_filename: str, buffer_size=1000):
         self._dirname = dirname
         self._log_filename = log_filename
         self._buffer_size = buffer_size
         self._buffer = []
         self._log_file = open(os.path.join(self._dirname, self._log_filename), "wb")
-        
+
     def _flush_buffer(self):
         if self._buffer:
             pickle.dump(self._buffer, self._log_file)
         self._buffer = []
-        
+
     def log(self, log_entry: Any) -> None:
         self._buffer.append(log_entry)
 
         if len(self._buffer) == self._buffer_size:
             self._flush_buffer()
-        
+
     def close(self):
         self._flush_buffer()
         self._log_file.close()
 
 
 def read_object_log(dirname: str, log_filename: str):
-    with open(os.path.join(dirname, log_filename), 'rb') as f:
+    with open(os.path.join(dirname, log_filename), "rb") as f:
         buffer = None
         while True:
             try:
-                if not buffer: 
+                if not buffer:
                     buffer = pickle.load(f)
 
                 for element in buffer:
@@ -98,8 +103,3 @@ def read_object_log(dirname: str, log_filename: str):
                 buffer = None
             except EOFError:
                 break
-    
-
-
-
-
