@@ -2,7 +2,9 @@
 
 To log a new entity, define a LogEntry object in log_entry.py.
 
-Usage: 
+Standard users will not instantiate ObjectLogger directly.
+
+Usage:
   with ObjectLogManager(dirname) as logger:
     logger.log("history", training_history_event)
     logger.log("buffer", buffer_event)
@@ -12,7 +14,6 @@ from typing import Any
 import shutil
 import pickle
 import os
-import collections
 
 
 def create_logging_dir(dirname: str) -> None:

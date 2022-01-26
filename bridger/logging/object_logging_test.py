@@ -3,8 +3,9 @@ import math
 import unittest
 import os
 import pathlib
-from parameterized import parameterized
 from typing import Any, List
+
+from parameterized import parameterized
 
 from bridger.logging import object_logging
 
