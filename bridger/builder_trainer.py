@@ -50,9 +50,11 @@ def make_env(
 ) -> gym.Env:
     """Function that instantiates an instance of the environment with the appropriate arguments.
 
-    Args: name: name of environment to construct. width: width of the
-        bridge_builder environment. force_standard_config: whether to only use
-        the standard environment configuration.
+    Args:
+        name: name of environment to construct.
+        width: width of the
+        bridge_builder environment.
+        force_standard_config: whether to only use the standard environment configuration.
 
     Returns: An instantiated gym environment.
     """
@@ -93,7 +95,8 @@ class BridgeBuilderModel(pl.LightningModule):
     def __init__(self, hparams=None, **kwargs):
         """Constructor for the BridgeBuilderModel Module
 
-        Args: hparams will be a dictionary or argparse.Namespace object
+        Args: 
+            hparams: dictionary or argparse.Namespace object
             containing hyperparameters to be used for initialization
 
         Keyword Args: a dictionary containing hyperparameters to be used for
@@ -160,6 +163,7 @@ class BridgeBuilderModel(pl.LightningModule):
         return policies.GreedyPolicy(self.Q)
 
     def on_train_start(self):
+        """Populates the replay buffer with an initial set of memories before training steps begin."""
         self.make_memories(self.hparams.initial_memories_count)
 
     def on_train_batch_end(
@@ -169,15 +173,15 @@ class BridgeBuilderModel(pl.LightningModule):
         batch_idx: int,
         dataloader_idx: int,
     ) -> None:
-        """Called when the training batch ends.
+        """Complete follow-on calculations after the model weight updates made during the training step. Follow-on calculations include updating the target network, making additional memories using the updated model, and additional bookkeeping.
 
         Args:
             outputs: the output of a training step, type defined in
             pytorch_lightning/utilities/types.py.
             batch: a group of memories,
-            size determined by `hparams.initial_memories_count`.
-            batch_idx: the
-            current batch index. dataloader_idx: the index of the dataloader.
+            size determined by `hparams.batch_size`.
+            batch_idx: the index of the current batch, which also signifies the current round of model weight updates
+            dataloader_idx: the index of the dataloader.
         """
         self.update_target()
         if self.hparams.debug:
@@ -185,12 +189,9 @@ class BridgeBuilderModel(pl.LightningModule):
         self.make_memories()
 
     def update_target(self) -> None:
-        """Called when training batch ends.
+        """Updates the target network weights based on the Q network weights.
 
-        A state dict is a Python dictionary object that maps each layer to its
-        parameter tensor that only works for convolutional layers and linear
-        layers. `params` are directly updated by adding the parameter tensors
-        multiplied by tau."""
+        The target network is updated using a weighted sum of its current weights and the Q network weights to increase stability in training."""
         params = self.target.state_dict()
         update = self.Q.state_dict()
         for param in params:
@@ -198,13 +199,10 @@ class BridgeBuilderModel(pl.LightningModule):
         self.target.load_state_dict(params)
 
     def record_q_values(self, training_step: int) -> None:
-        """Record q values in a TrainingHistory object and add them to
-        `self.training_history`.
+        """Record q values to TrainingHistory.
 
         Args:
-            training_step: this is the end of our current training step, which
-            is our call to on_train_batch_end.
-        """
+        training_step: A sequential value identifying which iteration of training produces the q values."""
         visited_state_histories = self.training_history.get_history_by_visit_count(100)
         states = [
             visited_state_history.state
@@ -218,8 +216,12 @@ class BridgeBuilderModel(pl.LightningModule):
             self.training_history.add_q_values(training_step, *triple)
 
     def make_memories(self, requested_memory_count=None):
-        """Obtains memories from _memory_generator. Called in on_train_start and on_train_batch_end."""
-        memory_count = requested_memory_count if requested_memory_count else self.hparams.inter_training_steps
+        """Makes memories according to the requested memory count or default number of steps."""
+        memory_count = (
+            requested_memory_count
+            if requested_memory_count
+            else self.hparams.inter_training_steps
+        )
         with torch.no_grad():
             for _ in range(memory_count):
                 next(self.memories)
@@ -353,10 +355,10 @@ class BridgeBuilderModel(pl.LightningModule):
         self.disable_interactive_mode()
         IPython.core.getipython.get_ipython().exiter()
 
-    def forward(self) -> None:
+    def forward(self):
         """Forward propagation of the model. If in interactive mode, the user
         can provide the next action with `take_action`. Otherwise, action is
-        determined by policy. (Currently defaults to EpsilonGreedy)"""
+        determined by policy."""
         state = self.state
         if self.hparams.interactive_mode and self.next_action is not None:
             action = self.next_action
@@ -423,7 +425,10 @@ class BridgeBuilderModel(pl.LightningModule):
         return (td_errors ** 2).mean()
 
     def training_step(self, batch: list[torch.Tensor], batch_idx: int) -> torch.Tensor:
-        """Performs a single training step."""
+        """Performs a single training step on the Q network.
+
+        The loss is computed across a batch of memories sampled from the replay buffer. The replay buffer sampling weights are updated based on the TD error from the samples.
+        """
         indices, states, actions, next_states, rewards, success, weights = batch
         td_errors = self.get_td_error(states, actions, next_states, rewards, success)
         if self.hparams.debug:
@@ -447,15 +452,14 @@ class BridgeBuilderModel(pl.LightningModule):
 
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
-    def configure_optimizers(self) -> None:
-        """Allows for use of different optimizers."""
+    def configure_optimizers(self) -> torch.optim.Optimizer:
+        """Returns the optimizer to use for training"""
         # TODO(arvind): This should work, but should we say Q.parameters(), or
         # is that limiting for the future?
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
 
-    def train_dataloader(self) -> None:
-        """Trains using the DataLoader, which allows for multiprocessed data
-        generation.
+    def train_dataloader(self):
+        """Samples a batch of memories from the replay buffer for training.
 
         Used to prevent early bottlenecking in the model at data generation step
         and allows for computations to be split across multiple source files."""
