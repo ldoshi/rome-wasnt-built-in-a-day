@@ -11,6 +11,7 @@ from typing import Union
 from torch.utils.data import DataLoader
 
 from bridger import config, policies, qfunctions, replay_buffer, training_history, utils
+from bridger.logging import object_logging
 
 
 def get_hyperparam_parser(parser=None):
@@ -58,11 +59,13 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
 # pylint: disable=too-many-instance-attributes
 class BridgeBuilderModel(pl.LightningModule):
     @utils.validate_input("BridgeBuilderModel", config.bridger_config)
-    def __init__(self, hparams=None, **kwargs):
+    def __init__(self, object_log_manager: object_logging.ObjectLogManager, hparams=None, **kwargs):
         """Constructor for the BridgeBuilderModel Module
 
-        Args: hparams will be a dictionary or argparse.Namespace object
-            containing hyperparameters to be used for initialization
+        Args: 
+          object_log_manager: Logger for pickle-able objects. 
+          hparams: A dictionary or argparse.Namespace object containing 
+            hyperparameters to be used for initialization
 
         Keyword Args: a dictionary containing hyperparameters to be used for
             initializing this LightningModule

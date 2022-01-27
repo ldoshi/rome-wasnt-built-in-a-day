@@ -47,6 +47,11 @@ hparam_dict[key] = {"type": str, "default": "training_history"}
 help_str = "Path to folder in which training history will be saved"
 hparam_dict[key]["help"] = help_str
 
+key = "object_logging_dir"
+hparam_dict[key] = {"type": str, "default": "object_logging"}
+help_str = "Path to folder in which all object logs will be saved"
+hparam_dict[key]["help"] = help_str
+
 key = "initial_memories_count"
 hparam_dict[key] = {"type": int, "default": hparam_dict["batch_size"]["default"] * 10}
 help_str = "The number of memories to initialize the replay buffer with before starting training"
