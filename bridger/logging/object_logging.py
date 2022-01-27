@@ -14,25 +14,25 @@ from typing import Any
 import shutil
 import pickle
 import os
-
-
-def create_logging_dir(dirname: str) -> None:
-    """Creates directory dirname if it doesn't exist.
-
-    Clears the contents of the directory if the dirname existed previously.
-
-    Args:
-      dirname: The name of the directory to create.
-    """
-    shutil.rmtree(dirname)
-    os.mkdir(dirname)
+import pathlib
 
 
 class ObjectLogManager:
     """Provides a unified interface to log pickle-able objects."""
 
     def __init__(self, dirname: str):
+        """Creates directory dirname to store logs. 
+
+        Clears the contents of the directory if the dirname existed previously.
+
+        Args:
+          dirname: The name of the directory to create.
+        """
         self._dirname = dirname
+        shutil.rmtree(self._dirname, ignore_errors=True)
+        path = pathlib.Path(self._dirname)
+        path.mkdir(parents=True, exist_ok=True)
+        
         self._object_loggers = {}
 
     def __enter__(self):
@@ -68,11 +68,9 @@ class ObjectLogger:
     """Logs pickle-able objects for analysis and debugging."""
 
     def __init__(self, dirname: str, log_filename: str, buffer_size=1000):
-        self._dirname = dirname
-        self._log_filename = log_filename
         self._buffer_size = buffer_size
         self._buffer = []
-        self._log_file = open(os.path.join(self._dirname, self._log_filename), "wb")
+        self._log_file = open(os.path.join(dirname, log_filename), "wb")
 
     def _flush_buffer(self):
         if self._buffer:
@@ -95,12 +93,10 @@ def read_object_log(dirname: str, log_filename: str):
         buffer = None
         while True:
             try:
-                if not buffer:
-                    buffer = pickle.load(f)
+                buffer = pickle.load(f)
 
                 for element in buffer:
                     yield element
 
-                buffer = None
             except EOFError:
                 break

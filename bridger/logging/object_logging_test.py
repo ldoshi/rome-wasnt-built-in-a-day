@@ -3,30 +3,22 @@ import math
 import unittest
 import os
 import pathlib
+import shutil
 from typing import Any, List
 
 from parameterized import parameterized
 
 from bridger.logging import object_logging
 
-_TMP_DIR = "tmp"
-
-# TODO(lyric): Refactor to test_util.
-def clean_up_dir(path):
-    for filepath in path.iterdir():
-        filepath.unlink()
-
+_TMP_DIR = "tmp/nested_tmp"
 
 def create_temp_dir():
     path = pathlib.Path(_TMP_DIR)
     path.mkdir(parents=True, exist_ok=True)
-    clean_up_dir(path)
-
 
 def delete_temp_dir():
     path = pathlib.Path(_TMP_DIR)
-    clean_up_dir(path)
-    path.rmdir()
+    shutil.rmtree(path.parts[0], ignore_errors=True)
 
 
 _LOG_FILENAME_0 = "log_filename_0"
@@ -34,10 +26,8 @@ _LOG_FILENAME_1 = "log_filename_1"
 
 
 class TestObjectLogManager(unittest.TestCase):
-    def setUp(self):
-        create_temp_dir()
-
     def tearDown(self):
+        # The _TMP_DIR is created by the ObjectLogManager init.
         delete_temp_dir()
 
     def test_object_log_manager_basic(self):
