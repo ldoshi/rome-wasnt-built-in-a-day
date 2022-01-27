@@ -2,7 +2,7 @@
 import unittest
 
 import torch
-import qfunctions
+import bridger.qfunctions as qfunctions
 
 
 class QFunctionsTest(unittest.TestCase):
