@@ -12,9 +12,11 @@ from bridger.logging import object_logging
 
 _TMP_DIR = "tmp/nested_tmp"
 
+
 def create_temp_dir():
     path = pathlib.Path(_TMP_DIR)
     path.mkdir(parents=True, exist_ok=True)
+
 
 def delete_temp_dir():
     path = pathlib.Path(_TMP_DIR)

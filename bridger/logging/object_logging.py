@@ -21,7 +21,7 @@ class ObjectLogManager:
     """Provides a unified interface to log pickle-able objects."""
 
     def __init__(self, dirname: str):
-        """Creates directory dirname to store logs. 
+        """Creates directory dirname to store logs.
 
         Clears the contents of the directory if the dirname existed previously.
 
@@ -32,7 +32,7 @@ class ObjectLogManager:
         shutil.rmtree(self._dirname, ignore_errors=True)
         path = pathlib.Path(self._dirname)
         path.mkdir(parents=True, exist_ok=True)
-        
+
         self._object_loggers = {}
 
     def __enter__(self):
