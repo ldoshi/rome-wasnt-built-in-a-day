@@ -1,4 +1,4 @@
-black==20.8b1
+black==21.12b0
 parameterized==0.8.1
 pylint==2.10.2
 pytest==6.2.2
