@@ -85,9 +85,9 @@ def test():
                 if value is True:
                     # No value is provided for boolean True flags.
                     continue
-                
+
                 training_viewer_args.append(str(value))
-        
+
         subprocess.Popen(
             args=training_viewer_args,
             cwd=Path.cwd(),

@@ -22,7 +22,10 @@ def get_hyperparam_parser(parser=None):
 
 
 def make_env(
-    name: str, width: int, force_standard_config: bool, seed: Union[int, float, None] = None
+    name: str,
+    width: int,
+    force_standard_config: bool,
+    seed: Union[int, float, None] = None,
 ) -> gym.Env:
     env = gym.make(
         name, width=width, force_standard_config=force_standard_config, seed=seed
@@ -83,13 +86,13 @@ class BridgeBuilderModel(pl.LightningModule):
             name=self.hparams.env_name,
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
-            seed=torch.rand(1).item()
+            seed=torch.rand(1).item(),
         )
         self._validation_env = make_env(
             name=self.hparams.env_name,
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
-            seed=torch.rand(1).item()
+            seed=torch.rand(1).item(),
         )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
@@ -157,7 +160,11 @@ class BridgeBuilderModel(pl.LightningModule):
             self.training_history.add_q_values(training_step, *triple)
 
     def make_memories(self, requested_memory_count=None):
-        memory_count = requested_memory_count if requested_memory_count else self.hparams.inter_training_steps
+        memory_count = (
+            requested_memory_count
+            if requested_memory_count
+            else self.hparams.inter_training_steps
+        )
         with torch.no_grad():
             for _ in range(memory_count):
                 next(self.memories)
