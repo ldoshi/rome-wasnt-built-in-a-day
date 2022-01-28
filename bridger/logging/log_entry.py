@@ -15,6 +15,7 @@ class TrainingBatchLogEntry:
     TrainingBatchLogEntry corresponds to.
 
     """
+
     batch_idx: int
     indices: torch.Tensor
     states: torch.Tensor

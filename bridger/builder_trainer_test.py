@@ -135,7 +135,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         path = pathlib.Path(_OBJECT_LOGGING_DIR)
         self.assertTrue(path.is_dir())
         self.assertFalse(list(path.iterdir()))
-        
+
     def test_training_batch_logging(self):
         """Verifies that training batches are logged in debug mode."""
 
