@@ -1,6 +1,7 @@
 """Tests for core building and training components."""
 import unittest
 
+import pathlib
 import itertools
 import numpy as np
 import shutil
@@ -128,11 +129,19 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             self.assertEqual(callbacks[0].count, max_steps)
 
     def test_training_batch_logging(self):
-        """Verifies that training batches are logged in debug."""
+        """Verifies that training batches are not logged by default."""
+
+        _get_trainer().fit(_get_model())
+        path = pathlib.Path(_OBJECT_LOGGING_DIR)
+        self.assertTrue(path.is_dir())
+        self.assertFalse(list(path.iterdir()))
+        
+    def test_training_batch_logging(self):
+        """Verifies that training batches are logged in debug mode."""
 
         _get_trainer().fit(_get_model(debug=True))
         expected_entries = [
-            log_entry.TrainingBatch(
+            log_entry.TrainingBatchLogEntry(
                 batch_idx=0,
                 indices=torch.tensor([127, 231, 516, 661, 863]),
                 states=torch.tensor(

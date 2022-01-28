@@ -344,7 +344,7 @@ class BridgeBuilderModel(pl.LightningModule):
         if self.hparams.debug:
             self._object_log_manager.log(
                 log_entry.TRAINING_BATCH_LOG_ENTRY,
-                log_entry.TrainingBatch(batch_idx, *batch, loss),
+                log_entry.TrainingBatchLogEntry(batch_idx, *batch, loss),
             )
 
             triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
