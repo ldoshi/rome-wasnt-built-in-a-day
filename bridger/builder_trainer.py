@@ -321,16 +321,20 @@ class BridgeBuilderModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         indices, states, actions, next_states, rewards, success, weights = batch
         td_errors = self.get_td_error(states, actions, next_states, rewards, success)
-        if self.hparams.debug:
-            triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
-            for triple in triples:
-                # For debuging only. Averages the td error per (state, action) pair.
-                self.training_history.add_td_error(batch_idx, *triple)
 
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
+
+        if self.hparams.debug:
+            object_log_manager.log(log_entry.TRAINING_BATCH_LOG_ENTRY, TrainingBatch(batch_idx, *batch, loss))
+            
+            triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
+            for triple in triples:
+                # For debuging only. Averages the td error per (state, action) pair.
+                self.training_history.add_td_error(batch_idx, *triple)
+
         # Update replay buffer
         self.replay_buffer.update_priorities(indices, td_errors)
         self._update_beta()

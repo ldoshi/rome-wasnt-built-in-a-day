@@ -15,3 +15,5 @@ class TrainingBatch():
     successes: torch.Tensor
     weights: torch.Tensor
     loss: torch.Tensor
+
+

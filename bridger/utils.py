@@ -24,14 +24,14 @@ def validate_input(module_name: str, config: dict[str, dict[str, Any]]) -> Calla
         as determined by `config`."""
 
     def decorator_function(func: Callable) -> Callable:
-        def wrapper(self, hparams=None, **kwargs):
+        def wrapper(self, *args, hparams=None, **kwargs):
             if hparams:
                 # TODO: Remove disable when pytype catches up with Python3.9
                 # pytype: disable=unsupported-operands
                 kwargs = vars(hparams) | kwargs
                 # pytype: enable=unsupported-operands
 
-            return func(self, validate_kwargs(module_name, config, **kwargs))
+            return func(self, *args, hparams=validate_kwargs(module_name, config, **kwargs))
 
         return wrapper
 
