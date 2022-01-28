@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 
 from bridger import config, policies, qfunctions, replay_buffer, training_history, utils
 from bridger.logging import object_logging
+from bridger.logging import log_entry
 
 
 def get_hyperparam_parser(parser=None):
@@ -74,6 +75,7 @@ class BridgeBuilderModel(pl.LightningModule):
             `kwargs` will be used"""
 
         super().__init__()
+        self._object_log_manager = object_log_manager
         if hparams:
             self.save_hyperparameters(hparams)
         if kwargs:
@@ -328,8 +330,8 @@ class BridgeBuilderModel(pl.LightningModule):
         )
 
         if self.hparams.debug:
-            object_log_manager.log(log_entry.TRAINING_BATCH_LOG_ENTRY, TrainingBatch(batch_idx, *batch, loss))
-            
+            self._object_log_manager.log(log_entry.TRAINING_BATCH_LOG_ENTRY, log_entry.TrainingBatch(batch_idx, *batch, loss))
+
             triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
             for triple in triples:
                 # For debuging only. Averages the td error per (state, action) pair.

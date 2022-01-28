@@ -1,6 +1,7 @@
 """Definitions of log entries stored to ObjectLogManager."""
 
 import dataclasses
+import torch
 
 TRAINING_BATCH_LOG_ENTRY = "training_batch"
 
