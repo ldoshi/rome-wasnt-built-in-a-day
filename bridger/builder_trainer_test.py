@@ -21,8 +21,10 @@ from bridger.logging import log_entry
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 _OBJECT_LOGGING_DIR = "tmp_object_logging_dir"
 
+
 def _get_model(debug: bool = False) -> builder_trainer.BridgeBuilderModel:
-    return builder_trainer.BridgeBuilderModel(object_logging.ObjectLogManager(dirname=_OBJECT_LOGGING_DIR),
+    return builder_trainer.BridgeBuilderModel(
+        object_logging.ObjectLogManager(dirname=_OBJECT_LOGGING_DIR),
         env_width=3,
         env_force_standard_config=True,
         seed=12345,
@@ -30,8 +32,9 @@ def _get_model(debug: bool = False) -> builder_trainer.BridgeBuilderModel:
         val_batch_size=1,
         batch_size=5,
         object_logging_dir=_OBJECT_LOGGING_DIR,
-        debug=debug
+        debug=debug,
     )
+
 
 def _get_trainer(max_steps: int = 1, callbacks: list[Callback] = None) -> Trainer:
     return Trainer(
@@ -43,6 +46,7 @@ def _get_trainer(max_steps: int = 1, callbacks: list[Callback] = None) -> Traine
         callbacks=callbacks,
     )
 
+
 class BridgeBuilderTrainerTest(unittest.TestCase):
     """Verifies training hooks and structure."""
 
@@ -51,7 +55,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         #       and retaining it on failure
         shutil.rmtree("lightning_logs", ignore_errors=True)
         shutil.rmtree(_OBJECT_LOGGING_DIR, ignore_errors=True)
-    
+
     def test_validation_builder(self):
         """Ensures ValidationBuilder keeps building and returning results."""
         env = builder_trainer.make_env(
@@ -131,63 +135,91 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             log_entry.TrainingBatch(
                 batch_idx=0,
                 indices=torch.tensor([127, 231, 516, 661, 863]),
-                states=torch.tensor([[[0., 0., 0.],
-                                      [0., 0., 0.],
-                                      [0., 0., 0.],
-                                      [1., 0., 1.]],
-                                     
-                                     [[0., 0., 0.],
-                                      [0., 0., 0.],
-                                      [0., 0., 0.],
-                                      [1., 0., 1.]],
-                               
-                                     [[0., 0., 0.],
-                                      [0., 0., 0.],
-                                      [0., 0., 0.],
-                                      [1., 0., 1.]],
-                                     
-                                     [[0., 0., 0.],
-                                      [0., 0., 0.],
-                                      [0., 0., 0.],
-                                      [1., 0., 1.]],
-                               
-                                     [[0., 0., 0.],
-                                      [0., 0., 0.],
-                                      [0., 0., 0.],
-                                      [1., 0., 1.]]], dtype=torch.float64),
+                states=torch.tensor(
+                    [
+                        [
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [1.0, 0.0, 1.0],
+                        ],
+                        [
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [1.0, 0.0, 1.0],
+                        ],
+                        [
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [1.0, 0.0, 1.0],
+                        ],
+                        [
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [1.0, 0.0, 1.0],
+                        ],
+                        [
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [1.0, 0.0, 1.0],
+                        ],
+                    ],
+                    dtype=torch.float64,
+                ),
                 actions=torch.tensor([1, 0, 1, 1, 1]),
-                next_states=torch.tensor([[[0., 0., 0.],
-                                           [0., 0., 0.],
-                                           [0., 2., 2.],
-                                           [1., 0., 1.]],
-                                    
-                                          [[0., 0., 0.],
-                                           [0., 0., 0.],
-                                           [2., 2., 0.],
-                                           [1., 0., 1.]],
-                                
-                                          [[0., 0., 0.],
-                                           [0., 0., 0.],
-                                           [0., 2., 2.],
-                                           [1., 0., 1.]],
-                                    
-                                          [[0., 0., 0.],
-                                           [0., 0., 0.],
-                                           [0., 2., 2.],
-                                           [1., 0., 1.]],
-                                    
-                                          [[0., 0., 0.],
-                                           [0., 0., 0.],
-                                           [0., 2., 2.],
-                                           [1., 0., 1.]]], dtype=torch.float64),
+                next_states=torch.tensor(
+                    [
+                        [
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [0.0, 2.0, 2.0],
+                            [1.0, 0.0, 1.0],
+                        ],
+                        [
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [2.0, 2.0, 0.0],
+                            [1.0, 0.0, 1.0],
+                        ],
+                        [
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [0.0, 2.0, 2.0],
+                            [1.0, 0.0, 1.0],
+                        ],
+                        [
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [0.0, 2.0, 2.0],
+                            [1.0, 0.0, 1.0],
+                        ],
+                        [
+                            [0.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [0.0, 2.0, 2.0],
+                            [1.0, 0.0, 1.0],
+                        ],
+                    ],
+                    dtype=torch.float64,
+                ),
                 rewards=torch.tensor([-1, -1, -1, -1, -1]),
                 successes=torch.tensor([False, False, False, False, False]),
-                weights=torch.tensor([1., 1., 1., 1., 1.], dtype=torch.float64),
-                loss=torch.tensor(0.9522, dtype=torch.float64))]
+                weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
+                loss=torch.tensor(0.9522, dtype=torch.float64),
+            )
+        ]
         for expected_entry, logged_entry in zip(
-            expected_entries, object_logging.read_object_log(_OBJECT_LOGGING_DIR, log_entry.TRAINING_BATCH_LOG_ENTRY)
+            expected_entries,
+            object_logging.read_object_log(
+                _OBJECT_LOGGING_DIR, log_entry.TRAINING_BATCH_LOG_ENTRY
+            ),
         ):
             self.assertEqual(expected_entry, logged_entry)
+
 
 class BuilderTest(unittest.TestCase):
     """Verifies the builder's execution of a policy."""

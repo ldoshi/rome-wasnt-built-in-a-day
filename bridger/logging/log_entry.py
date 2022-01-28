@@ -5,8 +5,9 @@ import torch
 
 TRAINING_BATCH_LOG_ENTRY = "training_batch"
 
+
 @dataclasses.dataclass
-class TrainingBatch():
+class TrainingBatch:
     batch_idx: int
     indices: torch.Tensor
     states: torch.Tensor
@@ -16,5 +17,3 @@ class TrainingBatch():
     successes: torch.Tensor
     weights: torch.Tensor
     loss: torch.Tensor
-
-

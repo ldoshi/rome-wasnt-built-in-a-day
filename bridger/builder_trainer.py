@@ -24,7 +24,10 @@ def get_hyperparam_parser(parser=None):
 
 
 def make_env(
-    name: str, width: int, force_standard_config: bool, seed: Union[int, float, None] = None
+    name: str,
+    width: int,
+    force_standard_config: bool,
+    seed: Union[int, float, None] = None,
 ) -> gym.Env:
     env = gym.make(
         name, width=width, force_standard_config=force_standard_config, seed=seed
@@ -60,12 +63,17 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
 # pylint: disable=too-many-instance-attributes
 class BridgeBuilderModel(pl.LightningModule):
     @utils.validate_input("BridgeBuilderModel", config.bridger_config)
-    def __init__(self, object_log_manager: object_logging.ObjectLogManager, hparams=None, **kwargs):
+    def __init__(
+        self,
+        object_log_manager: object_logging.ObjectLogManager,
+        hparams=None,
+        **kwargs
+    ):
         """Constructor for the BridgeBuilderModel Module
 
-        Args: 
-          object_log_manager: Logger for pickle-able objects. 
-          hparams: A dictionary or argparse.Namespace object containing 
+        Args:
+          object_log_manager: Logger for pickle-able objects.
+          hparams: A dictionary or argparse.Namespace object containing
             hyperparameters to be used for initialization
 
         Keyword Args: a dictionary containing hyperparameters to be used for
@@ -88,13 +96,13 @@ class BridgeBuilderModel(pl.LightningModule):
             name=self.hparams.env_name,
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
-            seed=torch.rand(1).item()
+            seed=torch.rand(1).item(),
         )
         self._validation_env = make_env(
             name=self.hparams.env_name,
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
-            seed=torch.rand(1).item()
+            seed=torch.rand(1).item(),
         )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
@@ -162,7 +170,11 @@ class BridgeBuilderModel(pl.LightningModule):
             self.training_history.add_q_values(training_step, *triple)
 
     def make_memories(self, requested_memory_count=None):
-        memory_count = requested_memory_count if requested_memory_count else self.hparams.inter_training_steps
+        memory_count = (
+            requested_memory_count
+            if requested_memory_count
+            else self.hparams.inter_training_steps
+        )
         with torch.no_grad():
             for _ in range(memory_count):
                 next(self.memories)
@@ -330,7 +342,10 @@ class BridgeBuilderModel(pl.LightningModule):
         )
 
         if self.hparams.debug:
-            self._object_log_manager.log(log_entry.TRAINING_BATCH_LOG_ENTRY, log_entry.TrainingBatch(batch_idx, *batch, loss))
+            self._object_log_manager.log(
+                log_entry.TRAINING_BATCH_LOG_ENTRY,
+                log_entry.TrainingBatch(batch_idx, *batch, loss),
+            )
 
             triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
             for triple in triples:
