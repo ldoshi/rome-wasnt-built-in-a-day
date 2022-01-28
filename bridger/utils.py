@@ -31,7 +31,9 @@ def validate_input(module_name: str, config: dict[str, dict[str, Any]]) -> Calla
                 kwargs = vars(hparams) | kwargs
                 # pytype: enable=unsupported-operands
 
-            return func(self, *args, hparams=validate_kwargs(module_name, config, **kwargs))
+            return func(
+                self, *args, hparams=validate_kwargs(module_name, config, **kwargs)
+            )
 
         return wrapper
 
