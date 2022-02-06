@@ -30,10 +30,12 @@ def get_hyperparam_parser(parser=None) -> argparse.ArgumentParser:
     env.py                 Gym environment parameters
     training.py            hyperparameters and environment parameters
 
-    Args: parser: an optional argument for parsing the command line. Currently,
+    Args:
+        parser: an optional argument for parsing the command line. Currently,
         config.get_hyperparam_parser uses an ArgumentParser if None is passed.
 
-    Returns: A parser with the loaded config parameters.
+    Returns:
+        A parser with the loaded config parameters.
     """
     return config.get_hyperparam_parser(
         config.bridger_config,
@@ -56,7 +58,8 @@ def make_env(
         bridge_builder environment.
         force_standard_config: whether to only use the standard environment configuration.
 
-    Returns: An instantiated gym environment.
+    Returns:
+        An instantiated gym environment.
     """
     env = gym.make(
         name, width=width, force_standard_config=force_standard_config, seed=seed
@@ -68,9 +71,7 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
     """Produces build results using a policy based on the current model.
 
     The model underpinning the policy refers to the same one being
-    trained and will thus evolve over time.
-
-    """
+    trained and will thus evolve over time."""
 
     def __init__(self, env: gym.Env, policy: policies.Policy, episode_length: int):
         self._builder = builder.Builder(env)
@@ -95,12 +96,11 @@ class BridgeBuilderModel(pl.LightningModule):
     def __init__(self, hparams=None, **kwargs):
         """Constructor for the BridgeBuilderModel Module
 
-        Args: 
-            hparams: dictionary or argparse.Namespace object
-            containing hyperparameters to be used for initialization
+        Args:
+            hparams: Dictionary or argparse.Namespace object containing hyperparameters to be used for initialization.
 
-        Keyword Args: a dictionary containing hyperparameters to be used for
-            initializing this LightningModule
+        Keyword Args:
+            A dictionary containing hyperparameters to be used for initializing this LightningModule.
 
         Note - if a key is found in both `hparams` and `kwargs`, the value in
             `kwargs` will be used"""
@@ -176,12 +176,10 @@ class BridgeBuilderModel(pl.LightningModule):
         """Complete follow-on calculations after the model weight updates made during the training step. Follow-on calculations include updating the target network, making additional memories using the updated model, and additional bookkeeping.
 
         Args:
-            outputs: the output of a training step, type defined in
-            pytorch_lightning/utilities/types.py.
-            batch: a group of memories,
-            size determined by `hparams.batch_size`.
-            batch_idx: the index of the current batch, which also signifies the current round of model weight updates
-            dataloader_idx: the index of the dataloader.
+            outputs: The output of a training step, type defined in pytorch_lightning/utilities/types.py.
+            batch: A group of memories, size determined by `hparams.batch_size`.
+            batch_idx: The index of the current batch, which also signifies the current round of model weight updates.
+            dataloader_idx: The index of the dataloader.
         """
         self.update_target()
         if self.hparams.debug:
@@ -202,7 +200,7 @@ class BridgeBuilderModel(pl.LightningModule):
         """Record q values to TrainingHistory.
 
         Args:
-        training_step: A sequential value identifying which iteration of training produces the q values."""
+            training_step: A sequential value identifying which iteration of training produces the q values."""
         visited_state_histories = self.training_history.get_history_by_visit_count(100)
         states = [
             visited_state_history.state
@@ -232,17 +230,18 @@ class BridgeBuilderModel(pl.LightningModule):
         """A generator that serves up sequential transitions experienced by the
         agent. When an episode ends, a new one starts immediately.
 
-        Returns: Generator object yielding tuples with the following values:
+        Returns:
+            Generator object yielding tuples with the following values:
 
-            episode_idx: starting from 0, incremented every time an episode ends
+            episode_idx: Starting from 0, incremented every time an episode ends
                         and another begins.
-            step_idx:    starting from 0, incremented with each transition,
+            step_idx:    Starting from 0, incremented with each transition,
                         irrespective of the episode it is in.
-            start_state: the state at the beginning of the transition.
-            action:      the action taken during the transition.
-            end_state:   the state at the end of the transition.
-            reward:      the reward gained through the transition.
-            success:    whether the transition marked the end of the episode."""
+            start_state: The state at the beginning of the transition.
+            action:      The action taken during the transition.
+            end_state:   The state at the end of the transition.
+            reward:      The reward gained through the transition.
+            success:    Whether the transition marked the end of the episode."""
 
         episode_idx = 0
         total_step_idx = 0
@@ -273,15 +272,17 @@ class BridgeBuilderModel(pl.LightningModule):
         inputs to determine whether to enter a breakpoint and only runs while
         interactive mode is enabled.
 
-        Args:
-            thresholds: a dict mapping some subset of 'episode' and 'step' to
-            the current corresponding indices (as tracked by `_memory_generator#`)
-
         When these current-state thresholds reach or exceed corresponding values
         in the instance variable `breakpoint`, a breakpoint is entered (via
         `IPython.embed#`). This breakpoint will reoccur immediately and
         repeatedly, even as the user manually exits the IPython shell, until
-        self._breakpoint has been updated."""
+        self._breakpoint has been updated.
+
+        Args:
+            thresholds: A dict mapping some subset of 'episode' and 'step' to
+            the current corresponding indices (as tracked by `_memory_generator#`).
+
+        """
         while self.hparams.interactive_mode:
             if all(self._breakpoint[k] > v for k, v in thresholds.items()):
                 break  # Don't stop for a breakpoint
@@ -334,7 +335,7 @@ class BridgeBuilderModel(pl.LightningModule):
         Reenters a breakpoint only after either `num_actions` steps have been
         taken or `num_episodes` episodes have newly succeeded.
 
-        Note: it is expected that only one of `num_actions` and `num_episodes`
+        Note: It is expected that only one of `num_actions` and `num_episodes`
               are set. If `num_actions` is set, these actions will be preempted
               by the end of the current episode. If `num_episodes` is set, no
               limit is placed on the total number of actions taken. Finally, if
@@ -409,7 +410,16 @@ class BridgeBuilderModel(pl.LightningModule):
         success: torch.Tensor,
     ) -> torch.Tensor:
         """Calculates TD error during training and estimates the state-value
-        function of Markov decision process under a policy."""
+        function of Markov decision process under a policy.
+
+        Args:
+            states: The state at the beginning of the transition.
+            actions: The action taken during the transition.
+            next_states: The state at the end of the transition.
+            rewards: The reward gained through the transition.
+            success: Whether the transition marked the end of the episode.
+        """
+
         row_idx = torch.arange(actions.shape[0])
         qvals = self.Q(states)[row_idx, actions]
         with torch.no_grad():
@@ -418,8 +428,15 @@ class BridgeBuilderModel(pl.LightningModule):
             expected_qvals = rewards + (~success) * self.hparams.gamma * next_vals
         return expected_qvals - qvals
 
-    def compute_loss(self, td_errors: torch.Tensor, weights=None) -> torch.Tensor:
-        """Computes loss using td errors in training."""
+    def compute_loss(
+        self, td_errors: torch.Tensor, weights: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
+        """Computes loss using td errors in training.
+
+        Args:
+            td_errors: Calculated errors to be back-propagated from time t+1 to time t.
+            weights: An optional tensor that weights calculation of td_errors.
+        """
         if weights is not None:
             td_errors = weights * td_errors
         return (td_errors ** 2).mean()
