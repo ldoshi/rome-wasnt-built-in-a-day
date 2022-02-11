@@ -14,7 +14,6 @@
 #    returning to the IPython shell
 
 import subprocess
-import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import EarlyStopping
