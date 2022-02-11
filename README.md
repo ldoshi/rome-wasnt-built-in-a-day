@@ -57,6 +57,8 @@ Then, from this repository, call `pip install .` to install this package (`bridg
 
 The main testing entrypoint is to call `bridge_builder.py` from command line. Default arguments are available for all inputs, and can be viewed by calling `bridge_builder.py --help`
 
+To perform typechecking, you can run the command `pytype .` from the root directory in order to recursively check files.
+
 ## Debugging
 
 If the `debug` flag is set, training history details will be stored to the directory indicated by flag `training_history_dir`. 
