@@ -221,14 +221,11 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 loss=torch.tensor(0.9522, dtype=torch.float64),
             )
         ]
-        for expected_entry, logged_entry in zip(
-            expected_entries,
-            object_logging.read_object_log(
-                _OBJECT_LOGGING_DIR, log_entry.TRAINING_BATCH_LOG_ENTRY
-            ),
-        ):
-            self.assertEqual(expected_entry, logged_entry)
 
+        logged_entries = list(object_logging.read_object_log(
+                _OBJECT_LOGGING_DIR, log_entry.TRAINING_BATCH_LOG_ENTRY
+            ))
+        self.assertEqual(expected_entries, logged_entries)
 
 class BuilderTest(unittest.TestCase):
     """Verifies the builder's execution of a policy."""
