@@ -43,12 +43,16 @@ class TestObjectLogManager(unittest.TestCase):
             for log_entry in expected_log_entries_1:
                 logger.log(_LOG_FILENAME_1, log_entry)
 
-
-        logged_entries_0 = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
+        logged_entries_0 = list(
+            object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0)
+        )
         self.assertEqual(expected_log_entries_0, logged_entries_0)
 
-        logged_entries_1 = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_1))
+        logged_entries_1 = list(
+            object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_1)
+        )
         self.assertEqual(expected_log_entries_1, logged_entries_1)
+
 
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
