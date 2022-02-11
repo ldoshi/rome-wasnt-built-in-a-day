@@ -5,7 +5,35 @@ import torch
 
 
 def main():
-    # Checks that two object log batch entry files share the same values across all attributes in the file.
+    """Checks that two object log batch entry files share the same values across all attributes in the file.
+
+    Example to run:
+
+    (rome) ~/rome-wasnt-built-in-a-day/rome-wasnt-built-in-a-day (compare-log-batch-entries) % python -m bin.training_batch_analyzer --pathExpectedLogEntry tmp_object_logging_dir/training_batch --pathTestLogEntry tmp_object_logging_dir/training_batch_2
+
+    Example output:
+
+    batch_idx is not a torch.Tensor:  0 0
+    indices values are equal:  True
+    states values are equal:  True
+    actions values are equal:  True
+    next_states values are equal:  True
+    rewards values are equal:  True
+    successes values are equal:  True
+    weights values are equal:  True
+    loss values are equal:  True
+    ...
+    batch_idx is not a torch.Tensor:  9 9
+    indices values are equal:  True
+    states values are equal:  True
+    actions values are equal:  True
+    next_states values are equal:  True
+    rewards values are equal:  True
+    successes values are equal:  True
+    weights values are equal:  True
+    loss values are equal:  True
+    """
+
     parser = argparse.ArgumentParser(
         description="Compare two object log managers for equality"
     )
