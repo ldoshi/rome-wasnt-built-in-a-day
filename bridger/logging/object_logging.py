@@ -58,6 +58,24 @@ class ObjectLogManager:
         self._object_loggers[log_filename].log(log_entry)
 
 
+class LoggerAndNormalizer:
+    """Logs objects and normalizes them to unique ids.
+
+    Some objects may be logged very frequently and may be expensive to
+    log. One example is the state representation. This tool logs such
+    objects exactly once and returns a unique id for each object to be
+    used in the other frequent log entries.
+    """
+
+    def __init__(self, label: str,
+                 object_log_manager: object_logging.ObjectLogManager, hash_fn=None):
+        self._object_log_manager = object_log_manager
+        self._normalizer = {}
+
+    def get_logged_object_id(object: Any) -> int:
+        """Returns the unique 
+    
+        
 # TODO(lyric): Consider changing the buffer size metric to be based on
 # size vs entry count.
 #
