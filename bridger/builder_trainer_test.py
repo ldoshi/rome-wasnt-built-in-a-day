@@ -23,9 +23,9 @@ _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 _OBJECT_LOGGING_DIR = "tmp_object_logging_dir"
 
 
-def _get_model(debug: bool = False) -> builder_trainer.BridgeBuilderModel:
+def _get_model(object_log_manager: object_logging.ObjectLogManager, debug: bool = False) -> builder_trainer.BridgeBuilderModel:
     return builder_trainer.BridgeBuilderModel(
-        object_logging.ObjectLogManager(dirname=_OBJECT_LOGGING_DIR),
+        object_log_manager,
         env_width=3,
         env_force_standard_config=True,
         seed=12345,
@@ -121,17 +121,20 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         max_steps = 50
         callbacks = [CountingCallback()] + early_stopping_callback
-        _get_trainer(max_steps, callbacks).fit(_get_model())
+
+        with object_logging.ObjectLogManager(dirname=_OBJECT_LOGGING_DIR) as object_log_manager:
+            _get_trainer(max_steps, callbacks).fit(_get_model(object_log_manager))
 
         if early_stopping_callback:
             self.assertLess(callbacks[0].count, max_steps)
         else:
             self.assertEqual(callbacks[0].count, max_steps)
 
-    def test_training_batch_logging(self):
+    def test_training_batch_no_logging(self):
         """Verifies that training batches are not logged by default."""
 
-        _get_trainer().fit(_get_model())
+        with object_logging.ObjectLogManager(dirname=_OBJECT_LOGGING_DIR) as object_log_manager:
+            _get_trainer().fit(_get_model(object_log_manager))
         path = pathlib.Path(_OBJECT_LOGGING_DIR)
         self.assertTrue(path.is_dir())
         self.assertFalse(list(path.iterdir()))
@@ -139,7 +142,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
     def test_training_batch_logging(self):
         """Verifies that training batches are logged in debug mode."""
 
-        _get_trainer().fit(_get_model(debug=True))
+        with object_logging.ObjectLogManager(dirname=_OBJECT_LOGGING_DIR) as object_log_manager:
+            _get_trainer().fit(_get_model(object_log_manager=object_log_manager, debug=True))
         expected_entries = [
             log_entry.TrainingBatchLogEntry(
                 batch_idx=0,
@@ -218,17 +222,28 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 rewards=torch.tensor([-1, -1, -1, -1, -1]),
                 successes=torch.tensor([False, False, False, False, False]),
                 weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
-                loss=torch.tensor(0.9522, dtype=torch.float64),
+                loss=torch.tensor(0.9522, dtype=torch.float64, requires_grad=True),
             )
         ]
-        for expected_entry, logged_entry in zip(
-            expected_entries,
-            object_logging.read_object_log(
-                _OBJECT_LOGGING_DIR, log_entry.TRAINING_BATCH_LOG_ENTRY
-            ),
-        ):
-            self.assertEqual(expected_entry, logged_entry)
 
+        logged_entries = list(object_logging.read_object_log(
+                _OBJECT_LOGGING_DIR, log_entry.TRAINING_BATCH_LOG_ENTRY
+            ))
+
+        self.assertEqual(len(expected_entries), len(logged_entries))
+        for expected_entry, logged_entry in zip(expected_entries, logged_entries):
+            for field, container in expected_entry.__dataclass_fields__.items():
+                expected_entry_value = getattr(expected_entry, field)
+                logged_entry_value = getattr(logged_entry, field)
+                if container.type == torch.Tensor:
+                    print(expected_entry_value)
+                    print(logged_entry_value)
+                    if field == "loss":
+                        self.assertTrue(torch.allclose(expected_entry_value, logged_entry_value,atol=1e-4))
+                    else:
+                        self.assertTrue(torch.equal(expected_entry_value, logged_entry_value))
+                else:
+                    self.assertEqual(expected_entry_value, logged_entry_value)
 
 class BuilderTest(unittest.TestCase):
     """Verifies the builder's execution of a policy."""
