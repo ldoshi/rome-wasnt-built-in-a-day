@@ -5,56 +5,36 @@ import torch
 
 
 def main():
-    """Checks that two object log batch entry files share the same values across all attributes in the file.
+    """Checks that two logged training batch entries share the same values across all attributes.
 
     Example to run:
 
-    (rome) ~/rome-wasnt-built-in-a-day/rome-wasnt-built-in-a-day (compare-log-batch-entries) % python -m bin.training_batch_analyzer --pathExpectedLogEntry tmp_object_logging_dir/training_batch --pathTestLogEntry tmp_object_logging_dir/training_batch_2
+    (compare-log-batch-entries) % python -m bin.training_batch_analyzer --path_expected_log_entry tmp_object_logging_dir/training_batch --path_test_log_entry tmp_object_logging_dir/training_batch_2
 
-    Example output:
-
-    batch_idx is not a torch.Tensor:  0 0
-    indices values are equal:  True
-    states values are equal:  True
-    actions values are equal:  True
-    next_states values are equal:  True
-    rewards values are equal:  True
-    successes values are equal:  True
-    weights values are equal:  True
-    loss values are equal:  True
+    >>>For log batch entry index: 0, loss values are not equal:  Expected logged training batch value: 0.9522438841027203 Test logged training batch value: 0.9522439050239484
     ...
-    batch_idx is not a torch.Tensor:  9 9
-    indices values are equal:  True
-    states values are equal:  True
-    actions values are equal:  True
-    next_states values are equal:  True
-    rewards values are equal:  True
-    successes values are equal:  True
-    weights values are equal:  True
-    loss values are equal:  True
+    For log batch entry index: 7, loss values are not equal:  Expected logged training batch value: 5.393130202373399 Test logged training batch value: 5.393129525809499
     """
 
     parser = argparse.ArgumentParser(
-        description="Compare two object log managers for equality"
+        description="Compare two object log managers for equality."
     )
     parser.add_argument(
-        "--pathExpectedLogEntry",
-        help="The filepath to the first LogBatchEntry file.",
+        "--path_expected_log_entry",
+        help="The filepath to the first TrainingBatchLogEntry file.",
         default="",
     )
     parser.add_argument(
-        "--pathTestLogEntry",
-        help="The filepath to the second LogBatchEntry file.",
+        "--path_test_log_entry",
+        help="The filepath to the second TrainingBatchLogEntry file.",
         default="",
     )
     args = parser.parse_args()
 
-    expected_basename, expected_dirname = os.path.basename(
-        args.pathExpectedLogEntry
-    ), os.path.dirname(args.pathExpectedLogEntry)
-    test_basename, test_dirname = os.path.basename(
-        args.pathTestLogEntry
-    ), os.path.dirname(args.pathTestLogEntry)
+    expected_basename = os.path.basename(args.path_expected_log_entry)
+    expected_dirname = os.path.dirname(args.path_expected_log_entry)
+    test_basename = os.path.basename(args.path_test_log_entry)
+    test_dirname = os.path.dirname(args.path_test_log_entry)
 
     for expected_log_batch_entry, test_log_batch_entry in zip(
         object_logging.read_object_log(expected_dirname, expected_basename),
@@ -64,25 +44,30 @@ def main():
             expected_object_log_value = getattr(expected_log_batch_entry, field)
             test_object_log_value = getattr(test_log_batch_entry, field)
             if container.type == torch.Tensor:
-                if field == "loss":
-                    print(
-                        f"{field} values are equal: ",
-                        torch.allclose(
-                            expected_object_log_value,
-                            test_object_log_value,
-                            atol=1e-4,
-                        ),
-                    )
-                else:
-                    print(
-                        f"{field} values are equal: ",
-                        torch.equal(expected_object_log_value, test_object_log_value),
-                    )
-            else:
-                print(
-                    f"{field} is not a torch.Tensor: ",
+                if field == "loss" and not torch.allclose(
                     expected_object_log_value,
                     test_object_log_value,
+                    atol=1e-4,
+                ):
+                    print(
+                        f"For log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
+                        f"Expected logged training batch value: {expected_object_log_value}",
+                        f"Test logged training batch value: {test_object_log_value}",
+                    )
+                elif not torch.equal(expected_object_log_value, test_object_log_value):
+                    print(
+                        f"For log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
+                        f"Expected logged training batch value: {expected_object_log_value}",
+                        f"Test logged training batch value: {test_object_log_value}",
+                    )
+            elif (
+                container.type is not torch.Tensor
+                and expected_object_log_value != test_object_log_value
+            ):
+                print(
+                    f"For log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
+                    f"Expected logged training batch value: {expected_object_log_value}",
+                    f"Test logged training batch value: {test_object_log_value}",
                 )
 
 
