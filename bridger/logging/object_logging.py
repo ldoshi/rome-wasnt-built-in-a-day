@@ -10,11 +10,12 @@ Usage:
     logger.log("buffer", buffer_event)
 
 """
-from typing import Any
+from typing import Any, Callable
 import shutil
 import pickle
 import os
 import pathlib
+from collections.abc import Hashable
 
 
 class ObjectLogManager:
@@ -47,7 +48,7 @@ class ObjectLogManager:
 
         Args:
           log_filename: A unique label describing the log in which to place
-            log_entry. The label is also the actual log filename.
+            log_entry. This label is also the actual log filename.
           log_entry: The object to be logged.
         """
         if log_filename not in self._object_loggers:
@@ -67,14 +68,43 @@ class LoggerAndNormalizer:
     used in the other frequent log entries.
     """
 
-    def __init__(self, label: str,
-                 object_log_manager: object_logging.ObjectLogManager, hash_fn=None):
+    def __init__(self, log_filename: str,
+                 object_log_manager: ObjectLogManager, make_hashable_fn: Callable[[Any], Hashable]=lambda x: x):
+        """Store logging directives.  
+
+        Args:
+          log_filename: A unique label describing the log in which to
+            place log_entry. This label is also the actual log
+            filename.
+          object_log_manager: Logger for pickle-able objects.
+          make_hashable_fn: A function that converts the objects to be
+            logged into something that can be hashed. The default
+            value is the identity function.
+        """
+        self._log_filename = log_filename
         self._object_log_manager = object_log_manager
+        self._make_hashable_fn = make_hashable_fn
         self._normalizer = {}
 
-    def get_logged_object_id(object: Any) -> int:
-        """Returns the unique 
-    
+    def get_logged_object_id(log_entry: Any) -> int:
+        """Returns the unique id for the provided object.
+
+        The object will additionally be logged if it has not yet been
+        logged.
+
+        The id is only unique within the scope of this execution. The
+        id is not a function of the object itself.
+
+        """
+        hashable_object = self._make_hashable_fn(log_entry.object)
+        if hashable_object in self._normalizer:
+            return self._normalizer[hashable_object]
+
+        object_id = len(self._normalizer)
+        log_entry.id = object_id
+        self._object_log_manager.log(self._log_filename, log_entry)        
+        self._normalizer[hashable_object] = object_id
+        return object_id
         
 # TODO(lyric): Consider changing the buffer size metric to be based on
 # size vs entry count.

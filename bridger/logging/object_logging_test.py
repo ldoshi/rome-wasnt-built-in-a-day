@@ -1,3 +1,4 @@
+import dataclasses
 import pickle
 import math
 import unittest
@@ -54,6 +55,54 @@ class TestObjectLogManager(unittest.TestCase):
             self.assertEqual(expected_entry, logged_entry)
 
 
+@dataclasses.dataclass
+class TestLogEntryInt:
+    """A pairing of a number with its unique id.
+
+    Normalized log entries are expected to always have two fields: 
+      object: <type being logged in a normalized way>
+      id:int
+
+    """
+
+    object: int
+    id: int = -1
+
+    
+@dataclasses.dataclass
+class TestLogEntryList:
+    """A pairing of a list of strings with its unique id. 
+
+    Normalized log entries are expected to always have two fields: 
+      object: <type being logged in a normalized way>
+      id:int
+    """
+
+    object: List[str]
+    id: int = -1        
+
+    
+class TestLoggerAndNormalizer(unittest.TestCase):
+    def setUp(self):
+        create_temp_dir()
+
+    def tearDown(self):
+        delete_temp_dir()
+
+#    @parameterized.expand([(1,), (2,)])
+    def test_log_and_normalizer_int(self):
+        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+            int_normalizer = object_logging.LoggerAndNormalizer(log_filename=_LOG_FILENAME_0, object_log_manager=logger)
+            log_entry_0 = TestLogEntryInt(object=1)
+            log_entry_1 = TestLogEntryInt(object=5)
+            self.assertEqual(int_normalizer.get_logged_object_id(log_entry_0), 0)
+            self.assertEqual(int_normalizer.get_logged_object_id(log_entry_0), 0)
+            self.assertEqual(int_normalizer.get_logged_object_id(log_entry_1), 1)
+            self.assertEqual(int_normalizer.get_logged_object_id(log_entry_0), 0)
+
+        logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
+
+            
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
         dirname=_TMP_DIR, log_filename="test", buffer_size=buffer_size
