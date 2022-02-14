@@ -56,7 +56,7 @@ class TestObjectLogManager(unittest.TestCase):
 
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
-        dirname=_TMP_DIR, log_filename="test", buffer_size=buffer_size
+        dirname=_TMP_DIR, log_filename=_LOG_FILENAME_0, buffer_size=buffer_size
     )
     for entry in entries:
         object_logger.log(entry)
@@ -80,7 +80,7 @@ class TestObjectLogger(unittest.TestCase):
         previous entries, which contain buffer_size elements each.
         """
 
-        test_filepath = os.path.join(_TMP_DIR, "test")
+        test_filepath = os.path.join(_TMP_DIR, _LOG_FILENAME_0)
         entries = ["a", "b", "c"]
         _log_entries(entries, buffer_size)
 
@@ -101,7 +101,7 @@ class TestObjectLogger(unittest.TestCase):
         _log_entries(entries, buffer_size)
 
         for expected_entry, logged_entry in zip(
-            entries, object_logging.read_object_log(_TMP_DIR, "test")
+            entries, object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0)
         ):
             self.assertEqual(expected_entry, logged_entry)
 
