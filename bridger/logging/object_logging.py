@@ -68,9 +68,13 @@ class LoggerAndNormalizer:
     used in the other frequent log entries.
     """
 
-    def __init__(self, log_filename: str,
-                 object_log_manager: ObjectLogManager, make_hashable_fn: Optional[Callable[[Any], Hashable]]=None):
-        """Store logging directives.  
+    def __init__(
+        self,
+        log_filename: str,
+        object_log_manager: ObjectLogManager,
+        make_hashable_fn: Optional[Callable[[Any], Hashable]] = None,
+    ):
+        """Store logging directives.
 
         Args:
           log_filename: A unique label describing the log in which to
@@ -86,7 +90,7 @@ class LoggerAndNormalizer:
         if make_hashable_fn:
             self._make_hashable_fn = make_hashable_fn
         else:
-            self._make_hashable_fn=lambda x: x
+            self._make_hashable_fn = lambda x: x
         self._normalizer = {}
 
     def get_logged_object_id(self, log_entry: Any) -> int:
@@ -105,10 +109,11 @@ class LoggerAndNormalizer:
 
         object_id = len(self._normalizer)
         log_entry.id = object_id
-        self._object_log_manager.log(self._log_filename, log_entry)        
+        self._object_log_manager.log(self._log_filename, log_entry)
         self._normalizer[hashable_object] = object_id
         return object_id
-        
+
+
 # TODO(lyric): Consider changing the buffer size metric to be based on
 # size vs entry count.
 #

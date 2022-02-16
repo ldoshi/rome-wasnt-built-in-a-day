@@ -59,7 +59,7 @@ class TestObjectLogManager(unittest.TestCase):
 class TestLogEntryInt:
     """A pairing of a number with its unique id.
 
-    Normalized log entries are expected to always have two fields: 
+    Normalized log entries are expected to always have two fields:
       object: <type being logged in a normalized way>
       id:int
 
@@ -68,20 +68,20 @@ class TestLogEntryInt:
     object: int
     id: int = -1
 
-    
+
 @dataclasses.dataclass
 class TestLogEntryList:
-    """A pairing of a list of strings with its unique id. 
+    """A pairing of a list of strings with its unique id.
 
-    Normalized log entries are expected to always have two fields: 
+    Normalized log entries are expected to always have two fields:
       object: <type being logged in a normalized way>
       id:int
     """
 
     object: List[str]
-    id: int = -1        
+    id: int = -1
 
-    
+
 class TestLoggerAndNormalizer(unittest.TestCase):
     def setUp(self):
         create_temp_dir()
@@ -89,13 +89,21 @@ class TestLoggerAndNormalizer(unittest.TestCase):
     def tearDown(self):
         delete_temp_dir()
 
-    @parameterized.expand([
-        ("Hashable Log Entry", TestLogEntryInt, None, 1, 5),
-        ("Non-Hashable Log Entry", TestLogEntryList, str, [1], [2,5])
-        ])
-    def test_log_and_normalizer_int(self, name, log_entry_class, make_hashable_fn, object_0, object_1):
+    @parameterized.expand(
+        [
+            ("Hashable Log Entry", TestLogEntryInt, None, 1, 5),
+            ("Non-Hashable Log Entry", TestLogEntryList, str, [1], [2, 5]),
+        ]
+    )
+    def test_log_and_normalizer_int(
+        self, name, log_entry_class, make_hashable_fn, object_0, object_1
+    ):
         with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
-            int_normalizer = object_logging.LoggerAndNormalizer(log_filename=_LOG_FILENAME_0, object_log_manager=logger, make_hashable_fn=make_hashable_fn)
+            int_normalizer = object_logging.LoggerAndNormalizer(
+                log_filename=_LOG_FILENAME_0,
+                object_log_manager=logger,
+                make_hashable_fn=make_hashable_fn,
+            )
             log_entry_0 = log_entry_class(object=object_0)
             log_entry_1 = log_entry_class(object=object_1)
             self.assertEqual(int_normalizer.get_logged_object_id(log_entry_0), 0)
@@ -103,11 +111,14 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             self.assertEqual(int_normalizer.get_logged_object_id(log_entry_1), 1)
             self.assertEqual(int_normalizer.get_logged_object_id(log_entry_0), 0)
 
-        expected_entries = [log_entry_class(object=object_0, id=0), log_entry_class(object=object_1, id=1)]
+        expected_entries = [
+            log_entry_class(object=object_0, id=0),
+            log_entry_class(object=object_1, id=1),
+        ]
         logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
         self.assertEqual(logged_entries, expected_entries)
 
-            
+
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
         dirname=_TMP_DIR, log_filename="test", buffer_size=buffer_size
