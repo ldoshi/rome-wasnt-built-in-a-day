@@ -10,7 +10,7 @@ Usage:
     logger.log("buffer", buffer_event)
 
 """
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 import shutil
 import pickle
 import os
@@ -69,7 +69,7 @@ class LoggerAndNormalizer:
     """
 
     def __init__(self, log_filename: str,
-                 object_log_manager: ObjectLogManager, make_hashable_fn: Callable[[Any], Hashable]=lambda x: x):
+                 object_log_manager: ObjectLogManager, make_hashable_fn: Optional[Callable[[Any], Hashable]]=None):
         """Store logging directives.  
 
         Args:
@@ -83,10 +83,13 @@ class LoggerAndNormalizer:
         """
         self._log_filename = log_filename
         self._object_log_manager = object_log_manager
-        self._make_hashable_fn = make_hashable_fn
+        if make_hashable_fn:
+            self._make_hashable_fn = make_hashable_fn
+        else:
+            self._make_hashable_fn=lambda x: x
         self._normalizer = {}
 
-    def get_logged_object_id(log_entry: Any) -> int:
+    def get_logged_object_id(self, log_entry: Any) -> int:
         """Returns the unique id for the provided object.
 
         The object will additionally be logged if it has not yet been
