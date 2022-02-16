@@ -95,7 +95,7 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             ("Non-Hashable Log Entry", TestLogEntryList, str, [1], [2, 5]),
         ]
     )
-    def test_log_and_normalizer_int(
+    def test_log_and_normalizer(
         self, name, log_entry_class, make_hashable_fn, object_0, object_1
     ):
         with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
