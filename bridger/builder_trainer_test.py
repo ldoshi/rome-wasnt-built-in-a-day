@@ -40,7 +40,7 @@ def _get_model(
 
 
 # TODO(Joseph): Change max_steps back to 1 later.
-def _get_trainer(max_steps: int = 10, callbacks: list[Callback] = None) -> Trainer:
+def _get_trainer(max_steps: int = 100, callbacks: list[Callback] = None) -> Trainer:
     return Trainer(
         val_check_interval=1,
         # The validation batch size can be adjusted via a config, but
@@ -149,6 +149,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         with object_logging.ObjectLogManager(dirname=_OBJECT_LOGGING_DIR) as object_log_manager:
             _get_trainer().fit(_get_model(object_log_manager=object_log_manager, debug=True))
+            # TODO: delete, this is writing logs for testing
+            return
         expected_entries = [
             log_entry.TrainingBatchLogEntry(
                 batch_idx=0,
