@@ -39,7 +39,8 @@ def _get_model(
     )
 
 
-def _get_trainer(max_steps: int = 1, callbacks: list[Callback] = None) -> Trainer:
+# TODO(Joseph): Change max_steps back to 1 later.
+def _get_trainer(max_steps: int = 10, callbacks: list[Callback] = None) -> Trainer:
     return Trainer(
         val_check_interval=1,
         # The validation batch size can be adjusted via a config, but
@@ -57,7 +58,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         # TODO: Make a more coherent plan for writing test output to a temp dir
         #       and retaining it on failure
         shutil.rmtree("lightning_logs", ignore_errors=True)
-        shutil.rmtree(_OBJECT_LOGGING_DIR, ignore_errors=True)
+        # shutil.rmtree(_OBJECT_LOGGING_DIR, ignore_errors=True)
 
     def test_validation_builder(self):
         """Ensures ValidationBuilder keeps building and returning results."""
