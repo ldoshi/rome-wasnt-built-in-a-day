@@ -55,11 +55,12 @@ def main():
             test_object_log_value = getattr(test_log_batch_entry, field)
 
             if container.type == torch.Tensor:
-                if field == "loss" and not torch.allclose(
-                    expected_object_log_value,
-                    test_object_log_value,
-                    atol=1e-4,
-                ):
+                if field == "loss":
+                    if not torch.allclose(
+                      expected_object_log_value,
+                     test_object_log_value,
+                      atol=1e-4,
+                    ):
                     print(
                         f"Batch entry error count: {batch_entry_error_counter}.",
                         f"For log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
@@ -67,7 +68,9 @@ def main():
                         f"Test logged training batch value: {test_object_log_value}",
                     )
                     batch_entry_error_counter += 1
-                elif not torch.equal(expected_object_log_value, test_object_log_value):
+                    continue
+
+                if not torch.equal(expected_object_log_value, test_object_log_value):
                     print(
                         f"Batch entry error count: {batch_entry_error_counter}.",
                         f"For log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
@@ -75,6 +78,8 @@ def main():
                         f"Test logged training batch value: {test_object_log_value}",
                     )
                     batch_entry_error_counter += 1
+
+                continue
 
             if (
                 container.type is not torch.Tensor
