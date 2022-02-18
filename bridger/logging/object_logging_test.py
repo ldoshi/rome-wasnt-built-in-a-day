@@ -33,30 +33,30 @@ class TestObjectLogManager(unittest.TestCase):
         delete_temp_dir()
 
     def test_object_log_manager_basic(self):
-        log_entries_0 = ["a", "b", "c"]
-        log_entries_1 = ["d"]
+        expected_log_entries_0 = ["a", "b", "c"]
+        expected_log_entries_1 = ["d"]
 
         with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
-            for log_entry in log_entries_0:
+            for log_entry in expected_log_entries_0:
                 logger.log(_LOG_FILENAME_0, log_entry)
 
-            for log_entry in log_entries_1:
+            for log_entry in expected_log_entries_1:
                 logger.log(_LOG_FILENAME_1, log_entry)
 
-        for expected_entry, logged_entry in zip(
-            log_entries_0, object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0)
-        ):
-            self.assertEqual(expected_entry, logged_entry)
+        logged_entries_0 = list(
+            object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0)
+        )
+        self.assertEqual(expected_log_entries_0, logged_entries_0)
 
-        for expected_entry, logged_entry in zip(
-            log_entries_1, object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_1)
-        ):
-            self.assertEqual(expected_entry, logged_entry)
+        logged_entries_1 = list(
+            object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_1)
+        )
+        self.assertEqual(expected_log_entries_1, logged_entries_1)
 
 
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
-        dirname=_TMP_DIR, log_filename="test", buffer_size=buffer_size
+        dirname=_TMP_DIR, log_filename=_LOG_FILENAME_0, buffer_size=buffer_size
     )
     for entry in entries:
         object_logger.log(entry)
@@ -80,7 +80,7 @@ class TestObjectLogger(unittest.TestCase):
         previous entries, which contain buffer_size elements each.
         """
 
-        test_filepath = os.path.join(_TMP_DIR, "test")
+        test_filepath = os.path.join(_TMP_DIR, _LOG_FILENAME_0)
         entries = ["a", "b", "c"]
         _log_entries(entries, buffer_size)
 
@@ -97,13 +97,11 @@ class TestObjectLogger(unittest.TestCase):
     def test_read_object_log(self, buffer_size):
         """Verifies seamless iteration of the log independent of buffer_size"""
 
-        entries = ["a", "b", "c"]
-        _log_entries(entries, buffer_size)
+        expected_entries = ["a", "b", "c"]
+        _log_entries(expected_entries, buffer_size)
 
-        for expected_entry, logged_entry in zip(
-            entries, object_logging.read_object_log(_TMP_DIR, "test")
-        ):
-            self.assertEqual(expected_entry, logged_entry)
+        logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
+        self.assertEqual(expected_entries, logged_entries)
 
 
 if __name__ == "__main__":
