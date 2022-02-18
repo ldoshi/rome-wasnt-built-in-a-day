@@ -29,9 +29,10 @@ class TrainingBatchLogEntry:
     weights: torch.Tensor
     loss: torch.Tensor
 
+
 @dataclasses.dataclass
 class NormalizedLogEntry:
-    """A pairing of a normalized object with its unique id.    
+    """A pairing of a normalized object with its unique id.
 
     The unique id will be used to identify and join this object with
     other log entries. The type of object for a particular instance of
@@ -40,10 +41,6 @@ class NormalizedLogEntry:
     the type of object at read time.
 
     """
-    
+
     id: int
     object: Any
-
-
-
-    

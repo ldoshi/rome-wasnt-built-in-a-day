@@ -251,9 +251,15 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                     print(expected_entry_value)
                     print(logged_entry_value)
                     if field == "loss":
-                        self.assertTrue(torch.allclose(expected_entry_value, logged_entry_value,atol=1e-4))
+                        self.assertTrue(
+                            torch.allclose(
+                                expected_entry_value, logged_entry_value, atol=1e-4
+                            )
+                        )
                     else:
-                        self.assertTrue(torch.equal(expected_entry_value, logged_entry_value))
+                        self.assertTrue(
+                            torch.equal(expected_entry_value, logged_entry_value)
+                        )
                 else:
                     self.assertEqual(expected_entry_value, logged_entry_value)
 
