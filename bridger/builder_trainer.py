@@ -12,6 +12,8 @@ from typing import Any, Union, Generator, Optional
 
 
 from bridger import config, policies, qfunctions, replay_buffer, training_history, utils
+from bridger.logging import object_logging
+from bridger.logging import log_entry
 
 
 def get_hyperparam_parser(parser=None) -> argparse.ArgumentParser:
@@ -93,11 +95,18 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
 # pylint: disable=too-many-instance-attributes
 class BridgeBuilderModel(pl.LightningModule):
     @utils.validate_input("BridgeBuilderModel", config.bridger_config)
-    def __init__(self, hparams=None, **kwargs):
+    def __init__(
+        self,
+        object_log_manager: object_logging.ObjectLogManager,
+        hparams=None,
+        **kwargs
+    ):
         """Constructor for the BridgeBuilderModel Module
 
         Args:
-            hparams: Dictionary or argparse.Namespace object containing hyperparameters to be used for initialization.
+          object_log_manager: Logger for pickle-able objects.
+          hparams: Dictionary or argparse.Namespace object containing hyperparameters 
+            to be used for initialization.
 
         Keyword Args:
             A dictionary containing hyperparameters to be used for initializing this LightningModule.
@@ -106,6 +115,7 @@ class BridgeBuilderModel(pl.LightningModule):
             `kwargs` will be used"""
 
         super().__init__()
+        self._object_log_manager = object_log_manager
         if hparams:
             self.save_hyperparameters(hparams)
         if kwargs:
@@ -448,16 +458,23 @@ class BridgeBuilderModel(pl.LightningModule):
         """
         indices, states, actions, next_states, rewards, success, weights = batch
         td_errors = self.get_td_error(states, actions, next_states, rewards, success)
-        if self.hparams.debug:
-            triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
-            for triple in triples:
-                # For debugging only. Averages the td error per (state, action) pair.
-                self.training_history.add_td_error(batch_idx, *triple)
 
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
+
+        if self.hparams.debug:
+            self._object_log_manager.log(
+                log_entry.TRAINING_BATCH_LOG_ENTRY,
+                log_entry.TrainingBatchLogEntry(batch_idx, *batch, loss),
+            )
+
+            triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
+            for triple in triples:
+                # For debugging only. Averages the td error per (state, action) pair.
+                self.training_history.add_td_error(batch_idx, *triple)
+
         # Update replay buffer.
         self.replay_buffer.update_priorities(indices, td_errors)
         self._update_beta()
