@@ -61,12 +61,12 @@ def main():
                      test_object_log_value,
                       atol=1e-4,
                     ):
-                    print(
+                        print(
                         f"Batch entry error count: {batch_entry_error_counter}.",
                         f"For log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
                         f"Expected logged training batch value: {expected_object_log_value}",
                         f"Test logged training batch value: {test_object_log_value}",
-                    )
+                        )
                     batch_entry_error_counter += 1
                     continue
 
@@ -78,6 +78,7 @@ def main():
                         f"Test logged training batch value: {test_object_log_value}",
                     )
                     batch_entry_error_counter += 1
+                    continue
 
                 continue
 
