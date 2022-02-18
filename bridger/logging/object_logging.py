@@ -125,14 +125,18 @@ class LoggerAndNormalizer:
         if not isinstance(object, self._log_entry_object_class):
             raise ValueError(
                 f"Provided object of type {type(object)} instead of "
-                f"expected type {self._log_entry_object_class}")
-        
+                f"expected type {self._log_entry_object_class}"
+            )
+
         hashable_object = self._make_hashable_fn(object)
         if hashable_object in self._normalizer:
             return self._normalizer[hashable_object]
 
         object_id = len(self._normalizer)
-        self._object_log_manager.log(self._log_filename, log_entry.NormalizedLogEntry(id=object_id, object=object))
+        self._object_log_manager.log(
+            self._log_filename,
+            log_entry.NormalizedLogEntry(id=object_id, object=object),
+        )
         self._normalizer[hashable_object] = object_id
         return object_id
 

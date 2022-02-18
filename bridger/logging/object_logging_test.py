@@ -86,7 +86,7 @@ class TestLoggerAndNormalizer(unittest.TestCase):
 
         expected_entries = [
             log_entry.NormalizedLogEntry(id=0, object=object_0),
-            log_entry.NormalizedLogEntry(id=1, object=object_1)
+            log_entry.NormalizedLogEntry(id=1, object=object_1),
         ]
         logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
         self.assertEqual(logged_entries, expected_entries)
@@ -96,10 +96,10 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             normalizer = object_logging.LoggerAndNormalizer(
                 log_filename=_LOG_FILENAME_0,
                 object_log_manager=logger,
-                log_entry_object_class=dict
+                log_entry_object_class=dict,
             )
             self.assertRaises(ValueError, normalizer.get_logged_object_id, object=[])
-        
+
 
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
