@@ -40,7 +40,7 @@ def _get_model(
 
 
 # TODO(Joseph): Change max_steps back to 1 later.
-def _get_trainer(max_steps: int = 10, callbacks: list[Callback] = None) -> Trainer:
+def _get_trainer(max_steps: int = 1000, callbacks: list[Callback] = None) -> Trainer:
     return Trainer(
         val_check_interval=1,
         # The validation batch size can be adjusted via a config, but
