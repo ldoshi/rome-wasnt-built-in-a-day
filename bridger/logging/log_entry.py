@@ -29,14 +29,17 @@ class TrainingBatchLogEntry:
     loss: torch.Tensor
 
 @dataclasses.dataclass
-class NormalizedLogEntry:
-    """A pairing of a normalized object with its unique id.    
+class StateNormalizedLogEntry:
+    """A pairing of a state with its unique id.
 
-    The unique id will be used to identify and join this object with
-    other log entries.
+    Normalized log entries are expected to always have two fields: 
+      object: <type being logged in a normalized way>
+      id:int
+    
+    The id is initialized to -1 and will be set by the LoggerAndNormalizer.
 
     """
 
-    object: np.ndarray
+    object: np.ndarry
     id: int = -1
     
