@@ -72,6 +72,7 @@ class LoggerAndNormalizer:
         self,
         log_filename: str,
         object_log_manager: ObjectLogManager,
+        log_entry_object_class: Any,
         make_hashable_fn: Optional[Callable[[Any], Hashable]] = None,
     ):
         """Store logging directives.
@@ -93,7 +94,7 @@ class LoggerAndNormalizer:
             self._make_hashable_fn = lambda x: x
         self._normalizer = {}
 
-    def get_logged_object_id(self, log_entry: Any) -> int:
+    def get_logged_object_id(self, object: Any) -> int:
         """Returns the unique id for the provided object.
 
         The object will additionally be logged if it has not yet been
@@ -101,6 +102,13 @@ class LoggerAndNormalizer:
 
         The id is only unique within the scope of this execution. The
         id is not a function of the object itself.
+
+        Args:
+          object: The object for which to obtain a unique id and log if
+            it has not been logged before.
+
+        Returns:
+          
 
         """
         hashable_object = self._make_hashable_fn(log_entry.object)
@@ -111,7 +119,7 @@ class LoggerAndNormalizer:
         log_entry.id = object_id
         self._object_log_manager.log(self._log_filename, log_entry)
         self._normalizer[hashable_object] = object_id
-        return object_id
+        returnobject_id
 
 
 # TODO(lyric): Consider changing the buffer size metric to be based on
