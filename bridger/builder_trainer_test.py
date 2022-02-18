@@ -236,8 +236,6 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 expected_entry_value = getattr(expected_entry, field)
                 logged_entry_value = getattr(logged_entry, field)
                 if container.type == torch.Tensor:
-                    print(expected_entry_value)
-                    print(logged_entry_value)
                     if field == "loss":
                         self.assertTrue(torch.allclose(expected_entry_value, logged_entry_value,atol=1e-4))
                     else:
