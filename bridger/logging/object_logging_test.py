@@ -9,6 +9,7 @@ from typing import Any, List
 
 from parameterized import parameterized
 
+from bridger.logging import log_entry
 from bridger.logging import object_logging
 
 _TMP_DIR = "tmp/nested_tmp"
@@ -55,33 +56,6 @@ class TestObjectLogManager(unittest.TestCase):
             self.assertEqual(expected_entry, logged_entry)
 
 
-@dataclasses.dataclass
-class TestLogEntryInt:
-    """A pairing of a number with its unique id.
-
-    Normalized log entries are expected to always have two fields:
-      object: <type being logged in a normalized way>
-      id:int
-
-    """
-
-    object: int
-    id: int = -1
-
-
-@dataclasses.dataclass
-class TestLogEntryList:
-    """A pairing of a list of strings with its unique id.
-
-    Normalized log entries are expected to always have two fields:
-      object: <type being logged in a normalized way>
-      id:int
-    """
-
-    object: List[str]
-    id: int = -1
-
-
 class TestLoggerAndNormalizer(unittest.TestCase):
     def setUp(self):
         create_temp_dir()
@@ -91,29 +65,28 @@ class TestLoggerAndNormalizer(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("Hashable Log Entry", TestLogEntryInt, None, 1, 5),
-            ("Non-Hashable Log Entry", TestLogEntryList, str, [1], [2, 5]),
+            ("Hashable Log Entry", int, None, 1, 5),
+            ("Non-Hashable Log Entry", list, str, [1], [2, 5]),
         ]
     )
     def test_log_and_normalizer(
-        self, name, log_entry_class, make_hashable_fn, object_0, object_1
+        self, name, log_entry_object_class, make_hashable_fn, object_0, object_1
     ):
         with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
-            int_normalizer = object_logging.LoggerAndNormalizer(
+            normalizer = object_logging.LoggerAndNormalizer(
                 log_filename=_LOG_FILENAME_0,
                 object_log_manager=logger,
+                log_entry_object_class=log_entry_object_class,
                 make_hashable_fn=make_hashable_fn,
             )
-            log_entry_0 = log_entry_class(object=object_0)
-            log_entry_1 = log_entry_class(object=object_1)
-            self.assertEqual(int_normalizer.get_logged_object_id(log_entry_0), 0)
-            self.assertEqual(int_normalizer.get_logged_object_id(log_entry_0), 0)
-            self.assertEqual(int_normalizer.get_logged_object_id(log_entry_1), 1)
-            self.assertEqual(int_normalizer.get_logged_object_id(log_entry_0), 0)
+            self.assertEqual(normalizer.get_logged_object_id(object_0), 0)
+            self.assertEqual(normalizer.get_logged_object_id(object_0), 0)
+            self.assertEqual(normalizer.get_logged_object_id(object_1), 1)
+            self.assertEqual(normalizer.get_logged_object_id(object_0), 0)
 
         expected_entries = [
-            log_entry_class(object=object_0, id=0),
-            log_entry_class(object=object_1, id=1),
+            log_entry.NormalizedLogEntry(id=0, object=object_0),
+            log_entry.NormalizedLogEntry(id=1, object=object_1)
         ]
         logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
         self.assertEqual(logged_entries, expected_entries)

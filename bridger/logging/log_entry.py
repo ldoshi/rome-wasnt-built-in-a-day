@@ -3,6 +3,7 @@
 import dataclasses
 import numpy as np
 import torch
+from typing import Any
 
 TRAINING_BATCH_LOG_ENTRY = "training_batch"
 STATE_NORMALIZED_LOG_ENTRY = "state_normalized"
@@ -39,9 +40,10 @@ class NormalizedLogEntry:
     the type of object at read time.
 
     """
-
-    object: Any
+    
     id: int
+    object: Any
+
 
 
     
