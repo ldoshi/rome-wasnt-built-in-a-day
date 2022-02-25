@@ -1,9 +1,12 @@
 """Definitions of log entries stored to ObjectLogManager."""
 
 import dataclasses
+import numpy as np
 import torch
+from typing import Any
 
 TRAINING_BATCH_LOG_ENTRY = "training_batch"
+STATE_NORMALIZED_LOG_ENTRY = "state_normalized"
 
 
 @dataclasses.dataclass
@@ -25,3 +28,19 @@ class TrainingBatchLogEntry:
     successes: torch.Tensor
     weights: torch.Tensor
     loss: torch.Tensor
+
+
+@dataclasses.dataclass
+class NormalizedLogEntry:
+    """A pairing of a normalized object with its unique id.
+
+    The unique id will be used to identify and join this object with
+    other log entries. The type of object for a particular instance of
+    a log file can be determined by either checking the initialization
+    of the correponding LoggerAndNormalizer and dynamically checking
+    the type of object at read time.
+
+    """
+
+    id: int
+    object: Any
