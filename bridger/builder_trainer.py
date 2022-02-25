@@ -1,5 +1,6 @@
 import argparse
 import IPython
+import copy
 import gym
 import numpy as np
 from bridger import builder
@@ -465,9 +466,10 @@ class BridgeBuilderModel(pl.LightningModule):
         )
 
         if self.hparams.debug:
+            batch_copy = copy.deepcopy(batch)
             self._object_log_manager.log(
                 log_entry.TRAINING_BATCH_LOG_ENTRY,
-                log_entry.TrainingBatchLogEntry(batch_idx, *batch, loss),
+                log_entry.TrainingBatchLogEntry(batch_idx, *batch_copy, loss),
             )
 
             triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
