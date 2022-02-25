@@ -263,6 +263,13 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 else:
                     self.assertEqual(expected_entry_value, logged_entry_value)
 
+    def test_training_batch_logging_speed(self):
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR
+        ) as object_log_manager:
+            _get_trainer(max_steps=1000).fit(
+                _get_model(object_log_manager=object_log_manager, debug=True)
+            )
 
 class BuilderTest(unittest.TestCase):
     """Verifies the builder's execution of a policy."""
