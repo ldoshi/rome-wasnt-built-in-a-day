@@ -19,8 +19,6 @@ import pathlib
 import time
 from collections.abc import Hashable
 
-
-
 from bridger.logging import log_entry
 
 
@@ -73,6 +71,85 @@ class ObjectLogManager:
         self._object_loggers[log_filename].log(log_entry)
         print("STATES: " , len(log_entry.states))
         self._object_logger_costs[log_filename] += (time.perf_counter() - start)
+
+
+class LoggerAndNormalizer:
+    """Logs objects and normalizes them to unique ids.
+
+    Some objects may be logged very frequently and may be expensive to
+    log. One example is the state representation. This tool logs such
+    objects exactly once and returns a unique id for each object to be
+    used in the other frequent log entries.
+    """
+
+    def __init__(
+        self,
+        log_filename: str,
+        object_log_manager: ObjectLogManager,
+        log_entry_object_class: Any,
+        make_hashable_fn: Optional[Callable[[Any], Hashable]] = None,
+    ):
+        """Store logging directives.
+
+        Args:
+          log_filename: A unique label describing the log in which to
+            place log_entry. This label is also the actual log
+            filename.
+          object_log_manager: Logger for pickle-able objects.
+          log_entry_object_class: The required type of the object
+            passed to get_logged_object_id in this instance of
+            LoggerAndNormalizer. The type check is conducted at runtime
+            with each get_logged_object_id call.
+          make_hashable_fn: A function that converts the objects to be
+            logged into something that can be hashed. The default
+            value is the identity function.
+
+        """
+        self._log_filename = log_filename
+        self._object_log_manager = object_log_manager
+        self._log_entry_object_class = log_entry_object_class
+        if make_hashable_fn:
+            self._make_hashable_fn = make_hashable_fn
+        else:
+            self._make_hashable_fn = lambda x: x
+        self._normalizer = {}
+
+    def get_logged_object_id(self, object: Any) -> int:
+        """Returns the unique id for the provided object.
+
+        The object must be an instance of the log_entry_object_class
+        provided in the init.
+
+        The object will additionally be logged if it has not yet been
+        logged.
+
+        The id is only unique within the scope of this execution. The
+        id is not a function of the object itself.
+
+        Args:
+          object: The object for which to obtain a unique id and log if
+            it has not been logged before.
+
+        Returns:
+
+        """
+        if not isinstance(object, self._log_entry_object_class):
+            raise ValueError(
+                f"Provided object of type {type(object)} instead of "
+                f"expected type {self._log_entry_object_class}"
+            )
+
+        hashable_object = self._make_hashable_fn(object)
+        if hashable_object in self._normalizer:
+            return self._normalizer[hashable_object]
+
+        object_id = len(self._normalizer)
+        self._object_log_manager.log(
+            self._log_filename,
+            log_entry.NormalizedLogEntry(id=object_id, object=object),
+        )
+        self._normalizer[hashable_object] = object_id
+        return object_id
 
 
 class LoggerAndNormalizer:
