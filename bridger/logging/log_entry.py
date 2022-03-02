@@ -3,7 +3,7 @@
 import dataclasses
 import numpy as np
 import torch
-from typing import Any
+from typing import Any, List
 
 TRAINING_BATCH_LOG_ENTRY = "training_batch"
 STATE_NORMALIZED_LOG_ENTRY = "state_normalized"
@@ -21,9 +21,9 @@ class TrainingBatchLogEntry:
 
     batch_idx: int
     indices: torch.Tensor
-    states: torch.Tensor
+    state_ids: List[int]
     actions: torch.Tensor
-    next_states: torch.Tensor
+    next_state_ids: List[int]
     rewards: torch.Tensor
     successes: torch.Tensor
     weights: torch.Tensor

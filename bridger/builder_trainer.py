@@ -117,6 +117,7 @@ class BridgeBuilderModel(pl.LightningModule):
 
         super().__init__()
         self._object_log_manager = object_log_manager
+        self._state_logger = object_logging.LoggerAndNormalizer(log_entry.STATE_NORMALIZED_LOG_ENTRY, self._object_log_manager, torch.Tensor, make_hashable_fn=str)
         if hparams:
             self.save_hyperparameters(hparams)
         if kwargs:
@@ -466,10 +467,19 @@ class BridgeBuilderModel(pl.LightningModule):
         )
 
         if self.hparams.debug:
-            batch_copy = copy.deepcopy(batch)
+            indices_copy, states_copy, actions_copy, next_states_copy, rewards_copy, success_copy, weights_copy = copy.deepcopy(batch)
             self._object_log_manager.log(
                 log_entry.TRAINING_BATCH_LOG_ENTRY,
-                log_entry.TrainingBatchLogEntry(batch_idx, *batch_copy, loss),
+                log_entry.TrainingBatchLogEntry(
+                    batch_idx=batch_idx,
+                    indices=indices_copy,
+                    state_ids=[self._state_logger.get_logged_object_id(state_copy) for state_copy in states_copy],
+                    actions=actions_copy,
+                    next_state_ids=[self._state_logger.get_logged_object_id(next_state_copy) for next_state_copy in next_states_copy],
+                    rewards=rewards_copy,
+                    successes=success_copy,
+                    weights=weights_copy,
+                    loss=loss),
             )
 
             triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())

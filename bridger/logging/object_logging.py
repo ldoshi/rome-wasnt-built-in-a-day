@@ -69,7 +69,6 @@ class ObjectLogManager:
 
         start = time.perf_counter()
         self._object_loggers[log_filename].log(log_entry)
-        print("STATES: " , len(log_entry.states))
         self._object_logger_costs[log_filename] += (time.perf_counter() - start)
 
 
