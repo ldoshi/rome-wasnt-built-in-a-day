@@ -51,7 +51,7 @@ class ObjectLogManager:
         for log_filename, object_logger in self._object_loggers.items():
             start = time.perf_counter()
             object_logger.close()
-            self._object_logger_costs[log_filename] += (time.perf_counter() - start)
+            self._object_logger_costs[log_filename] += time.perf_counter() - start
 
         # TODO(lyric): Remove before merging PR#107.
         print("EXITING")
@@ -73,7 +73,7 @@ class ObjectLogManager:
 
         start = time.perf_counter()
         self._object_loggers[log_filename].log(log_entry)
-        self._object_logger_costs[log_filename] += (time.perf_counter() - start)
+        self._object_logger_costs[log_filename] += time.perf_counter() - start
 
 
 class LoggerAndNormalizer:

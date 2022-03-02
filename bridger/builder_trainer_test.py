@@ -202,6 +202,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 _get_model(object_log_manager=object_log_manager, debug=True)
             )
 
+
 class BuilderTest(unittest.TestCase):
     """Verifies the builder's execution of a policy."""
 
