@@ -193,6 +193,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 else:
                     self.assertEqual(expected_entry_value, logged_entry_value)
 
+    # TODO(lyric): Remove before merging PR#107.
     def test_training_batch_logging_speed(self):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
