@@ -107,7 +107,7 @@ class BridgeBuilderModel(pl.LightningModule):
         Args:
           object_log_manager: Logger for pickle-able objects.
           hparams: Dictionary or argparse.Namespace object containing hyperparameters
-            to be used for initialization.
+            to be used for initialization. 
 
         Keyword Args:
             A dictionary containing hyperparameters to be used for initializing this LightningModule.
