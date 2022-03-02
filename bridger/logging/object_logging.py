@@ -12,6 +12,7 @@ Usage:
 """
 from typing import Any, Callable, Optional
 import collections
+import copy
 import shutil
 import pickle
 import os
@@ -143,9 +144,12 @@ class LoggerAndNormalizer:
             return self._normalizer[hashable_object]
 
         object_id = len(self._normalizer)
+        # TODO(lyric): Consider adding an init arg as to whether the
+        # object should be copied or not. Per PR#104, the copy will be
+        # required for data coming from training batches.
         self._object_log_manager.log(
             self._log_filename,
-            log_entry.NormalizedLogEntry(id=object_id, object=object),
+            log_entry.NormalizedLogEntry(id=object_id, object=copy.deepcopy(object)),
         )
         self._normalizer[hashable_object] = object_id
         return object_id
