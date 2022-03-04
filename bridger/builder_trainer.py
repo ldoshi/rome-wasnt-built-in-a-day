@@ -117,6 +117,14 @@ class BridgeBuilderModel(pl.LightningModule):
 
         super().__init__()
         self._object_log_manager = object_log_manager
+        # TODO(Issue#106): Find a more efficient make_hashable_fn than
+        # str.
+        self._state_logger = object_logging.LoggerAndNormalizer(
+            log_entry.STATE_NORMALIZED_LOG_ENTRY,
+            self._object_log_manager,
+            torch.Tensor,
+            make_hashable_fn=str,
+        )
         if hparams:
             self.save_hyperparameters(hparams)
         if kwargs:
@@ -466,10 +474,33 @@ class BridgeBuilderModel(pl.LightningModule):
         )
 
         if self.hparams.debug:
-            batch_copy = copy.deepcopy(batch)
+            # TODO(Issue#105): Move more deepcopy calls to logging
+            # layer. Check if any deepcopy operations can be avoided.
+            indices_copy = copy.deepcopy(indices)
+            actions_copy = copy.deepcopy(actions)
+            rewards_copy = copy.deepcopy(rewards)
+            success_copy = copy.deepcopy(success)
+            weights_copy = copy.deepcopy(weights)
+
             self._object_log_manager.log(
                 log_entry.TRAINING_BATCH_LOG_ENTRY,
-                log_entry.TrainingBatchLogEntry(batch_idx, *batch_copy, loss),
+                log_entry.TrainingBatchLogEntry(
+                    batch_idx=batch_idx,
+                    indices=indices_copy,
+                    state_ids=[
+                        self._state_logger.get_logged_object_id(state)
+                        for state in states
+                    ],
+                    actions=actions_copy,
+                    next_state_ids=[
+                        self._state_logger.get_logged_object_id(next_state)
+                        for next_state in next_states
+                    ],
+                    rewards=rewards_copy,
+                    successes=success_copy,
+                    weights=weights_copy,
+                    loss=loss,
+                ),
             )
 
             triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
