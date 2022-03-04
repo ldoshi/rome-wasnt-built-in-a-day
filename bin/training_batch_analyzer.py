@@ -47,14 +47,14 @@ def main():
         object_logging.read_object_log(expected_dirname, expected_basename),
         object_logging.read_object_log(test_dirname, test_basename),
     ):
-        for field, container in expected_log_batch_entry.__dataclass_fields__.items():
+        for field in expected_log_batch_entry.__dataclass_fields__:
             # Exit early if we hit the maximum number of displayed errors.
             if batch_entry_error_counter == DISPLAY_NUM_ERROR_MSGS:
                 return
             expected_object_log_value = getattr(expected_log_batch_entry, field)
             test_object_log_value = getattr(test_log_batch_entry, field)
 
-            if container.type == torch.Tensor:
+            if isinstance(expected_object_log_value, torch.Tensor):
                 if field == "loss":
                     if not torch.allclose(
                         expected_object_log_value,
@@ -83,7 +83,7 @@ def main():
                 continue
 
             if (
-                container.type is not torch.Tensor
+                not isinstance(expected_object_log_value, torch.Tensor)
                 and expected_object_log_value != test_object_log_value
             ):
                 print(

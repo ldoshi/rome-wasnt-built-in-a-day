@@ -28,12 +28,12 @@ def _get_model(
 ) -> builder_trainer.BridgeBuilderModel:
     return builder_trainer.BridgeBuilderModel(
         object_log_manager,
-        env_width=3,
+        env_width=6,
         env_force_standard_config=True,
-        seed=12345,
-        max_episode_length=1,
-        val_batch_size=1,
-        batch_size=5,
+        seed=42,
+        max_episode_length=10,
+        val_batch_size=1000,
+        batch_size=100,
         object_logging_dir=_OBJECT_LOGGING_DIR,
         debug=debug,
     )
