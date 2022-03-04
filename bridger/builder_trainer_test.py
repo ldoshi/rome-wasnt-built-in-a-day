@@ -40,7 +40,7 @@ def _get_model(
 
 
 # TODO(Joseph): Change max_steps back to 1 later.
-def _get_trainer(max_steps: int = 10, callbacks: list[Callback] = None) -> Trainer:
+def _get_trainer(max_steps: int = 100, callbacks: list[Callback] = None) -> Trainer:
     return Trainer(
         val_check_interval=1,
         # The validation batch size can be adjusted via a config, but
@@ -138,9 +138,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
     def test_training_batch_no_logging(self):
         """Verifies that training batches are not logged by default."""
 
-        with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
-        ) as object_log_manager:
+        with object_logging.ObjectLogManager(dirname=_OBJECT_LOGGING_DIR) as object_log_manager:
             _get_trainer().fit(_get_model(object_log_manager))
         path = pathlib.Path(_OBJECT_LOGGING_DIR)
         self.assertTrue(path.is_dir())
@@ -149,12 +147,10 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
     def test_training_batch_logging(self):
         """Verifies that training batches are logged in debug mode."""
 
-        with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
-        ) as object_log_manager:
-            _get_trainer().fit(
-                _get_model(object_log_manager=object_log_manager, debug=True)
-            )
+        with object_logging.ObjectLogManager(dirname=_OBJECT_LOGGING_DIR) as object_log_manager:
+            _get_trainer().fit(_get_model(object_log_manager=object_log_manager, debug=True))
+            # TODO: delete, this is writing logs for testing
+            return
         expected_entries = [
             log_entry.TrainingBatchLogEntry(
                 batch_idx=0,
@@ -233,18 +229,26 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 rewards=torch.tensor([-1, -1, -1, -1, -1]),
                 successes=torch.tensor([False, False, False, False, False]),
                 weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
-                loss=torch.tensor(0.9522, dtype=torch.float64),
+                loss=torch.tensor(0.9522, dtype=torch.float64, requires_grad=True),
             )
         ]
 
-        logged_entries = list(
-            object_logging.read_object_log(
+        logged_entries = list(object_logging.read_object_log(
                 _OBJECT_LOGGING_DIR, log_entry.TRAINING_BATCH_LOG_ENTRY
-            )
-        )
+        ))
 
-#        self.assertEqual(expected_entries, logged_entries)
-
+        self.assertEqual(len(expected_entries), len(logged_entries))
+        for expected_entry, logged_entry in zip(expected_entries, logged_entries):
+            for field, container in expected_entry.__dataclass_fields__.items():
+                expected_entry_value = getattr(expected_entry, field)
+                logged_entry_value = getattr(logged_entry, field)
+                if container.type == torch.Tensor:
+                    if field == "loss":
+                        self.assertTrue(torch.allclose(expected_entry_value, logged_entry_value,atol=1e-4))
+                    else:
+                        self.assertTrue(torch.equal(expected_entry_value, logged_entry_value))
+                else:
+                    self.assertEqual(expected_entry_value, logged_entry_value)
 
 class BuilderTest(unittest.TestCase):
     """Verifies the builder's execution of a policy."""
