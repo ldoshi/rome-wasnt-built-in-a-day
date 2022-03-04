@@ -1,3 +1,4 @@
+import dataclasses
 import pickle
 import math
 import unittest
@@ -8,6 +9,7 @@ from typing import Any, List
 
 from parameterized import parameterized
 
+from bridger.logging import log_entry
 from bridger.logging import object_logging
 
 _TMP_DIR = "tmp/nested_tmp"
@@ -52,6 +54,51 @@ class TestObjectLogManager(unittest.TestCase):
             object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_1)
         )
         self.assertEqual(expected_log_entries_1, logged_entries_1)
+
+
+class TestLoggerAndNormalizer(unittest.TestCase):
+    def setUp(self):
+        create_temp_dir()
+
+    def tearDown(self):
+        delete_temp_dir()
+
+    @parameterized.expand(
+        [
+            ("Hashable Log Entry", int, None, 1, 5),
+            ("Non-Hashable Log Entry", list, str, [1], [2, 5]),
+        ]
+    )
+    def test_log_and_normalizer(
+        self, name, log_entry_object_class, make_hashable_fn, object_0, object_1
+    ):
+        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+            normalizer = object_logging.LoggerAndNormalizer(
+                log_filename=_LOG_FILENAME_0,
+                object_log_manager=logger,
+                log_entry_object_class=log_entry_object_class,
+                make_hashable_fn=make_hashable_fn,
+            )
+            self.assertEqual(normalizer.get_logged_object_id(object_0), 0)
+            self.assertEqual(normalizer.get_logged_object_id(object_0), 0)
+            self.assertEqual(normalizer.get_logged_object_id(object_1), 1)
+            self.assertEqual(normalizer.get_logged_object_id(object_0), 0)
+
+        expected_entries = [
+            log_entry.NormalizedLogEntry(id=0, object=object_0),
+            log_entry.NormalizedLogEntry(id=1, object=object_1),
+        ]
+        logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
+        self.assertEqual(logged_entries, expected_entries)
+
+    def test_logging_incorrect_type(self):
+        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+            normalizer = object_logging.LoggerAndNormalizer(
+                log_filename=_LOG_FILENAME_0,
+                object_log_manager=logger,
+                log_entry_object_class=dict,
+            )
+            self.assertRaises(ValueError, normalizer.get_logged_object_id, object=[])
 
 
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
