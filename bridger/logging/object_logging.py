@@ -40,23 +40,13 @@ class ObjectLogManager:
         path.mkdir(parents=True, exist_ok=True)
 
         self._object_loggers = {}
-        # TODO(lyric): Remove this and all related usage before
-        # merging PR#107.
-        self._object_logger_costs = collections.defaultdict(float)
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        for log_filename, object_logger in self._object_loggers.items():
-            start = time.perf_counter()
+        for object_logger in self._object_loggers.values():
             object_logger.close()
-            self._object_logger_costs[log_filename] += time.perf_counter() - start
-
-        # TODO(lyric): Remove before merging PR#107.
-        print("EXITING")
-        for log_filename, cost in self._object_logger_costs.items():
-            print(f"{log_filename}: {cost}")
 
     def log(self, log_filename: str, log_entry: Any) -> None:
         """Logs the provided entry to a log file named log_filename.
@@ -71,9 +61,7 @@ class ObjectLogManager:
                 dirname=self._dirname, log_filename=log_filename
             )
 
-        start = time.perf_counter()
         self._object_loggers[log_filename].log(log_entry)
-        self._object_logger_costs[log_filename] += time.perf_counter() - start
 
 
 class LoggerAndNormalizer:
