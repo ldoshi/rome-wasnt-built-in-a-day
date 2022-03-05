@@ -43,9 +43,15 @@ def main():
 
     batch_entry_error_counter = 0
 
+    expected_log_batch_entries = list(
+        object_logging.read_object_log(expected_dirname, expected_basename)
+    )
+    test_log_batch_entries = list(
+        object_logging.read_object_log(test_dirname, test_basename)
+    )
+    assert len(expected_log_batch_entries) == len(test_log_batch_entries)
     for expected_log_batch_entry, test_log_batch_entry in zip(
-        object_logging.read_object_log(expected_dirname, expected_basename),
-        object_logging.read_object_log(test_dirname, test_basename),
+        expected_log_batch_entries, test_log_batch_entries
     ):
         for field in expected_log_batch_entry.__dataclass_fields__:
             # Exit early if we hit the maximum number of displayed errors.
