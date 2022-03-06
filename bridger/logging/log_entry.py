@@ -11,12 +11,6 @@ STATE_NORMALIZED_LOG_ENTRY = "state_normalized"
 TRAINING_HISTORY_VISIT_LOG_ENTRY = "training_history_visit"
 
 @dataclasses.dataclass
-class TrainingHistoryVisitLogEntry:
-    """An entry representing a single state visit."""
-    batch_idx: int
-    state_id: int
-
-@dataclasses.dataclass
 class TrainingBatchLogEntry:
     """The contents of a training batch from a training step.
 
@@ -50,5 +44,18 @@ class NormalizedLogEntry:
     """
 
     id: int
+    object: Any
+
+@dataclasses.dataclass
+class OccurrenceLogEntry:
+    """An entry noting the occurrence of an object.
+
+    The type of object for a particular instance of a log file can be
+    determined by either checking the initialization of the
+    correponding OccurrenceLogger and dynamically checking the type of
+    object at read time.
+
+    """
+    batch_idx: int
     object: Any
 
