@@ -98,7 +98,8 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             normalizer = object_logging.LoggerAndNormalizer(
                 log_filename=_LOG_FILENAME_0,
                 object_log_manager=logger,
-                log_entry_object_class=int
+                log_entry_object_class=int,
+                make_hashable_fn=lambda x: x+1
             )
             self.assertEqual(normalizer.get_logged_object_id(object), 0)
             self.assertEqual(normalizer.get_logged_object_by_id(object_id=0), object)

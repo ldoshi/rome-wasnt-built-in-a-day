@@ -149,15 +149,16 @@ class LoggerAndNormalizer:
             return self._normalizer[hashable_object]
 
         object_id = len(self._normalizer)
+        object_copy = copy.deepcopy(object)
         # TODO(lyric): Consider adding an init arg as to whether the
         # object should be copied or not. Per PR#104, the copy will be
         # required for data coming from training batches.
         self._object_log_manager.log(
             self._log_filename,
-            log_entry.NormalizedLogEntry(id=object_id, object=copy.deepcopy(object)),
+            log_entry.NormalizedLogEntry(id=object_id, object=object_copy),
         )
         self._normalizer[hashable_object] = object_id
-        self._normalizer_reverse_lookup[object_id] = hashable_object
+        self._normalizer_reverse_lookup[object_id] = object_copy
         return object_id
 
     def get_logged_object_by_id(self, object_id: int) -> Any:
@@ -269,14 +270,17 @@ class OccurrenceLogger:
 
         # TODO(lyric): Consider adding an init arg as to whether the
         # object should be copied or not. Per PR#104, the copy will be
-        # required for data coming from training batches.
+        # required for data coming from training batches. 
         self._object_log_manager.log(
             self._log_filename,
             log_entry.NormalizedLogEntry(id=object_id, object=copy.deepcopy(object)),
         )
 
     def get_top_n(self, n=None) -> List[Any]:
-        return [entry[0] for entry in self._occurrence_tracker.most_common(n)]
+        if self._logger_and_normalizer:
+            return [self._logger_and_normalizer.get_logged_object_by_id(entry[0]) for entry in self._occurrence_tracker.most_common(n)]
+        else:
+            return [entry[0] for entry in self._occurrence_tracker.most_common(n)]
     
 # TODO(lyric): Consider changing the buffer size metric to be based on
 # size vs entry count.
