@@ -184,9 +184,9 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             log_entry.TrainingBatchLogEntry(
                 batch_idx=0,
                 indices=torch.tensor([127, 231, 516, 661, 863]),
-                state_ids=[0, 0, 0, 0, 0],
+                state_ids=[1, 1, 1, 1, 1],
                 actions=torch.tensor([1, 0, 1, 1, 1]),
-                next_state_ids=[1, 2, 1, 1, 1],
+                next_state_ids=[2, 3, 2, 2, 2],
                 rewards=torch.tensor([-1, -1, -1, -1, -1]),
                 successes=torch.tensor([False, False, False, False, False]),
                 weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
