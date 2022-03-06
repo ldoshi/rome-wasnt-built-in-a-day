@@ -262,18 +262,18 @@ class OccurrenceLogger:
             )
 
         if self._logger_and_normalizer:
-            hashable_object = self._logger_and_normalizer.get_logged_object_id(object)
+            object_representation = self._logger_and_normalizer.get_logged_object_id(object)
         else:
-            hashable_object = object
+            # TODO(lyric): Consider adding an init arg as to whether
+            # the object should be copied or not. Per PR#104, the copy
+            # will be required for data coming from training batches.
+            object_representation = copy.deepcopy(object)
+        
+        self._occurrence_tracker[object_representation] += 1
 
-        self._occurrence_tracker[hashable_object] += 1
-
-        # TODO(lyric): Consider adding an init arg as to whether the
-        # object should be copied or not. Per PR#104, the copy will be
-        # required for data coming from training batches. 
         self._object_log_manager.log(
             self._log_filename,
-            log_entry.NormalizedLogEntry(id=object_id, object=copy.deepcopy(object)),
+            log_entry.OccurrenceLogEntry(batch_idx=batch_idx, object=object_representation),
         )
 
     def get_top_n(self, n=None) -> List[Any]:
