@@ -183,7 +183,7 @@ class BridgeBuilderModel(pl.LightningModule):
 
     def on_train_start(self):
         """Populates the replay buffer with an initial set of memories before training steps begin."""
-        self.make_memories(self.hparams.initial_memories_count)
+        self.make_memories(batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count)
 
     def on_train_batch_end(
         self,
@@ -203,7 +203,7 @@ class BridgeBuilderModel(pl.LightningModule):
         self.update_target()
         if self.hparams.debug:
             self.record_q_values(batch_idx)
-        self.make_memories()
+        self.make_memories(batch_idx)
 
     def update_target(self) -> None:
         """Updates the target network weights based on the Q network weights.
@@ -232,7 +232,7 @@ class BridgeBuilderModel(pl.LightningModule):
         for triple in triples:
             self.training_history.add_q_values(training_step, *triple)
 
-    def make_memories(self, requested_memory_count=None):
+    def make_memories(self, batch_idx, requested_memory_count=None):
         """Makes memories according to the requested memory count or default number of steps."""
         memory_count = (
             requested_memory_count
@@ -241,7 +241,13 @@ class BridgeBuilderModel(pl.LightningModule):
         )
         with torch.no_grad():
             for _ in range(memory_count):
-                next(self.memories)
+                _,_,start_state,_,_,_,_ = next(self.memories)
+                if self.hparams.debug:
+                    self._object_log_manager.log(
+                        log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY,
+                        log_entry.TrainingHistoryVisitLogEntry(
+                            batch_idx=batch_idx,
+                            state_id=self._state_logger.get_logged_object_id(torch.Tensor(start_state))))
 
     def _memory_generator(
         self,
@@ -268,8 +274,6 @@ class BridgeBuilderModel(pl.LightningModule):
             for step_idx in range(self.hparams.max_episode_length):
                 self._checkpoint({"episode": episode_idx, "step": total_step_idx})
                 start_state, action, end_state, reward, success = self()
-                if self.hparams.debug:
-                    self.training_history.increment_visit_count(start_state)
                 yield (
                     episode_idx,
                     step_idx,

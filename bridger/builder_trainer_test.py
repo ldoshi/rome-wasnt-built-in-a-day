@@ -24,17 +24,18 @@ _OBJECT_LOGGING_DIR = "tmp_object_logging_dir"
 
 
 def _get_model(
-    object_log_manager: object_logging.ObjectLogManager, debug: bool = False
-) -> builder_trainer.BridgeBuilderModel:
+        object_log_manager: object_logging.ObjectLogManager, debug: bool = False, max_episode_length=1
+        , initial_memories_count=1000) -> builder_trainer.BridgeBuilderModel:
     return builder_trainer.BridgeBuilderModel(
         object_log_manager,
         env_width=3,
         env_force_standard_config=True,
         seed=12345,
-        max_episode_length=1,
+        max_episode_length=max_episode_length,
         val_batch_size=1,
         batch_size=5,
         object_logging_dir=_OBJECT_LOGGING_DIR,
+        initial_memories_count=initial_memories_count,
         debug=debug,
     )
 
@@ -145,6 +146,31 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         self.assertTrue(path.is_dir())
         self.assertFalse(list(path.iterdir()))
 
+    def _verify_log_entries(self, expected_entries, logged_entries):
+        """Asserts equality for expected_entries and logged_entries.
+        
+        Checks equality field-by-field for each pair of corresponding entries.
+        """
+        self.assertEqual(len(expected_entries), len(logged_entries))
+        for expected_entry, logged_entry in zip(expected_entries, logged_entries):
+            for field, container in expected_entry.__dataclass_fields__.items():
+                expected_entry_value = getattr(expected_entry, field)
+                logged_entry_value = getattr(logged_entry, field)
+                if container.type == torch.Tensor:
+                    if field == "loss":
+                        self.assertTrue(
+                            torch.allclose(
+                                expected_entry_value, logged_entry_value, atol=1e-4
+                            )
+                        )
+                    else:
+                        self.assertTrue(
+                            torch.equal(expected_entry_value, logged_entry_value)
+                        )
+                else:
+                    self.assertEqual(expected_entry_value, logged_entry_value)
+        
+        
     def test_training_batch_logging(self):
         """Verifies that training batches are logged in debug mode."""
 
@@ -174,25 +200,34 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             )
         )
 
-        self.assertEqual(len(expected_entries), len(logged_entries))
-        for expected_entry, logged_entry in zip(expected_entries, logged_entries):
-            for field, container in expected_entry.__dataclass_fields__.items():
-                expected_entry_value = getattr(expected_entry, field)
-                logged_entry_value = getattr(logged_entry, field)
-                if container.type == torch.Tensor:
-                    if field == "loss":
-                        self.assertTrue(
-                            torch.allclose(
-                                expected_entry_value, logged_entry_value, atol=1e-4
-                            )
-                        )
-                    else:
-                        self.assertTrue(
-                            torch.equal(expected_entry_value, logged_entry_value)
-                        )
-                else:
-                    self.assertEqual(expected_entry_value, logged_entry_value)
+        self._verify_log_entries(expected_entries, logged_entries)
 
+    def test_training_history_visit_logging(self):
+        """Verifies that training history visits are logged in debug mode."""
+
+        max_steps = 8
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR
+        ) as object_log_manager:
+            _get_trainer(max_steps=max_steps).fit(
+                _get_model(object_log_manager=object_log_manager, debug=True, max_episode_length=2, initial_memories_count=1)
+            )
+
+        expected_entries = [
+            log_entry.TrainingHistoryVisitLogEntry(
+                batch_idx=batch_idx-1,
+                state_id=state_id) for batch_idx, state_id in zip(range(max_steps+1), [0,0,0,2,0,3,0,3,0])
+            
+        ]
+
+        logged_entries = list(
+            object_logging.read_object_log(
+                _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY
+            )
+        )
+
+        self._verify_log_entries(expected_entries, logged_entries)
+                    
 
 class BuilderTest(unittest.TestCase):
     """Verifies the builder's execution of a policy."""

@@ -8,6 +8,13 @@ from typing import Any, List
 TRAINING_BATCH_LOG_ENTRY = "training_batch"
 STATE_NORMALIZED_LOG_ENTRY = "state_normalized"
 
+TRAINING_HISTORY_VISIT_LOG_ENTRY = "training_history_visit"
+
+@dataclasses.dataclass
+class TrainingHistoryVisitLogEntry:
+    """An entry representing a single state visit."""
+    batch_idx: int
+    state_id: int
 
 @dataclasses.dataclass
 class TrainingBatchLogEntry:
@@ -44,3 +51,4 @@ class NormalizedLogEntry:
 
     id: int
     object: Any
+
