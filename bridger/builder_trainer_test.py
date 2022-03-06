@@ -212,13 +212,13 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             _get_trainer(max_steps=max_steps).fit(
                 _get_model(object_log_manager=object_log_manager, debug=True, max_episode_length=2, initial_memories_count=1)
             )
+            
 
         expected_entries = [
-            log_entry.TrainingHistoryVisitLogEntry(
+            log_entry.OccurrenceLogEntry(
                 batch_idx=batch_idx-1,
-                state_id=state_id) for batch_idx, state_id in zip(range(max_steps+1), [0,0,0,2,0,3,0,3,0])
-            
-        ]
+                object=state_id) for batch_idx, state_id in zip(range(max_steps+1), [0,0,0,2,0,3,0,3,0])]
+    
 
         logged_entries = list(
             object_logging.read_object_log(

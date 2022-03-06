@@ -120,10 +120,16 @@ class BridgeBuilderModel(pl.LightningModule):
         # TODO(Issue#106): Find a more efficient make_hashable_fn than
         # str.
         self._state_logger = object_logging.LoggerAndNormalizer(
-            log_entry.STATE_NORMALIZED_LOG_ENTRY,
-            self._object_log_manager,
-            torch.Tensor,
+            log_filename=log_entry.STATE_NORMALIZED_LOG_ENTRY,
+            object_log_manager=self._object_log_manager,
+            log_entry_object_class=torch.Tensor,
             make_hashable_fn=str,
+        )
+        self._state_visit_logger = object_logging.OccurrenceLogger(
+            log_filename=log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY,
+            object_log_manager=self._object_log_manager,
+            log_entry_object_class=torch.Tensor,
+            logger_and_normalizer=self._state_logger
         )
         if hparams:
             self.save_hyperparameters(hparams)
@@ -243,11 +249,7 @@ class BridgeBuilderModel(pl.LightningModule):
             for _ in range(memory_count):
                 _,_,start_state,_,_,_,_ = next(self.memories)
                 if self.hparams.debug:
-                    self._object_log_manager.log(
-                        log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY,
-                        log_entry.TrainingHistoryVisitLogEntry(
-                            batch_idx=batch_idx,
-                            state_id=self._state_logger.get_logged_object_id(torch.Tensor(start_state))))
+                    self._state_visit_logger.log_occurrence(batch_idx=batch_idx, object=torch.Tensor(start_state))
 
     def _memory_generator(
         self,
