@@ -16,6 +16,10 @@ from bridger import config, policies, qfunctions, replay_buffer, training_histor
 from bridger.logging import object_logging
 from bridger.logging import log_entry
 
+# TODO(lyric): Consider making this is a training config if being able
+# to override it proves to be desirable.
+_FREQUENTLY_VISITED_STATE_COUNT = 100
+
 
 def get_hyperparam_parser(parser=None) -> argparse.ArgumentParser:
     """Hyperparameter parser for the BridgeBuilderTrainer Model.
@@ -207,8 +211,10 @@ class BridgeBuilderModel(pl.LightningModule):
             dataloader_idx: The index of the dataloader.
         """
         self.update_target()
-#        if self.hparams.debug:
-#            self.record_q_values(batch_idx)
+
+        if self.hparams.debug:
+            self._record_q_values_debug_helper(batch_idx)
+
         self.make_memories(batch_idx)
 
     def update_target(self) -> None:
@@ -221,23 +227,28 @@ class BridgeBuilderModel(pl.LightningModule):
             params[param] += self.hparams.tau * (update[param] - params[param])
         self.target.load_state_dict(params)
 
-    def record_q_values(self, training_step: int) -> None:
-        """Record q values to TrainingHistory.
+    def _record_q_values_debug_helper(self, batch_idx: int) -> None:
+        """Compute and log q values.
 
         Args:
-            training_step: A sequential value identifying which iteration of training produces the q values."""
-        visited_state_histories = self.training_history.get_history_by_visit_count(100)
-        states = [
-            visited_state_history.state
-            for visited_state_history in visited_state_histories
-        ]
-        states_tensor = torch.tensor(states)
-        triples = zip(
-            states, self.Q(states_tensor).tolist(), self.target(states_tensor).tolist()
-        )
-        for triple in triples:
-            self.training_history.add_q_values(training_step, *triple)
+           batch_idx: A sequential value identifying which training
+             step produced the q values.
 
+        """
+        frequently_visted_states = self._state_visit_logger.get_top_n(_FREQUENTLY_VISITED_STATE_COUNT)
+        for state, q_values, q_target_values in zip(frequently_visted_states, self.Q(frequently_visted_states).tolist(), self.target(frequently_visted_states).tolist()  ):
+            state_id=self._state_logger.get_logged_object_id(state)
+            for action, (q_value, q_target_value) in enumerate(zip(q_values, q_target_values)):
+                self._object_log_manager.log(
+                    log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY,
+                    log_entry.TrainingHistoryQValueLogEntry(batch_idx=batch_idx,
+                                                            
+                                                             state_id=state_id,
+
+                                                            action=action,
+
+                                                            q_value=q_value,q_target_value=q_target_value))
+        
     def make_memories(self, batch_idx, requested_memory_count=None):
         """Makes memories according to the requested memory count or default number of steps."""
         memory_count = (

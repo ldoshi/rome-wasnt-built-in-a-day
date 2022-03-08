@@ -246,9 +246,35 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             )
         )
 
-        print(logged_entries)
         self._verify_log_entries(expected_entries, logged_entries)
 
+    def test_training_history_q_value_logging(self):
+        """Verifies that td errors are logged in debug mode."""
+
+        RUN THIS TEST TO SEE THE ISSUE!
+        
+        max_steps = 2
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR
+        ) as object_log_manager:
+            _get_trainer(max_steps=max_steps).fit(
+                _get_model(
+                    object_log_manager=object_log_manager, debug=True, batch_size=2
+                )
+            )
+        expected_entries = [
+
+        ]
+
+        logged_entries = list(
+            object_logging.read_object_log(
+                _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY
+            )
+        )
+
+        print(logged_entries)
+        self._verify_log_entries(expected_entries, logged_entries)
+        
     def test_training_history_visit_logging(self):
         """Verifies that training history visits are logged in debug mode."""
 
