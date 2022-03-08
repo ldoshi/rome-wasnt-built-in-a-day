@@ -9,6 +9,22 @@ TRAINING_BATCH_LOG_ENTRY = "training_batch"
 STATE_NORMALIZED_LOG_ENTRY = "state_normalized"
 
 TRAINING_HISTORY_VISIT_LOG_ENTRY = "training_history_visit"
+TRAINING_HISTORY_TD_ERROR_LOG_ENTRY = "training_history_td_error"
+
+@dataclasses.dataclass
+class TrainingHistoryTDErrorLogEntry:
+    """The TD Error for a (state, action) pair from a training step.
+
+    A training batch is extracted from the replay buffer at each
+    training step. The batch_idx identifies which training step this
+    TrainingHistoryTDErrorLogEntry corresponds to.
+
+    """
+
+    batch_idx: int
+    state_id: int
+    action: int
+    td_error: float
 
 @dataclasses.dataclass
 class TrainingBatchLogEntry:

@@ -207,8 +207,8 @@ class BridgeBuilderModel(pl.LightningModule):
             dataloader_idx: The index of the dataloader.
         """
         self.update_target()
-        if self.hparams.debug:
-            self.record_q_values(batch_idx)
+#        if self.hparams.debug:
+#            self.record_q_values(batch_idx)
         self.make_memories(batch_idx)
 
     def update_target(self) -> None:
@@ -509,11 +509,12 @@ class BridgeBuilderModel(pl.LightningModule):
                 ),
             )
 
-            triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
-            for triple in triples:
-                # For debugging only. Averages the td error per (state, action) pair.
-                self.training_history.add_td_error(batch_idx, *triple)
-
+            for state, action, td_error in zip(states, actions.tolist(), td_errors.tolist()):
+                self._object_log_manager.log(
+                    log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
+                    log_entry.TrainingHistoryTDErrorLogEntry(batch_idx=batch_idx,
+                                                             state_id=                self._state_logger.get_logged_object_id(state),action=action,td_error=td_error))
+                
         # Update replay buffer.
         self.replay_buffer.update_priorities(indices, td_errors)
         self._update_beta()
