@@ -120,12 +120,6 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             self.assertRaises(ValueError, normalizer.get_logged_object_id, object=[])
 
     def test_illegal_init_configuration(self):
-        """Verifies that an illegal init configuration raises an exception.
-
-        The class torch.Tensor cannot be provided without a
-        corresponding make_hashable_fn because torch.equal tensors
-        hash to different values using the built-in hash function.
-        """
         with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
             self.assertRaises(
                 ValueError,
@@ -167,7 +161,7 @@ class TestOccurrenceLogger(unittest.TestCase):
         object_2,
         expected_logged_objects,
     ):
-        """Verifies occurrence logging in cases where a normalizer is and isn't used.
+        """Verifes occurrence logging in cases where a normalizer is and isn't used.
 
         The main body of the test checks in-memory get_top_n() results
         based on the object occurrences logged so far. For
@@ -224,9 +218,7 @@ class TestOccurrenceLogger(unittest.TestCase):
             log_entry.OccurrenceLogEntry(batch_idx=batch_idx, object=object)
             for batch_idx, object in zip([0, 0, 1, 1, 1, 2], expected_logged_objects)
         ]
-        logged_entries = list(
-            object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_1)
-        )
+        logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_1))
         self.assertEqual(logged_entries, expected_entries)
 
     def test_logging_incorrect_type(self):
@@ -241,13 +233,6 @@ class TestOccurrenceLogger(unittest.TestCase):
             )
 
     def test_illegal_init_configuration(self):
-        """Verifies that an illegal init configuration raises exceptions.
-
-        The class torch.Tensor cannot be provided without a
-        corresponding LoggerAndNormalizer instance to manage hashing
-        and efficient storage.
-        """
-
         with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
             self.assertRaises(
                 ValueError,

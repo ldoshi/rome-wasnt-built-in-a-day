@@ -120,9 +120,7 @@ class LoggerAndNormalizer:
             self._make_hashable_fn = lambda x: x
 
         self._normalizer = {}
-        # Object ids are assigned sequentially so they can be used
-        # directly as indices for the reverse lookup.
-        self._normalizer_reverse_lookup = []
+        self._normalizer_reverse_lookup = {}
 
     def get_logged_object_id(self, object: Any) -> int:
         """Returns the unique id for the provided object.
@@ -163,8 +161,7 @@ class LoggerAndNormalizer:
             log_entry.NormalizedLogEntry(id=object_id, object=object_copy),
         )
         self._normalizer[hashable_object] = object_id
-        assert len(self._normalizer_reverse_lookup) == object_id
-        self._normalizer_reverse_lookup.append(object_copy)
+        self._normalizer_reverse_lookup[object_id] = object_copy
         return object_id
 
     def get_logged_object_by_id(self, object_id: int) -> Any:
@@ -179,21 +176,21 @@ class LoggerAndNormalizer:
         Raises:
           ValueError: If the object_id cannot be found.
         """
-        if object_id < len(self._normalizer_reverse_lookup):
-            return self._normalizer_reverse_lookup[object_id]
+        object = self._normalizer_reverse_lookup.get(object_id)
+        if object is None:
+            raise ValueError(
+                f"Requested object id {object_id}  was not produced by "
+                "this LoggerAndNormalizer instance"
+            )
+        return object
 
-        raise ValueError(
-            f"Requested object id {object_id}  was not produced by "
-            "this LoggerAndNormalizer instance"
-        )
 
-
-# TODO(Issue#112): Consider implementing the occurrence metadata
-# tracking as a sliding window over the most recent b batches instead
-# over all time.
+# TODO(lyric): Consider implementing the occurrence metadata tracking
+# as a sliding window over the most recent b batches instead over all
+# time.
 class OccurrenceLogger:
 
-    """Logs the occurrence of an object with its batch_idx.
+    """Logs the occurence of an object with its batch_idx.
 
     The OccurrenceLogger also maintains metadata of how frequently
     each object was logged and supports requests for the top-N logged
@@ -249,7 +246,7 @@ class OccurrenceLogger:
         self._occurrence_tracker = collections.Counter()
 
     def log_occurrence(self, batch_idx: int, object: Any) -> None:
-        """Logs an occurrence for the provided object.
+        """Logs an occurence for the provided object.
 
         The object must be an instance of the log_entry_object_class
         provided in the init.
