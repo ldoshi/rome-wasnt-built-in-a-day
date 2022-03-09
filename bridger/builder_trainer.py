@@ -236,7 +236,9 @@ class BridgeBuilderModel(pl.LightningModule):
 
         """
         frequently_visted_states = self._state_visit_logger.get_top_n(_FREQUENTLY_VISITED_STATE_COUNT)
-        for state, q_values, q_target_values in zip(frequently_visted_states, self.Q(frequently_visted_states).tolist(), self.target(frequently_visted_states).tolist()  ):
+        print("THIN: " , len(frequently_visted_states))
+        frequently_visted_states_tensor = torch.stack(frequently_visted_states)
+        for state, q_values, q_target_values in zip(frequently_visted_states, self.Q(frequently_visted_states_tensor).tolist(), self.target(frequently_visted_states_tensor).tolist()  ):
             state_id=self._state_logger.get_logged_object_id(state)
             for action, (q_value, q_target_value) in enumerate(zip(q_values, q_target_values)):
                 self._object_log_manager.log(
