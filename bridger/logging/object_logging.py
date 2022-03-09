@@ -12,7 +12,6 @@ Usage:
 """
 from typing import Any, Callable, Optional
 
-import collections
 import copy
 import shutil
 import pickle
@@ -181,6 +180,7 @@ class LoggerAndNormalizer:
                 "this LoggerAndNormalizer instance"
             )
         return object
+
 
 # TODO(lyric): Consider changing the buffer size metric to be based on
 # size vs entry count.

@@ -126,6 +126,7 @@ class TestLoggerAndNormalizer(unittest.TestCase):
                 log_entry_object_class=torch.Tensor,
             )
 
+
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
         dirname=_TMP_DIR, log_filename=_LOG_FILENAME_0, buffer_size=buffer_size
