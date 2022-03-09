@@ -44,4 +44,3 @@ class NormalizedLogEntry:
 
     id: int
     object: Any
-
