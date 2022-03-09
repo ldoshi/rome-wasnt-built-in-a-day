@@ -109,8 +109,9 @@ class LoggerAndNormalizer:
                 f"Hashing torch.Tensor directly does not produce desired"
                 f"results. Tensors which are torch.equal may still have "
                 f"different hash values. Please provide an argument for "
-                f"make_hashable_fn.")
-        
+                f"make_hashable_fn."
+            )
+
         if make_hashable_fn:
             self._make_hashable_fn = make_hashable_fn
         else:
@@ -171,7 +172,7 @@ class LoggerAndNormalizer:
           The object corresponding to object_id.
 
         Raises:
-          ValueError: If the object_id cannot be found. 
+          ValueError: If the object_id cannot be found.
         """
         object = self._normalizer_reverse_lookup.get(object_id)
         if object is None:
@@ -180,7 +181,7 @@ class LoggerAndNormalizer:
                 "this LoggerAndNormalizer instance"
             )
         return object
-            
+
 
 # TODO(lyric): make a ticket to track this?
 # TODO(lyric): Consider implementing the occurrence metadata tracking
@@ -189,7 +190,7 @@ class LoggerAndNormalizer:
 class OccurrenceLogger:
 
     """Logs the occurence of an object with its batch_idx.
-        
+
     The OccurrenceLogger also maintains metadata of how frequently
     each object was logged and supports requests for the top-N logged
     objects by frequency.
@@ -198,12 +199,13 @@ class OccurrenceLogger:
     logging of the provided object.
 
     """
+
     def __init__(
         self,
         log_filename: str,
         object_log_manager: ObjectLogManager,
         log_entry_object_class: Any,
-        logger_and_normalizer: Optional[LoggerAndNormalizer] = None
+        logger_and_normalizer: Optional[LoggerAndNormalizer] = None,
     ):
         """Store logging directives.
 
@@ -213,18 +215,21 @@ class OccurrenceLogger:
             filename.
           object_log_manager: Logger for pickle-able objects.
           log_entry_object_class: The required type of the object
-            passed to log_occurrence in this instance of OccurrenceLogger. 
-            The type check is conducted at runtime with each 
+            passed to log_occurrence in this instance of OccurrenceLogger.
+            The type check is conducted at runtime with each
             log_occurrence call.
           logger_and_normalizer: Helper to enable efficient logging of the
-            object if it's expensive to log. 
+            object if it's expensive to log.
         """
         self._log_filename = log_filename
         self._object_log_manager = object_log_manager
         self._log_entry_object_class = log_entry_object_class
         self._logger_and_normalizer = logger_and_normalizer
 
-        if self._log_entry_object_class is torch.Tensor and not self._logger_and_normalizer:
+        if (
+            self._log_entry_object_class is torch.Tensor
+            and not self._logger_and_normalizer
+        ):
             # Explicitly error on a known source of unexpected
             # behavior.
             raise ValueError(
@@ -234,7 +239,8 @@ class OccurrenceLogger:
                 f"logger_and_normalizer is appropriate for the tensor "
                 f"and set make_hashable_fn there. (2) Add a init parameter"
                 f" for make_hashable_fn to OccurrenceLogger if (1) does not"
-                f" apply")
+                f" apply"
+            )
 
         self._occurrence_tracker = collections.Counter()
 
@@ -246,11 +252,11 @@ class OccurrenceLogger:
 
         One of the following is presumed to be true:
           1. The object is safely hashable.
-          2. A logger_and_normalizer was provided in the init, which 
+          2. A logger_and_normalizer was provided in the init, which
              converts the object into an int id.
 
         Args:
-          batch_idx: The batch_idx for which to log this occurrence of 
+          batch_idx: The batch_idx for which to log this occurrence of
             object.
           object: The object whose occurrence is being logged.
 
@@ -262,26 +268,34 @@ class OccurrenceLogger:
             )
 
         if self._logger_and_normalizer:
-            object_representation = self._logger_and_normalizer.get_logged_object_id(object)
+            object_representation = self._logger_and_normalizer.get_logged_object_id(
+                object
+            )
         else:
             # TODO(lyric): Consider adding an init arg as to whether
             # the object should be copied or not. Per PR#104, the copy
             # will be required for data coming from training batches.
             object_representation = copy.deepcopy(object)
-        
+
         self._occurrence_tracker[object_representation] += 1
 
         self._object_log_manager.log(
             self._log_filename,
-            log_entry.OccurrenceLogEntry(batch_idx=batch_idx, object=object_representation),
+            log_entry.OccurrenceLogEntry(
+                batch_idx=batch_idx, object=object_representation
+            ),
         )
 
     def get_top_n(self, n=None) -> List[Any]:
         if self._logger_and_normalizer:
-            return [self._logger_and_normalizer.get_logged_object_by_id(entry[0]) for entry in self._occurrence_tracker.most_common(n)]
+            return [
+                self._logger_and_normalizer.get_logged_object_by_id(entry[0])
+                for entry in self._occurrence_tracker.most_common(n)
+            ]
         else:
             return [entry[0] for entry in self._occurrence_tracker.most_common(n)]
-    
+
+
 # TODO(lyric): Consider changing the buffer size metric to be based on
 # size vs entry count.
 #

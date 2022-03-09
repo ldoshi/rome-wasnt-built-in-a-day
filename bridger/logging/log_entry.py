@@ -12,6 +12,7 @@ TRAINING_HISTORY_VISIT_LOG_ENTRY = "training_history_visit"
 TRAINING_HISTORY_TD_ERROR_LOG_ENTRY = "training_history_td_error"
 TRAINING_HISTORY_Q_VALUE_LOG_ENTRY = "training_history_q_value"
 
+
 @dataclasses.dataclass
 class TrainingHistoryTDErrorLogEntry:
     """The TD Error for a (state, action) pair from a training step.
@@ -26,6 +27,7 @@ class TrainingHistoryTDErrorLogEntry:
     state_id: int
     action: int
     td_error: float
+
 
 @dataclasses.dataclass
 class TrainingHistoryQValueLogEntry:
@@ -42,6 +44,7 @@ class TrainingHistoryQValueLogEntry:
     action: int
     q_value: float
     q_target_value: float
+
 
 @dataclasses.dataclass
 class TrainingBatchLogEntry:
@@ -79,6 +82,7 @@ class NormalizedLogEntry:
     id: int
     object: Any
 
+
 @dataclasses.dataclass
 class OccurrenceLogEntry:
     """An entry noting the occurrence of an object.
@@ -89,6 +93,6 @@ class OccurrenceLogEntry:
     object at read time.
 
     """
+
     batch_idx: int
     object: Any
-

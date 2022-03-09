@@ -259,10 +259,32 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ) as object_log_manager:
             _get_trainer(max_steps=max_steps).fit(
                 _get_model(
-                    object_log_manager=object_log_manager, debug=True,  batch_size=2
+                    object_log_manager=object_log_manager, debug=True, batch_size=2
                 )
             )
-        expected_entries =   [log_entry.TrainingHistoryQValueLogEntry(batch_idx=0, state_id=0, action=0, q_value=-0.128640, q_target_value=-0.091397), log_entry.TrainingHistoryQValueLogEntry(batch_idx=0, state_id=0, action=1, q_value=-0.045778, q_target_value=0.028986), log_entry.TrainingHistoryQValueLogEntry(batch_idx=0, state_id=0, action=2, q_value=-0.165802, q_target_value=-0.025232)]
+        expected_entries = [
+            log_entry.TrainingHistoryQValueLogEntry(
+                batch_idx=0,
+                state_id=0,
+                action=0,
+                q_value=-0.128640,
+                q_target_value=-0.091397,
+            ),
+            log_entry.TrainingHistoryQValueLogEntry(
+                batch_idx=0,
+                state_id=0,
+                action=1,
+                q_value=-0.045778,
+                q_target_value=0.028986,
+            ),
+            log_entry.TrainingHistoryQValueLogEntry(
+                batch_idx=0,
+                state_id=0,
+                action=2,
+                q_value=-0.165802,
+                q_target_value=-0.025232,
+            ),
+        ]
 
         logged_entries = list(
             object_logging.read_object_log(
@@ -288,7 +310,10 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ) as object_log_manager:
             _get_trainer(max_steps=max_steps).fit(
                 _get_model(
-                    object_log_manager=object_log_manager, debug=True,                     max_episode_length=2,batch_size=2
+                    object_log_manager=object_log_manager,
+                    debug=True,
+                    max_episode_length=2,
+                    batch_size=2,
                 )
             )
 
@@ -299,12 +324,15 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         )
 
         self.assertEqual(len(logged_entries), 18)
-        for logged_entry, (expected_batch_idx, expected_state_id, expected_action) in zip(logged_entries,itertools.product([0,1], [0,2,1], [0,1,2])):
+        for logged_entry, (
+            expected_batch_idx,
+            expected_state_id,
+            expected_action,
+        ) in zip(logged_entries, itertools.product([0, 1], [0, 2, 1], [0, 1, 2])):
             self.assertEqual(logged_entry.batch_idx, expected_batch_idx)
             self.assertEqual(logged_entry.state_id, expected_state_id)
             self.assertEqual(logged_entry.action, expected_action)
-            
-        
+
     def test_training_history_visit_logging(self):
         """Verifies that training history visits are logged in debug mode."""
 
