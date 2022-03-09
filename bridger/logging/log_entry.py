@@ -80,3 +80,18 @@ class NormalizedLogEntry:
 
     id: int
     object: Any
+
+
+@dataclasses.dataclass
+class OccurrenceLogEntry:
+    """An entry noting the occurrence of an object.
+
+    The type of object for a particular instance of a log file can be
+    determined by either checking the initialization of the
+    correponding OccurrenceLogger and dynamically checking the type of
+    object at read time.
+
+    """
+
+    batch_idx: int
+    object: Any
