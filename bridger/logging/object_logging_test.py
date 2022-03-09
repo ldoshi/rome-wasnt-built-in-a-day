@@ -127,6 +127,119 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             )
 
 
+class TestOccurrenceLogger(unittest.TestCase):
+    def setUp(self):
+        create_temp_dir()
+
+    def tearDown(self):
+        delete_temp_dir()
+
+    @parameterized.expand(
+        [
+            ("Without LoggerAndNormalizer", int, None, 1, 5, 3, [1, 5, 1, 5, 3, 5]),
+            (
+                "With LoggerAndNormalizer",
+                list,
+                str,
+                [1, 1],
+                [2, 2],
+                [2, 1],
+                [0, 1, 0, 1, 2, 1],
+            ),
+        ]
+    )
+    def test_occurrence_logging(
+        self,
+        name,
+        log_entry_object_class,
+        make_hashable_fn,
+        object_0,
+        object_1,
+        object_2,
+        expected_logged_objects,
+    ):
+        """Verifes occurrence logging in cases where a normalizer is and isn't used.
+
+        The main body of the test checks in-memory get_top_n() results
+        based on the object occurrences logged so far. For
+        get_top_n(), the objects themselves should be turned.
+
+        The final check of the logged content verifies that the
+        entries were logged to a file in the expected
+        order. Additionally, the check shows that LoggerAndNormalizer
+        was actually used when it should've been used because the
+        OccurrenceLogEntry contains the normalized ids. This is in
+        contrast to get_top_n(), which returns the logged objects in
+        all cases.
+
+        """
+        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+            if make_hashable_fn:
+                normalizer = object_logging.LoggerAndNormalizer(
+                    log_filename=_LOG_FILENAME_0,
+                    object_log_manager=logger,
+                    log_entry_object_class=log_entry_object_class,
+                    make_hashable_fn=make_hashable_fn,
+                )
+            else:
+                normalizer = None
+
+            occurrence_logger = object_logging.OccurrenceLogger(
+                log_filename=_LOG_FILENAME_1,
+                object_log_manager=logger,
+                log_entry_object_class=log_entry_object_class,
+                logger_and_normalizer=normalizer,
+            )
+
+            self.assertEqual(occurrence_logger.get_top_n(), [])
+            self.assertEqual(occurrence_logger.get_top_n(2), [])
+
+            occurrence_logger.log_occurrence(batch_idx=0, object=object_0)
+            self.assertEqual(occurrence_logger.get_top_n(), [object_0])
+            self.assertEqual(occurrence_logger.get_top_n(2), [object_0])
+
+            occurrence_logger.log_occurrence(batch_idx=0, object=object_1)
+            occurrence_logger.log_occurrence(batch_idx=1, object=object_0)
+            self.assertEqual(occurrence_logger.get_top_n(), [object_0, object_1])
+            self.assertEqual(occurrence_logger.get_top_n(2), [object_0, object_1])
+
+            occurrence_logger.log_occurrence(batch_idx=1, object=object_1)
+            occurrence_logger.log_occurrence(batch_idx=1, object=object_2)
+            occurrence_logger.log_occurrence(batch_idx=2, object=object_1)
+            self.assertEqual(
+                occurrence_logger.get_top_n(), [object_1, object_0, object_2]
+            )
+            self.assertEqual(occurrence_logger.get_top_n(2), [object_1, object_0])
+
+        expected_entries = [
+            log_entry.OccurrenceLogEntry(batch_idx=batch_idx, object=object)
+            for batch_idx, object in zip([0, 0, 1, 1, 1, 2], expected_logged_objects)
+        ]
+        logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_1))
+        self.assertEqual(logged_entries, expected_entries)
+
+    def test_logging_incorrect_type(self):
+        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+            occurrence_logger = object_logging.OccurrenceLogger(
+                log_filename=_LOG_FILENAME_0,
+                object_log_manager=logger,
+                log_entry_object_class=dict,
+            )
+            self.assertRaises(
+                ValueError, occurrence_logger.log_occurrence, batch_idx=0, object=[]
+            )
+
+    def test_illegal_init_configuration(self):
+        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+            self.assertRaises(
+                ValueError,
+                object_logging.OccurrenceLogger,
+                log_filename=_LOG_FILENAME_0,
+                object_log_manager=logger,
+                log_entry_object_class=torch.Tensor,
+            )
+
+
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
         dirname=_TMP_DIR, log_filename=_LOG_FILENAME_0, buffer_size=buffer_size
