@@ -239,6 +239,13 @@ class TestOccurrenceLogger(unittest.TestCase):
             )
 
     def test_illegal_init_configuration(self):
+        """Verifies that an illegal init configuration raises exceptions.
+
+        The class torch.Tensor cannot be provided without a
+        corresponding LoggerAndNormalizer instance to manage hashing
+        and efficient storage.
+        """
+
         with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
             self.assertRaises(
                 ValueError,
