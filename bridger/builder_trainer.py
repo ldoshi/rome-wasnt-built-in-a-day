@@ -16,6 +16,10 @@ from bridger import config, policies, qfunctions, replay_buffer, training_histor
 from bridger.logging import object_logging
 from bridger.logging import log_entry
 
+# TODO(lyric): Consider making this is a training config if being able
+# to override it proves to be desirable.
+_FREQUENTLY_VISITED_STATE_COUNT = 100
+
 
 def get_hyperparam_parser(parser=None) -> argparse.ArgumentParser:
     """Hyperparameter parser for the BridgeBuilderTrainer Model.
@@ -106,7 +110,7 @@ class BridgeBuilderModel(pl.LightningModule):
 
         Args:
           object_log_manager: Logger for pickle-able objects.
-          hparams: Dictionary or argparse.Namespace object containing hyperparameters 
+          hparams: Dictionary or argparse.Namespace object containing hyperparameters
             to be used for initialization.
 
         Keyword Args:
@@ -120,10 +124,16 @@ class BridgeBuilderModel(pl.LightningModule):
         # TODO(Issue#106): Find a more efficient make_hashable_fn than
         # str.
         self._state_logger = object_logging.LoggerAndNormalizer(
-            log_entry.STATE_NORMALIZED_LOG_ENTRY,
-            self._object_log_manager,
-            torch.Tensor,
+            log_filename=log_entry.STATE_NORMALIZED_LOG_ENTRY,
+            object_log_manager=self._object_log_manager,
+            log_entry_object_class=torch.Tensor,
             make_hashable_fn=str,
+        )
+        self._state_visit_logger = object_logging.OccurrenceLogger(
+            log_filename=log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY,
+            object_log_manager=self._object_log_manager,
+            log_entry_object_class=torch.Tensor,
+            logger_and_normalizer=self._state_logger,
         )
         if hparams:
             self.save_hyperparameters(hparams)
@@ -183,7 +193,9 @@ class BridgeBuilderModel(pl.LightningModule):
 
     def on_train_start(self):
         """Populates the replay buffer with an initial set of memories before training steps begin."""
-        self.make_memories(self.hparams.initial_memories_count)
+        self.make_memories(
+            batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
+        )
 
     def on_train_batch_end(
         self,
@@ -201,9 +213,11 @@ class BridgeBuilderModel(pl.LightningModule):
             dataloader_idx: The index of the dataloader.
         """
         self.update_target()
+
         if self.hparams.debug:
-            self.record_q_values(batch_idx)
-        self.make_memories()
+            self._record_q_values_debug_helper(batch_idx)
+
+        self.make_memories(batch_idx)
 
     def update_target(self) -> None:
         """Updates the target network weights based on the Q network weights.
@@ -215,24 +229,40 @@ class BridgeBuilderModel(pl.LightningModule):
             params[param] += self.hparams.tau * (update[param] - params[param])
         self.target.load_state_dict(params)
 
-    def record_q_values(self, training_step: int) -> None:
-        """Record q values to TrainingHistory.
+    def _record_q_values_debug_helper(self, batch_idx: int) -> None:
+        """Compute and log q values.
 
         Args:
-            training_step: A sequential value identifying which iteration of training produces the q values."""
-        visited_state_histories = self.training_history.get_history_by_visit_count(100)
-        states = [
-            visited_state_history.state
-            for visited_state_history in visited_state_histories
-        ]
-        states_tensor = torch.tensor(states)
-        triples = zip(
-            states, self.Q(states_tensor).tolist(), self.target(states_tensor).tolist()
-        )
-        for triple in triples:
-            self.training_history.add_q_values(training_step, *triple)
+           batch_idx: A sequential value identifying which training
+             step produced the q values.
 
-    def make_memories(self, requested_memory_count=None):
+        """
+        frequently_visted_states = self._state_visit_logger.get_top_n(
+            _FREQUENTLY_VISITED_STATE_COUNT
+        )
+        print("THIN: ", len(frequently_visted_states))
+        frequently_visted_states_tensor = torch.stack(frequently_visted_states)
+        for state, q_values, q_target_values in zip(
+            frequently_visted_states,
+            self.Q(frequently_visted_states_tensor).tolist(),
+            self.target(frequently_visted_states_tensor).tolist(),
+        ):
+            state_id = self._state_logger.get_logged_object_id(state)
+            for action, (q_value, q_target_value) in enumerate(
+                zip(q_values, q_target_values)
+            ):
+                self._object_log_manager.log(
+                    log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY,
+                    log_entry.TrainingHistoryQValueLogEntry(
+                        batch_idx=batch_idx,
+                        state_id=state_id,
+                        action=action,
+                        q_value=q_value,
+                        q_target_value=q_target_value,
+                    ),
+                )
+
+    def make_memories(self, batch_idx, requested_memory_count=None):
         """Makes memories according to the requested memory count or default number of steps."""
         memory_count = (
             requested_memory_count
@@ -241,7 +271,11 @@ class BridgeBuilderModel(pl.LightningModule):
         )
         with torch.no_grad():
             for _ in range(memory_count):
-                next(self.memories)
+                _, _, start_state, _, _, _, _ = next(self.memories)
+                if self.hparams.debug:
+                    self._state_visit_logger.log_occurrence(
+                        batch_idx=batch_idx, object=torch.Tensor(start_state)
+                    )
 
     def _memory_generator(
         self,
@@ -268,8 +302,6 @@ class BridgeBuilderModel(pl.LightningModule):
             for step_idx in range(self.hparams.max_episode_length):
                 self._checkpoint({"episode": episode_idx, "step": total_step_idx})
                 start_state, action, end_state, reward, success = self()
-                if self.hparams.debug:
-                    self.training_history.increment_visit_count(start_state)
                 yield (
                     episode_idx,
                     step_idx,
@@ -503,10 +535,18 @@ class BridgeBuilderModel(pl.LightningModule):
                 ),
             )
 
-            triples = zip(states.tolist(), actions.tolist(), td_errors.tolist())
-            for triple in triples:
-                # For debugging only. Averages the td error per (state, action) pair.
-                self.training_history.add_td_error(batch_idx, *triple)
+            for state, action, td_error in zip(
+                states, actions.tolist(), td_errors.tolist()
+            ):
+                self._object_log_manager.log(
+                    log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
+                    log_entry.TrainingHistoryTDErrorLogEntry(
+                        batch_idx=batch_idx,
+                        state_id=self._state_logger.get_logged_object_id(state),
+                        action=action,
+                        td_error=td_error,
+                    ),
+                )
 
         # Update replay buffer.
         self.replay_buffer.update_priorities(indices, td_errors)
