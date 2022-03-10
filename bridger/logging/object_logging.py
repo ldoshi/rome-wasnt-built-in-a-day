@@ -183,10 +183,9 @@ class LoggerAndNormalizer:
         return object
 
 
-# TODO(lyric): make a ticket to track this?
-# TODO(lyric): Consider implementing the occurrence metadata tracking
-# as a sliding window over the most recent b batches instead over all
-# time.
+# TODO(Issue#112): Consider implementing the occurrence metadata
+# tracking as a sliding window over the most recent b batches instead
+# over all time.
 class OccurrenceLogger:
 
     """Logs the occurence of an object with its batch_idx.
