@@ -16,8 +16,8 @@ from bridger import config, policies, qfunctions, replay_buffer, training_histor
 from bridger.logging import object_logging
 from bridger.logging import log_entry
 
-# TODO(lyric): Consider making this is a training config if being able
-# to override it proves to be desirable.
+# TODO(lyric): Make this is a training config if being able to
+# override it proves to be desirable.
 _FREQUENTLY_VISITED_STATE_COUNT = 100
 
 
@@ -216,7 +216,6 @@ class BridgeBuilderModel(pl.LightningModule):
 
         if self.hparams.debug:
             self._record_q_values_debug_helper(batch_idx)
-
         self.make_memories(batch_idx)
 
     def update_target(self) -> None:
@@ -240,7 +239,7 @@ class BridgeBuilderModel(pl.LightningModule):
         frequently_visted_states = self._state_visit_logger.get_top_n(
             _FREQUENTLY_VISITED_STATE_COUNT
         )
-        print("THIN: ", len(frequently_visted_states))
+
         frequently_visted_states_tensor = torch.stack(frequently_visted_states)
         for state, q_values, q_target_values in zip(
             frequently_visted_states,
