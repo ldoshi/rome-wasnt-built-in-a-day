@@ -161,7 +161,7 @@ class TestOccurrenceLogger(unittest.TestCase):
         object_2,
         expected_logged_objects,
     ):
-        """Verifes occurrence logging in cases where a normalizer is and isn't used.
+        """Verifies occurrence logging in cases where a normalizer is and isn't used.
 
         The main body of the test checks in-memory get_top_n() results
         based on the object occurrences logged so far. For
