@@ -246,7 +246,7 @@ class OccurrenceLogger:
         self._occurrence_tracker = collections.Counter()
 
     def log_occurrence(self, batch_idx: int, object: Any) -> None:
-        """Logs an occurence for the provided object.
+        """Logs an occurrence for the provided object.
 
         The object must be an instance of the log_entry_object_class
         provided in the init.
