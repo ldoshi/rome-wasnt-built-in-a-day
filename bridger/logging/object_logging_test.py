@@ -120,6 +120,12 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             self.assertRaises(ValueError, normalizer.get_logged_object_id, object=[])
 
     def test_illegal_init_configuration(self):
+        """Verifies that an illegal init configuration raises exceptions.
+
+        The class torch.Tensor cannot be provided without a
+        corresponding make_hashable_fn because torch.equal tensors
+        hash to different values using the built-in hash function.
+        """
         with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
             self.assertRaises(
                 ValueError,
