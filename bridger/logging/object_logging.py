@@ -188,7 +188,7 @@ class LoggerAndNormalizer:
 # over all time.
 class OccurrenceLogger:
 
-    """Logs the occurence of an object with its batch_idx.
+    """Logs the occurrence of an object with its batch_idx.
 
     The OccurrenceLogger also maintains metadata of how frequently
     each object was logged and supports requests for the top-N logged
@@ -244,7 +244,7 @@ class OccurrenceLogger:
         self._occurrence_tracker = collections.Counter()
 
     def log_occurrence(self, batch_idx: int, object: Any) -> None:
-        """Logs an occurence for the provided object.
+        """Logs an occurrence for the provided object.
 
         The object must be an instance of the log_entry_object_class
         provided in the init.
