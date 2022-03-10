@@ -147,7 +147,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         else:
             self.assertEqual(callbacks[0].count, max_steps)
 
-    def train_no_logging_without_debug(self):
+    def test_train_no_logging_without_debug(self):
         """Verifies that training history and batches are not logged by default."""
 
         with object_logging.ObjectLogManager(
