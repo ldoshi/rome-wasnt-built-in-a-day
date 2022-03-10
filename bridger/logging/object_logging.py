@@ -190,7 +190,7 @@ class LoggerAndNormalizer:
 # over all time.
 class OccurrenceLogger:
 
-    """Logs the occurence of an object with its batch_idx.
+    """Logs the occurrence of an object with its batch_idx.
 
     The OccurrenceLogger also maintains metadata of how frequently
     each object was logged and supports requests for the top-N logged
