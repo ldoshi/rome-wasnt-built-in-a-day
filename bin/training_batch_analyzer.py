@@ -5,7 +5,6 @@ import torch
 
 DISPLAY_NUM_ERROR_MSGS = 10
 
-
 def main():
     """Checks that two logged training batch entries share the same values
     across all attributes.
@@ -54,12 +53,8 @@ def main():
         expected_log_batch_entries, test_log_batch_entries
     ):
         for field in expected_log_batch_entry.__dataclass_fields__:
-            # Exit early if we hit the maximum number of displayed errors.
-            if batch_entry_error_counter == DISPLAY_NUM_ERROR_MSGS:
-                return
             expected_object_log_value = getattr(expected_log_batch_entry, field)
             test_object_log_value = getattr(test_log_batch_entry, field)
-
             if isinstance(expected_object_log_value, torch.Tensor):
                 if field == "loss":
                     if not torch.allclose(
@@ -69,11 +64,11 @@ def main():
                     ):
                         print(
                             f"Batch entry error count: {batch_entry_error_counter}.",
-                            f"For log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
-                            f"Expected logged training batch value: {expected_object_log_value}",
-                            f"Test logged training batch value: {test_object_log_value}",
+                            f"\nFor log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
+                            f"\nExpected logged training batch value: {expected_object_log_value}",
+                            f"\nTest logged training batch value:     {test_object_log_value}",
                         )
-                    batch_entry_error_counter += 1
+                        batch_entry_error_counter += 1
                     continue
 
                 if not torch.equal(expected_object_log_value, test_object_log_value):
@@ -98,7 +93,11 @@ def main():
                     f"Expected logged training batch value: {expected_object_log_value}",
                     f"Test logged training batch value: {test_object_log_value}",
                 )
-                batch_entry_error_counter += 1
+                batch_entry_error_counter += 1            
+
+        # Exit early if we hit the maximum number of displayed errors.
+        if batch_entry_error_counter == DISPLAY_NUM_ERROR_MSGS:
+            return
 
 
 if __name__ == "__main__":
