@@ -443,9 +443,9 @@ class BridgeBuilderModel(pl.LightningModule):
         qvals = self.Q(states)[row_idx, actions]
         with torch.no_grad():
             next_actions = self.Q(next_states).argmax(dim=1)
-            next_vals = self.target(next_states)[row_idx, next_actions]
-            expected_qvals = rewards + (~success) * self.hparams.gamma * next_vals
-        return expected_qvals - qvals
+            next_qvals = self.target(next_states)[row_idx, next_actions]
+            expected_qvals = rewards + (~success) * self.hparams.gamma * next_qvals
+        return expected_qvals - qvals, qvals, next_actions, next_qvals, expected_qvals
 
     def compute_loss(
         self, td_errors: torch.Tensor, weights: Optional[torch.Tensor] = None
@@ -466,7 +466,7 @@ class BridgeBuilderModel(pl.LightningModule):
         The loss is computed across a batch of memories sampled from the replay buffer. The replay buffer sampling weights are updated based on the TD error from the samples.
         """
         indices, states, actions, next_states, rewards, success, weights = batch
-        td_errors = self.get_td_error(states, actions, next_states, rewards, success)
+        td_errors, qvals, next_actions, next_qvals, expected_qvals = self.get_td_error(states, actions, next_states, rewards, success)
 
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
@@ -479,8 +479,16 @@ class BridgeBuilderModel(pl.LightningModule):
             indices_copy = copy.deepcopy(indices)
             actions_copy = copy.deepcopy(actions)
             rewards_copy = copy.deepcopy(rewards)
+
             success_copy = copy.deepcopy(success)
             weights_copy = copy.deepcopy(weights)
+            qvals_copy = copy.copy(qvals)
+            next_actions_copy = copy.deepcopy(next_actions)
+            next_qvals_copy = copy.deepcopy(next_qvals)
+            expected_qvals_copy = copy.deepcopy(expected_qvals)
+            td_errors_copy = copy.copy(td_errors)
+            q_params_copy = copy.deepcopy(self.Q.state_dict())
+            target_params_copy = copy.deepcopy(self.target.state_dict())
 
             self._object_log_manager.log(
                 log_entry.TRAINING_BATCH_LOG_ENTRY,
@@ -499,7 +507,14 @@ class BridgeBuilderModel(pl.LightningModule):
                     rewards=rewards_copy,
                     successes=success_copy,
                     weights=weights_copy,
+                    q_values=qvals_copy,
+                    next_actions=next_actions_copy,
+                    next_q_values=next_qvals,
+                    expected_q_vals=expected_qvals,
+                    td_errors=td_errors_copy,
                     loss=loss,
+                    q_params=q_params_copy,
+                    target_params=target_params_copy,
                 ),
             )
 

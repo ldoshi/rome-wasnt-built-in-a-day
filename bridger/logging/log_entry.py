@@ -27,7 +27,14 @@ class TrainingBatchLogEntry:
     rewards: torch.Tensor
     successes: torch.Tensor
     weights: torch.Tensor
+    q_values: torch.Tensor
+    next_actions: torch.Tensor
+    next_q_values: torch.Tensor
+    expected_q_vals: torch.Tensor
+    td_errors: torch.Tensor
     loss: torch.Tensor
+    q_params: torch.Tensor
+    target_params: torch.Tensor
 
 
 @dataclasses.dataclass

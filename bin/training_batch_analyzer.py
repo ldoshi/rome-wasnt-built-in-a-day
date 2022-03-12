@@ -83,6 +83,19 @@ def main():
 
                 continue
 
+            if 'params' in field:
+                assert len(test_object_log_value) == len(expected_object_log_value)
+                for expected_param_value,test_param_value in zip(expected_object_log_value.values(), test_object_log_value.values()):
+                    if not torch.equal(expected_param_value, test_param_value):
+                        print(
+                            f"Batch entry error count: {batch_entry_error_counter}.",
+                            f"For log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
+                            f"Expected logged training batch value: {expected_object_log_value}",
+                            f"Test logged training batch value: {test_object_log_value}",
+                        )
+                        batch_entry_error_counter += 1
+                continue
+
             if (
                 not isinstance(expected_object_log_value, torch.Tensor)
                 and expected_object_log_value != test_object_log_value
