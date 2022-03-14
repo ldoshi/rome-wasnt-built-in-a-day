@@ -325,3 +325,4 @@ class ObjectLogger:
     def close(self):
         self._flush_buffer()
         self._log_file.close()
+

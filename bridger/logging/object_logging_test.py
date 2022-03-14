@@ -90,9 +90,7 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             log_entry.NormalizedLogEntry(id=0, object=object_0),
             log_entry.NormalizedLogEntry(id=1, object=object_1),
         ]
-        logged_entries = list(
-            object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_0)
-        )
+        logged_entries = list(object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
         self.assertEqual(logged_entries, expected_entries)
 
     def test_get_logged_object_by_id(self):
@@ -224,7 +222,7 @@ class TestOccurrenceLogger(unittest.TestCase):
             log_entry.OccurrenceLogEntry(batch_idx=batch_idx, object=object)
             for batch_idx, object in zip([0, 0, 1, 1, 1, 2], expected_logged_objects)
         ]
-        logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_1))
+        logged_entries = list(object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_1))
         self.assertEqual(logged_entries, expected_entries)
 
     def test_logging_incorrect_type(self):
@@ -294,7 +292,6 @@ class TestObjectLogger(unittest.TestCase):
                 )
 
             self.assertRaises(EOFError, pickle.load, f)
-
 
 if __name__ == "__main__":
     unittest.main()
