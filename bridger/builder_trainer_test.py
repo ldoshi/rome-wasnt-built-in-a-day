@@ -16,6 +16,7 @@ from bridger import builder
 from bridger import builder_trainer
 from bridger import policies
 from bridger.logging import object_logging
+from bridger.logging import object_log_readers
 from bridger.logging import log_entry
 
 
@@ -206,7 +207,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ]
 
         logged_entries = list(
-            object_logging.read_object_log(
+            object_log_readers.read_object_log(
                 _OBJECT_LOGGING_DIR, log_entry.TRAINING_BATCH_LOG_ENTRY
             )
         )
@@ -241,7 +242,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ]
 
         logged_entries = list(
-            object_logging.read_object_log(
+            object_log_readers.read_object_log(
                 _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY
             )
         )
@@ -287,7 +288,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ]
 
         logged_entries = list(
-            object_logging.read_object_log(
+            object_log_readers.read_object_log(
                 _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
             )
         )
@@ -318,7 +319,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             )
 
         logged_entries = list(
-            object_logging.read_object_log(
+            object_log_readers.read_object_log(
                 _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
             )
         )
@@ -357,7 +358,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ]
 
         logged_entries = list(
-            object_logging.read_object_log(
+            object_log_readers.read_object_log(
                 _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY
             )
         )

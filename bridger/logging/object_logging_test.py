@@ -12,6 +12,7 @@ from parameterized import parameterized
 
 from bridger.logging import log_entry
 from bridger.logging import object_logging
+from bridger.logging import object_log_readers
 
 _TMP_DIR = "tmp/nested_tmp"
 
@@ -47,12 +48,12 @@ class TestObjectLogManager(unittest.TestCase):
                 logger.log(_LOG_FILENAME_1, log_entry)
 
         logged_entries_0 = list(
-            object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0)
+            object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_0)
         )
         self.assertEqual(expected_log_entries_0, logged_entries_0)
 
         logged_entries_1 = list(
-            object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_1)
+            object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_1)
         )
         self.assertEqual(expected_log_entries_1, logged_entries_1)
 
@@ -89,7 +90,7 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             log_entry.NormalizedLogEntry(id=0, object=object_0),
             log_entry.NormalizedLogEntry(id=1, object=object_1),
         ]
-        logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
+        logged_entries = list(object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
         self.assertEqual(logged_entries, expected_entries)
 
     def test_get_logged_object_by_id(self):
@@ -221,7 +222,7 @@ class TestOccurrenceLogger(unittest.TestCase):
             log_entry.OccurrenceLogEntry(batch_idx=batch_idx, object=object)
             for batch_idx, object in zip([0, 0, 1, 1, 1, 2], expected_logged_objects)
         ]
-        logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_1))
+        logged_entries = list(object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_1))
         self.assertEqual(logged_entries, expected_entries)
 
     def test_logging_incorrect_type(self):
@@ -291,17 +292,6 @@ class TestObjectLogger(unittest.TestCase):
                 )
 
             self.assertRaises(EOFError, pickle.load, f)
-
-    @parameterized.expand([(1,), (2,)])
-    def test_read_object_log(self, buffer_size):
-        """Verifies seamless iteration of the log independent of buffer_size"""
-
-        expected_entries = ["a", "b", "c"]
-        _log_entries(expected_entries, buffer_size)
-
-        logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
-        self.assertEqual(expected_entries, logged_entries)
-
 
 if __name__ == "__main__":
     unittest.main()

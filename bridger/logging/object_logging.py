@@ -324,16 +324,3 @@ class ObjectLogger:
         self._flush_buffer()
         self._log_file.close()
 
-
-def read_object_log(dirname: str, log_filename: str):
-    with open(os.path.join(dirname, log_filename), "rb") as f:
-        buffer = None
-        while True:
-            try:
-                buffer = pickle.load(f)
-
-                for element in buffer:
-                    yield element
-
-            except EOFError:
-                break
