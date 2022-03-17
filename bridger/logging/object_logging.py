@@ -117,7 +117,9 @@ class LoggerAndNormalizer:
             self._make_hashable_fn = lambda x: x
 
         self._normalizer = {}
-        self._normalizer_reverse_lookup = {}
+        # Object ids are assigned sequentially so they can be used
+        # directly as indices for the reverse lookup.
+        self._normalizer_reverse_lookup = []
 
     def get_logged_object_id(self, object: Any) -> int:
         """Returns the unique id for the provided object.
@@ -158,7 +160,8 @@ class LoggerAndNormalizer:
             log_entry.NormalizedLogEntry(id=object_id, object=object_copy),
         )
         self._normalizer[hashable_object] = object_id
-        self._normalizer_reverse_lookup[object_id] = object_copy
+        assert len(self._normalizer_reverse_lookup) == object_id
+        self._normalizer_reverse_lookup.append(object_copy)
         return object_id
 
     def get_logged_object_by_id(self, object_id: int) -> Any:
@@ -173,13 +176,13 @@ class LoggerAndNormalizer:
         Raises:
           ValueError: If the object_id cannot be found.
         """
-        object = self._normalizer_reverse_lookup.get(object_id)
-        if object is None:
-            raise ValueError(
-                f"Requested object id {object_id}  was not produced by "
-                "this LoggerAndNormalizer instance"
-            )
-        return object
+        if object_id < len(self._normalizer_reverse_lookup):
+            return self._normalizer_reverse_lookup[object_id]
+
+        raise ValueError(
+            f"Requested object id {object_id}  was not produced by "
+            "this LoggerAndNormalizer instance"
+        )
 
 
 # TODO(lyric): Consider changing the buffer size metric to be based on
