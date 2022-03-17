@@ -1,9 +1,15 @@
 """A set of utility functions"""
 
+from torch import Tensor
 from typing import Any
 from collections.abc import Callable
 
 from bridger.config import validate_kwargs
+
+
+def hash_tensor(x: Tensor):
+    """A function to hash torch tensors to be used as keys in a dictionary"""
+    return (tuple(x.shape), tuple(x.reshape(-1).tolist()))
 
 
 def validate_input(module_name: str, config: dict[str, dict[str, Any]]) -> Callable:
