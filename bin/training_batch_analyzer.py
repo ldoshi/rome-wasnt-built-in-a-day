@@ -53,10 +53,11 @@ def main():
         expected_log_batch_entries, test_log_batch_entries
     ):
         for field in expected_log_batch_entry.__dataclass_fields__:
+            print(field)
             expected_object_log_value = getattr(expected_log_batch_entry, field)
             test_object_log_value = getattr(test_log_batch_entry, field)
             if isinstance(expected_object_log_value, torch.Tensor):
-                if field in ['loss', 'q_values', 'next_q_values', 'expected_q_vals']:
+                if field in ['loss', 'q_values', 'next_q_values', 'expected_q_vals', 'td_errors']:
                     if not torch.allclose(
                         expected_object_log_value,
                         test_object_log_value,
