@@ -132,6 +132,7 @@ class TestLoggerAndNormalizer(unittest.TestCase):
                 log_entry_object_class=torch.Tensor,
             )
 
+
 class TestOccurrenceLogger(unittest.TestCase):
     def setUp(self):
         create_temp_dir()
@@ -250,6 +251,7 @@ class TestOccurrenceLogger(unittest.TestCase):
                 object_log_manager=logger,
                 log_entry_object_class=torch.Tensor,
             )
+
 
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
