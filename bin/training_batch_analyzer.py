@@ -3,7 +3,7 @@ import bridger.logging.object_logging as object_logging
 import os
 import torch
 
-DISPLAY_NUM_ERROR_MSGS = 10
+DISPLAY_NUM_ERROR_MSGS = 1
 
 def main():
     """Checks that two logged training batch entries share the same values
@@ -56,17 +56,17 @@ def main():
             expected_object_log_value = getattr(expected_log_batch_entry, field)
             test_object_log_value = getattr(test_log_batch_entry, field)
             if isinstance(expected_object_log_value, torch.Tensor):
-                if field == "loss":
+                if field in ['loss', 'q_values', 'next_q_values', 'expected_q_vals']:
                     if not torch.allclose(
                         expected_object_log_value,
                         test_object_log_value,
                         atol=1e-4,
                     ):
                         print(
-                            f"Batch entry error count: {batch_entry_error_counter}.",
+                            f"Batch entry error count: {batch_entry_error_counter}.\n",
                             f"\nFor log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
-                            f"\nExpected logged training batch value: {expected_object_log_value}",
-                            f"\nTest logged training batch value:     {test_object_log_value}",
+                            f"\nExpected logged training batch value: \n{expected_object_log_value}",
+                            f"\nTest logged training batch value: \n{test_object_log_value}",
                         )
                         batch_entry_error_counter += 1
                     continue
@@ -74,9 +74,9 @@ def main():
                 if not torch.equal(expected_object_log_value, test_object_log_value):
                     print(
                         f"Batch entry error count: {batch_entry_error_counter}.",
-                        f"For log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
-                        f"Expected logged training batch value: {expected_object_log_value}",
-                        f"Test logged training batch value: {test_object_log_value}",
+                        f"\nFor log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
+                        f"\nExpected logged training batch value: \n{expected_object_log_value}",
+                        f"\nTest logged training batch value: \n{test_object_log_value}",
                     )
                     batch_entry_error_counter += 1
                     continue
@@ -89,9 +89,9 @@ def main():
                     if not torch.equal(expected_param_value, test_param_value):
                         print(
                             f"Batch entry error count: {batch_entry_error_counter}.",
-                            f"For log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
-                            f"Expected logged training batch value: {expected_object_log_value}",
-                            f"Test logged training batch value: {test_object_log_value}",
+                            f"\nFor log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
+                            f"\nExpected logged training batch value: \n{expected_object_log_value}",
+                            f"\nTest logged training batch value: \n{test_object_log_value}",
                         )
                         batch_entry_error_counter += 1
                 continue
@@ -102,14 +102,14 @@ def main():
             ):
                 print(
                     f"Batch entry error count: {batch_entry_error_counter}.",
-                    f"For log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
-                    f"Expected logged training batch value: {expected_object_log_value}",
-                    f"Test logged training batch value: {test_object_log_value}",
+                    f"\nFor log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
+                    f"\nExpected logged training batch value: \n{expected_object_log_value}",
+                    f"\nTest logged training batch value: \n{test_object_log_value}",
                 )
                 batch_entry_error_counter += 1            
 
         # Exit early if we hit the maximum number of displayed errors.
-        if batch_entry_error_counter == DISPLAY_NUM_ERROR_MSGS:
+        if batch_entry_error_counter >= DISPLAY_NUM_ERROR_MSGS:
             return
 
 
