@@ -17,6 +17,7 @@ import shutil
 import pickle
 import os
 import pathlib
+import torch
 
 from collections.abc import Hashable
 
@@ -99,11 +100,26 @@ class LoggerAndNormalizer:
         self._log_filename = log_filename
         self._object_log_manager = object_log_manager
         self._log_entry_object_class = log_entry_object_class
+
+        if self._log_entry_object_class is torch.Tensor and not make_hashable_fn:
+            # Explicitly error on a known source of unexpected
+            # behavior.
+            raise ValueError(
+                f"Hashing torch.Tensor directly does not produce desired"
+                f"results. Tensors which are torch.equal may still have "
+                f"different hash values. Please provide an argument for "
+                f"make_hashable_fn."
+            )
+
         if make_hashable_fn:
             self._make_hashable_fn = make_hashable_fn
         else:
             self._make_hashable_fn = lambda x: x
+
         self._normalizer = {}
+        # Object ids are assigned sequentially so they can be used
+        # directly as indices for the reverse lookup.
+        self._normalizer_reverse_lookup = []
 
     def get_logged_object_id(self, object: Any) -> int:
         """Returns the unique id for the provided object.
@@ -122,7 +138,7 @@ class LoggerAndNormalizer:
             it has not been logged before.
 
         Returns:
-
+          The unique id associated with the object.
         """
         if not isinstance(object, self._log_entry_object_class):
             raise ValueError(
@@ -135,15 +151,38 @@ class LoggerAndNormalizer:
             return self._normalizer[hashable_object]
 
         object_id = len(self._normalizer)
+        object_copy = copy.deepcopy(object)
         # TODO(lyric): Consider adding an init arg as to whether the
         # object should be copied or not. Per PR#104, the copy will be
         # required for data coming from training batches.
         self._object_log_manager.log(
             self._log_filename,
-            log_entry.NormalizedLogEntry(id=object_id, object=copy.deepcopy(object)),
+            log_entry.NormalizedLogEntry(id=object_id, object=object_copy),
         )
         self._normalizer[hashable_object] = object_id
+        assert len(self._normalizer_reverse_lookup) == object_id
+        self._normalizer_reverse_lookup.append(object_copy)
         return object_id
+
+    def get_logged_object_by_id(self, object_id: int) -> Any:
+        """Returns the logged object corresponding to the provided object_id.
+
+        Args:
+          object_id: The id to look up.
+
+        Returns:
+          The object corresponding to object_id.
+
+        Raises:
+          ValueError: If the object_id cannot be found.
+        """
+        if object_id < len(self._normalizer_reverse_lookup):
+            return self._normalizer_reverse_lookup[object_id]
+
+        raise ValueError(
+            f"Requested object id {object_id}  was not produced by "
+            "this LoggerAndNormalizer instance"
+        )
 
 
 # TODO(lyric): Consider changing the buffer size metric to be based on

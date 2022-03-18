@@ -5,6 +5,7 @@ import unittest
 import os
 import pathlib
 import shutil
+import torch
 from typing import Any, List
 
 from parameterized import parameterized
@@ -69,7 +70,7 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             ("Non-Hashable Log Entry", list, str, [1], [2, 5]),
         ]
     )
-    def test_log_and_normalizer(
+    def test_get_logged_object_id(
         self, name, log_entry_object_class, make_hashable_fn, object_0, object_1
     ):
         with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
@@ -91,6 +92,21 @@ class TestLoggerAndNormalizer(unittest.TestCase):
         logged_entries = list(object_logging.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
         self.assertEqual(logged_entries, expected_entries)
 
+    def test_get_logged_object_by_id(self):
+        object = 1
+        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+            normalizer = object_logging.LoggerAndNormalizer(
+                log_filename=_LOG_FILENAME_0,
+                object_log_manager=logger,
+                log_entry_object_class=int,
+                make_hashable_fn=lambda x: x + 1,
+            )
+            self.assertEqual(normalizer.get_logged_object_id(object), 0)
+            self.assertEqual(normalizer.get_logged_object_by_id(object_id=0), object)
+            self.assertRaises(
+                ValueError, normalizer.get_logged_object_by_id, object_id=1
+            )
+
     def test_logging_incorrect_type(self):
         with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
             normalizer = object_logging.LoggerAndNormalizer(
@@ -99,6 +115,22 @@ class TestLoggerAndNormalizer(unittest.TestCase):
                 log_entry_object_class=dict,
             )
             self.assertRaises(ValueError, normalizer.get_logged_object_id, object=[])
+
+    def test_illegal_init_configuration(self):
+        """Verifies that an illegal init configuration raises an exception.
+
+        The class torch.Tensor cannot be provided without a
+        corresponding make_hashable_fn because torch.equal tensors
+        hash to different values using the built-in hash function.
+        """
+        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+            self.assertRaises(
+                ValueError,
+                object_logging.LoggerAndNormalizer,
+                log_filename=_LOG_FILENAME_0,
+                object_log_manager=logger,
+                log_entry_object_class=torch.Tensor,
+            )
 
 
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
