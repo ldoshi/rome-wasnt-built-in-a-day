@@ -66,6 +66,8 @@ class ObjectLogManager:
         self._object_loggers[log_filename].log(log_entry)
 
 
+# TODO(arvind): Refactor out common code shared between
+# LoggerAndNormalizer and OccurrenceLogger.
 class LoggerAndNormalizer:
     """Logs objects and normalizes them to unique ids.
 
