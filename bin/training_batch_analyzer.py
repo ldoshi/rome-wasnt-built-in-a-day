@@ -49,11 +49,12 @@ def main():
         object_logging.read_object_log(test_dirname, test_basename)
     )
     assert len(expected_log_batch_entries) == len(test_log_batch_entries)
-    for expected_log_batch_entry, test_log_batch_entry in zip(
-        expected_log_batch_entries, test_log_batch_entries
+    for entry_index, (expected_log_batch_entry, test_log_batch_entry) in enumerate(zip(
+        expected_log_batch_entries, test_log_batch_entries)
     ):
+        print(f"Analyzing Entry {entry_index}")
+        
         for field in expected_log_batch_entry.__dataclass_fields__:
-            print(field)
             expected_object_log_value = getattr(expected_log_batch_entry, field)
             test_object_log_value = getattr(test_log_batch_entry, field)
             if isinstance(expected_object_log_value, torch.Tensor):
@@ -87,7 +88,11 @@ def main():
             if 'params' in field:
                 assert len(test_object_log_value) == len(expected_object_log_value)
                 for expected_param_value,test_param_value in zip(expected_object_log_value.values(), test_object_log_value.values()):
-                    if not torch.equal(expected_param_value, test_param_value):
+                    if not torch.allclose(
+                            expected_param_value,
+                            test_param_value,
+                            atol=1e-4,
+                    ):
                         print(
                             f"Batch entry error count: {batch_entry_error_counter}.",
                             f"\nFor log batch entry index: {expected_log_batch_entry.batch_idx}, {field} values are not equal: ",
