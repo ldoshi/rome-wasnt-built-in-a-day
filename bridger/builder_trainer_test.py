@@ -213,6 +213,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         self._verify_log_entries(expected_entries, logged_entries)
 
+    # TODO(Issue#116): Create a better method for creating golden values/files.
     def test_training_history_td_error_logging(self):
         """Verifies that td errors are logged in debug mode."""
 
