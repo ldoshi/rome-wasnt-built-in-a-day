@@ -2,9 +2,7 @@ import dataclasses
 import pickle
 import math
 import unittest
-import os
-import pathlib
-import shutil
+
 import torch
 from typing import Any, List
 
@@ -13,49 +11,68 @@ from parameterized import parameterized
 from bridger.logging import log_entry
 from bridger.logging import object_logging
 from bridger.logging import object_log_readers
-
-_TMP_DIR = "tmp/nested_tmp"
-
-
-def create_temp_dir():
-    path = pathlib.Path(_TMP_DIR)
-    path.mkdir(parents=True, exist_ok=True)
-
-
-def delete_temp_dir():
-    path = pathlib.Path(_TMP_DIR)
-    shutil.rmtree(path.parts[0], ignore_errors=True)
+from bridger import test_utils
 
 
 _LOG_FILENAME_0 = "log_filename_0"
-_LOG_FILENAME_1 = "log_filename_1"
 
+class TestTrainingHistoryDatabase(unittest.TestCase):
+    def setUp(self):
+        test_utils.create_temp_dir()
+        with object_logging.ObjectLogManager(              dirname=test_utils.object_logging_dir()   ) as object_log_manager:
+            test_utils.get_trainer(max_steps=5).fit(test_utils.get_model(object_log_manager=object_log_manager,debug=True,max_episode_length=3,initial_memories_count=9))
 
+        self.training_history_database = object_log_readers.TrainingHistoryDatabase(dirname=test_utils.object_logging_dir())
+
+    def tearDown(self):
+        test_utils.delete_temp_dir()
+
+    @parameterized.expand([("singular", 1,), ("multiple", 2,), ("all implicit", None,), ("all explicit", 3,), ("too many", 100)])
+    def test_get_states_by_visit_count(self, name, n):
+        max_possible_states = 3
+        
+        state_id_0 = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 1.0]]
+        state_id_1 = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [2.0, 2.0, 0.0], [1.0, 0.0, 1.0]]
+        state_id_2 = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 2.0, 2.0], [1.0, 0.0, 1.0]]
+
+        expected_states = [state_id_0, state_id_2, state_id_1]
+        expected_state_ids = [0, 2, 1]
+        expected_visit_counts = [9, 3, 2]
+
+        expected_n = min(max_possible_states, n) if n else max_possible_states
+        
+        visited_states = self.training_history_database.get_states_by_visit_count(n)
+
+        self.assertEqual(len(visited_states), expected_n)
+        for i, (expected_state_id, expected_state, expected_visit_count) in enumerate(zip(expected_state_ids[:n], expected_states[:n], expected_visit_counts[:n])):
+            self.assertEqual(visited_states['state_id'].iloc[i], expected_state_id)
+            self.assertEqual(visited_states['state'].iloc[i].tolist(), expected_state)
+            self.assertEqual(visited_states['visit_count'].iloc[i], expected_visit_count)
 
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
-        dirname=_TMP_DIR, log_filename=_LOG_FILENAME_0, buffer_size=buffer_size
+        dirname=test_utils.TMP_DIR, log_filename=_LOG_FILENAME_0, buffer_size=buffer_size
     )
     for entry in entries:
         object_logger.log(entry)
     object_logger.close()
 
-
 class TestReadObjectLog(unittest.TestCase):
     def setUp(self):
-        create_temp_dir()
+        test_utils.create_temp_dir()
 
     def tearDown(self):
-        delete_temp_dir()
+        test_utils.delete_temp_dir()
+        pass
 
-    @parameterized.expand([(1,), (2,)])
-    def test_read_object_log(self, buffer_size):
+    @parameterized.expand([("singular", 1,), ("multiple", 2,)])
+    def test_read_object_log(self, name, buffer_size):
         """Verifies seamless iteration of the log independent of buffer_size"""
 
         expected_entries = ["a", "b", "c"]
         _log_entries(expected_entries, buffer_size)
 
-        logged_entries = list(object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_0))
+        logged_entries = list(object_log_readers.read_object_log(test_utils.TMP_DIR, _LOG_FILENAME_0))
         self.assertEqual(expected_entries, logged_entries)
 
 
