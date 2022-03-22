@@ -49,6 +49,20 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
             self.assertEqual(visited_states['state'].iloc[i].tolist(), expected_state)
             self.assertEqual(visited_states['visit_count'].iloc[i], expected_visit_count)
 
+                            
+    def test_get_td_errors(self):
+        """Spot check a few state/action pairs to verify the shape of the response."""
+
+        self.assertEqual(len(self.training_history_database.get_td_errors(5,5)), 0)
+
+        state_id_0_action_2 = self.training_history_database.get_td_errors(state_id=0, action=2)
+        self.assertEqual(list(state_id_0_action_2['batch_idx']), [0,1,2,3,4])
+        self.assertTrue(all([isinstance(td_error, float) for td_error in state_id_0_action_2['td_error']]))
+ 
+        state_id_1_action_0 = self.training_history_database.get_td_errors(state_id=1, action=0)     
+        self.assertEqual(list(state_id_1_action_0['batch_idx']), [1,3,4])
+        self.assertTrue(all([isinstance(td_error, float) for td_error in state_id_1_action_0['td_error']]))
+
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
         dirname=test_utils.TMP_DIR, log_filename=_LOG_FILENAME_0, buffer_size=buffer_size
@@ -63,7 +77,6 @@ class TestReadObjectLog(unittest.TestCase):
 
     def tearDown(self):
         test_utils.delete_temp_dir()
-        pass
 
     @parameterized.expand([("singular", 1,), ("multiple", 2,)])
     def test_read_object_log(self, name, buffer_size):
