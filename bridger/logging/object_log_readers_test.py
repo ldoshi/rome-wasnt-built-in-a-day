@@ -1,6 +1,7 @@
 import dataclasses
 import pickle
 import math
+import itertools
 import unittest
 
 import torch
@@ -63,6 +64,25 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         self.assertEqual(list(state_id_1_action_0['batch_idx']), [1,3,4])
         self.assertTrue(all([isinstance(td_error, float) for td_error in state_id_1_action_0['td_error']]))
 
+    def test_get_q_values_and_q_target_values(self):
+        """Spot check a few state/action pairs to verify the shape of the response."""
+
+        self.assertEqual(len(self.training_history_database.get_q_values(5,5)), 0)
+        self.assertEqual(len(self.training_history_database.get_q_target_values(5,5)), 0)
+
+        expected_batch_idx = list(range(5))
+        for state_id, action in itertools.product(range(3), range(3)):
+            q_values = self.training_history_database.get_q_values(state_id,action)
+            self.assertEqual(list(q_values['batch_idx']), expected_batch_idx)
+            self.assertTrue(all([isinstance(q_value, float) for q_value in q_values['q_value']]))
+
+            q_target_values = self.training_history_database.get_q_target_values(state_id,action)
+            self.assertEqual(list(q_target_values['batch_idx']), expected_batch_idx)
+            self.assertTrue(all([isinstance(q_target_value, float) for q_target_value in q_target_values['q_target_value']]))
+
+            self.assertNotEqual(list(q_values['q_value']), list(q_target_values['q_target_value']))
+
+        
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
         dirname=test_utils.TMP_DIR, log_filename=_LOG_FILENAME_0, buffer_size=buffer_size
