@@ -8,13 +8,14 @@ jobs:
           python-version: ["3.9.6"]
       steps:
         name: Checkout main repository
-          uses: actions/checkout@master
-            path: ./rome
+          uses: actions/checkout@v3
+            with:
+              path: rome
         name: Checkout and build gym-bridges
-          uses: actions/checkout@v2
-          with:
-            repository: ldoshi/gym-bridges
-            path: ./gym-bridges
+          uses: actions/checkout@v3
+            with:
+              repository: ldoshi/gym-bridges
+              path: gym-bridges
           run: |
             cd gym-briges/
             ./reinstall
