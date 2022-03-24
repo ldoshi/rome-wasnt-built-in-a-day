@@ -9,14 +9,14 @@ jobs:
       steps:
         name: Checkout main repository
         uses: actions/checkout@v3
-          with:
-            path: rome
+        with:
+          path: rome
         name: Checkout and build gym-bridges
         uses: actions/checkout@v3
-          with:
-            repository: ldoshi/gym-bridges
-            path: gym-bridges
-          run: |
+        with:
+          repository: ldoshi/gym-bridges
+          path: gym-bridges
+        run: |
             cd gym-briges/
             ./reinstall
         name: Set up Python ${{ matrix.python-version}}
