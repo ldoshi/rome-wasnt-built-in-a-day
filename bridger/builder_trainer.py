@@ -273,7 +273,11 @@ class BridgeBuilderModel(pl.LightningModule):
                 _, _, start_state, _, _, _, _ = next(self.memories)
                 if self.hparams.debug:
                     self._state_visit_logger.log_occurrence(
+<<<<<<< HEAD
                         batch_idx=batch_idx, object=torch.Tensor(start_state).double()
+=======
+                        batch_idx=batch_idx, object=torch.Tensor(start_state)
+>>>>>>> master
                     )
 
     def _memory_generator(
@@ -533,7 +537,11 @@ class BridgeBuilderModel(pl.LightningModule):
                     loss=loss,
                 ),
             )
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> master
             for state, action, td_error in zip(
                 states, actions.tolist(), td_errors.tolist()
             ):
