@@ -17,8 +17,8 @@ jobs:
           repository: ldoshi/gym-bridges
           path: gym-bridges
       - run: |
-        cd gym-briges/
-        ./reinstall
+          cd gym-briges/
+          ./reinstall
       - name: Set up Python ${{ matrix.python-version}}
       - uses: actions/setup-python@v2
         with:
@@ -27,6 +27,6 @@ jobs:
       - run: pip install -r ./rome/dev_requirements.txt
       - name: Test with pytest
       - run: |
-        cd rome/
-        pip install .
-        pytest .
+          cd rome/
+          pip install .
+          pytest .
