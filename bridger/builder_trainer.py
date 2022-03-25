@@ -530,7 +530,7 @@ class BridgeBuilderModel(pl.LightningModule):
                     loss=loss,
                 ),
             )
-            
+
             for state, action, td_error in zip(
                 states, actions.tolist(), td_errors.tolist()
             ):
