@@ -78,7 +78,7 @@ class TrainingHistoryDatabase:
         self._states = pd.DataFrame(read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY))
         self._states.set_index('id')
         if not self._states.empty:
-            self.state_shape = list(self._states.iloc[0]['object'].shape)
+            self.state_shape = tuple(self._states.iloc[0]['object'].shape)
 
         self._visits = pd.DataFrame(read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY))
 

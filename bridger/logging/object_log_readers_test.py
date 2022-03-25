@@ -29,7 +29,7 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         test_utils.delete_temp_dir()
 
     def test_state_shape_and_actions_n(self):
-        self.assertEqual(self.training_history_database.state_shape, [4,3])
+        self.assertEqual(self.training_history_database.state_shape, (4,3))
         self.assertEqual(self.training_history_database.actions_n, 3)
         
     @parameterized.expand([("singular", 1,), ("multiple", 2,), ("all implicit", None,), ("all explicit", 3,), ("too many", 100)])
