@@ -37,7 +37,9 @@ class StateTrainingHistory:
             assert len(self._q_epochs) == len(self._q_history[a]), q_values
         for a, q_target_value in enumerate(q_target_values):
             self._q_target_history[a].append(q_target_value)
-            assert len(self._q_epochs) == len(self._q_target_history[a]), q_target_values
+            assert len(self._q_epochs) == len(
+                self._q_target_history[a]
+            ), q_target_values
 
     def add_td_error(self, action, epoch, td_error):
         series = self._td_errors[action]
