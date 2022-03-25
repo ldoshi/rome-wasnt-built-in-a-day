@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 
+from typing import Tuple
+
 from bridger import builder_trainer
 from bridger.logging import log_entry
 from bridger.logging import object_log_readers
@@ -21,7 +23,7 @@ def equally_spaced_indices(length, n):
     return np.round(np.linspace(0, length - 1, n)).astype(int)
 
 class TrainingPanel:
-    def __init__(self, states_n, state_width, state_height, actions_n):
+    def __init__(self, states_n: int , state_shape: Tuple[int, int], actions_n: int):
         self._max_points_per_plot = 50
         self._states_n = states_n
         self._state_width = state_width
@@ -105,25 +107,14 @@ def view_training():
     training_history_database = object_log_readers.TrainingHistoryDatabase(hparams.object_logging_dir)
 
     states_n = 10
-    most_visted_states = training_history_database.get_states_by_visit_count(n=states_n)
-
-    if not most_visted_states:
-        print("No states have been visited.")
-        return
-    
-    env = builder_trainer.make_env(
-        name=hparams.env_name,
-        width=hparams.env_width,
-        force_standard_config=hparams.env_force_standard_config,
-    )
-
-    states_n = 10
     panel = TrainingPanel(
-        states_n=states_n, training_history_database=training_history_database
+        states_n=states_n,
+        state_shape=training_history_database.state_shape,
+        actions_n=training_history_database.actions_n
     )
 
-    panel.update_panel(history.get_history_by_visit_count())
-
+    most_visited_states = training_history_database.get_states_by_visit_count(n=states_n)
+    panel.update_panel(most_visited_states)
 
 
 
