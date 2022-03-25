@@ -241,11 +241,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ]
 
         logged_entries = list(
-<<<<<<< HEAD
             object_log_readers.read_object_log(
-=======
-            object_logging.read_object_log(
->>>>>>> master
                 _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY
             )
         )
@@ -291,11 +287,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ]
 
         logged_entries = list(
-<<<<<<< HEAD
             object_log_readers.read_object_log(
-=======
-            object_logging.read_object_log(
->>>>>>> master
                 _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
             )
         )
@@ -326,11 +318,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             )
 
         logged_entries = list(
-<<<<<<< HEAD
             object_log_readers.read_object_log(
-=======
-            object_logging.read_object_log(
->>>>>>> master
                 _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
             )
         )
@@ -369,11 +357,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ]
 
         logged_entries = list(
-<<<<<<< HEAD
             object_log_readers.read_object_log(
-=======
-            object_logging.read_object_log(
->>>>>>> master
                 _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY
             )
         )
