@@ -28,15 +28,19 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
     def tearDown(self):
         test_utils.delete_temp_dir()
 
+    def test_state_shape_and_actions_n(self):
+        self.assertEqual(self.training_history_database.state_shape, [4,3])
+        self.assertEqual(self.training_history_database.actions_n, 3)
+        
     @parameterized.expand([("singular", 1,), ("multiple", 2,), ("all implicit", None,), ("all explicit", 3,), ("too many", 100)])
     def test_get_states_by_visit_count(self, name, n):
         max_possible_states = 3
         
-        state_id_0 = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 1.0]]
-        state_id_1 = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [2.0, 2.0, 0.0], [1.0, 0.0, 1.0]]
-        state_id_2 = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 2.0, 2.0], [1.0, 0.0, 1.0]]
+        state_with_id_0 = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 1.0]]
+        state_with_id_1 = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [2.0, 2.0, 0.0], [1.0, 0.0, 1.0]]
+        state_with_id_2 = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 2.0, 2.0], [1.0, 0.0, 1.0]]
 
-        expected_states = [state_id_0, state_id_2, state_id_1]
+        expected_states = [state_with_id_0, state_with_id_2, state_with_id_1]
         expected_state_ids = [0, 2, 1]
         expected_visit_counts = [9, 3, 2]
 
