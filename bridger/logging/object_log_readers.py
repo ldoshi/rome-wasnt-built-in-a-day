@@ -131,13 +131,3 @@ class TrainingHistoryDatabase:
 
         """
         return _get_values_by_state_and_action(self._q_values, state_id, action, "q_target_value")
-
-# rest are given state, get t, q, target
-
-# simple tests. port panel!
-
-
-        
-                
-
-        
