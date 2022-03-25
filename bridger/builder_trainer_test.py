@@ -172,15 +172,13 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                         self.assertTrue(
                             torch.equal(expected_entry_value, logged_entry_value)
                         )
-                    continue
-
-                if isinstance(expected_entry_value, float):
+                elif isinstance(expected_entry_value, float):
                     self.assertAlmostEqual(
                         expected_entry_value, logged_entry_value, delta=_DELTA
                     )
                     continue
-
-                self.assertEqual(expected_entry_value, logged_entry_value)
+                else:
+                    self.assertEqual(expected_entry_value, logged_entry_value)
 
     def test_training_batch_logging(self):
         """Verifies that training batches are logged in debug mode."""
