@@ -19,7 +19,7 @@ jobs:
       - name: Build gym-bridges
         run: |
           cd gym-bridges/
-          ./reinstall
+          ./reinstall.sh
       - name: Set up Python ${{ matrix.python-version}}
         uses: actions/setup-python@v2
         with:
