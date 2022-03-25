@@ -18,7 +18,7 @@ jobs:
           path: gym-bridges
       - name: Build gym-bridges
         run: |
-          cd gym-briges/
+          cd gym-bridges/
           ./reinstall
       - name: Set up Python ${{ matrix.python-version}}
         uses: actions/setup-python@v2
