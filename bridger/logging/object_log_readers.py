@@ -11,6 +11,7 @@ import collections
 import copy
 import shutil
 import pickle
+import numpy as np
 import os
 import pathlib
 import pandas as pd
@@ -62,6 +63,10 @@ class TrainingHistoryDatabase:
     * log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
     * log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY
     * log_entry.STATE_NORMALIZED_LOG_ENTRY
+
+    Attributes:
+      state_shape: The (height, width) of the state found in the logs.
+      actions_n: The value of the max action found in the logs.
     """
 
     def __init__(self, dirname: str):
@@ -72,6 +77,8 @@ class TrainingHistoryDatabase:
         """
         self._states = pd.DataFrame(read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY))
         self._states.set_index('id')
+        if not self._states.empty:
+            self.state_shape = list(self._states.iloc[0]['object'].shape)
 
         self._visits = pd.DataFrame(read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY))
 
@@ -83,6 +90,7 @@ class TrainingHistoryDatabase:
         self._td_errors = self._td_errors.drop_duplicates(['state_id','action','batch_idx']).sort_values(by=['state_id','action','batch_idx'])
         self._td_errors.set_index('state_id')
 
+        self.actions_n = max(self._q_values['action'].max(), self._td_errors['action'].max()) + 1
 
     def get_states_by_visit_count(self, n: int = None) -> pd.DataFrame:
         """Retrieves the top-n states by visit count.
