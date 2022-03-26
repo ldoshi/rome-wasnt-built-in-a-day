@@ -115,6 +115,10 @@ class TrainingHistoryDatabase:
           state_id: The state id for which to retrieve td errors.
           action: The action for which to retrieve td errors.
 
+        Returns:
+          A dataframe with two columns, batch_idx and td_error,
+            filtered for rows that contain state_id and action as values
+            in the corresponding columns.
         """
         return _get_values_by_state_and_action(self._td_errors, state_id, action, "td_error")
 
@@ -126,6 +130,10 @@ class TrainingHistoryDatabase:
           state_id: The state id for which to retrieve q values.
           action: The action for which to retrieve q values.
 
+        Returns:
+          A dataframe with two columns, batch_idx and q_values,
+            filtered for rows that contain state_id and action as values
+            in the corresponding columns.
         """
         return _get_values_by_state_and_action(self._q_values, state_id, action, "q_value")
 
@@ -137,5 +145,9 @@ class TrainingHistoryDatabase:
           state_id: The state id for which to retrieve q target values.
           action: The action for which to retrieve q target values.
 
+        Returns:
+          A dataframe with two columns, batch_idx and q_target_values,
+            filtered for rows that contain state_id and action as values
+            in the corresponding columns.
         """
         return _get_values_by_state_and_action(self._q_values, state_id, action, "q_target_value")
