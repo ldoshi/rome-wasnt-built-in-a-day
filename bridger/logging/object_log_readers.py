@@ -1,20 +1,18 @@
 """Object log consumption tools to support various use-cases.
 
 Supported use-cases range from simple and direct reading of a single
-object log to the TrainingHistoryDatabase, which supports aggregate
-queries on top of logged data.
+object log to the TrainingHistoryDatabase, which supports queries on
+top of logged data.
 
 """
-from typing import Any, Callable, List, Optional
-
 import collections
 import copy
-import shutil
-import pickle
 import numpy as np
 import os
 import pathlib
 import pandas as pd
+import pickle
+import shutil
 import torch
 
 from collections.abc import Hashable
@@ -71,7 +69,6 @@ class TrainingHistoryDatabase:
     * log_entry.STATE_NORMALIZED_LOG_ENTRY
 
     Attributes:
-      state_shape: The (height, width) of the state found in the logs.
       actions_n: The value of the max action found in the logs.
     """
 
@@ -85,8 +82,6 @@ class TrainingHistoryDatabase:
             read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY)
         )
         self._states.set_index("id")
-        if not self._states.empty:
-            self.state_shape = tuple(self._states.iloc[0]["object"].shape)
 
         self._visits = pd.DataFrame(
             read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY)

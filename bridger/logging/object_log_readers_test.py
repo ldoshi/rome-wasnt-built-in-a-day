@@ -40,8 +40,7 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
     def tearDown(self):
         test_utils.delete_temp_dir()
 
-    def test_state_shape_and_actions_n(self):
-        self.assertEqual(self.training_history_database.state_shape, (4, 3))
+    def test_actions_n(self):
         self.assertEqual(self.training_history_database.actions_n, 3)
 
     @parameterized.expand(
