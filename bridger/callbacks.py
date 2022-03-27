@@ -39,13 +39,3 @@ class DemoCallback(Callback):
                         f"Built in {build_result.steps} steps with reward {build_result.reward}."
                     )
 
-
-class HistoryCallback(Callback):
-    def __init__(self, steps_per_update):
-        self.frequency = steps_per_update
-
-    def on_train_batch_end(
-        self, trainer, model, outputs, batch, batch_idx, dataloader_idx
-    ):
-        if (batch_idx + 1) % self.frequency == 0:
-            model.training_history.serialize()

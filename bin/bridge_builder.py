@@ -20,7 +20,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 
 from bridger import builder
 from bridger import builder_trainer
-from bridger.callbacks import DemoCallback, HistoryCallback
+from bridger.callbacks import DemoCallback
 from pathlib import Path
 from bridger.logging import object_logging
 
@@ -66,9 +66,6 @@ def test():
         ]
         if hparams.debug:
             callbacks += [
-                HistoryCallback(
-                    steps_per_update=MAX_STEPS,
-                ),
                 DemoCallback(
                     steps_per_update=MAX_STEPS,
                     max_episode_length=MAX_DEMO_EPISODE_LENGTH,
