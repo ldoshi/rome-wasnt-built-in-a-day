@@ -25,7 +25,7 @@ class DemoCallback(Callback):
                     name=model.hparams.env_name,
                     width=model.hparams.env_width,
                     force_standard_config=model.hparams.env_force_standard_config,
-                    seed=torch.rand(1).item()
+                    seed=torch.rand(1).item(),
                 )
             )
 
@@ -38,4 +38,3 @@ class DemoCallback(Callback):
                     print(
                         f"Built in {build_result.steps} steps with reward {build_result.reward}."
                     )
-
