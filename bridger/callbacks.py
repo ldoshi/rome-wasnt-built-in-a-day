@@ -37,4 +37,3 @@ class DemoCallback(Callback):
                     print(
                         f"Built in {build_result.steps} steps with reward {build_result.reward}."
                     )
-
