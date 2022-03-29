@@ -42,11 +42,6 @@ hparam_dict[key] = {"type": bool, "default": False, "action": BooleanOptionalAct
 help_str = "Whether to log to TrainingHistory for debugging purposes"
 hparam_dict[key]["help"] = help_str
 
-key = "training_history_dir"
-hparam_dict[key] = {"type": str, "default": "training_history"}
-help_str = "Path to folder in which training history will be saved"
-hparam_dict[key]["help"] = help_str
-
 key = "object_logging_dir"
 hparam_dict[key] = {"type": str, "default": "object_logging"}
 help_str = "Path to folder in which all object logs will be saved"
