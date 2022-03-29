@@ -194,9 +194,9 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             log_entry.TrainingBatchLogEntry(
                 batch_idx=0,
                 indices=torch.tensor([127, 231, 516, 661, 863]),
-                state_ids=[1, 1, 1, 1, 1],
+                state_ids=[0, 0, 0, 0, 0],
                 actions=torch.tensor([1, 0, 1, 1, 1]),
-                next_state_ids=[2, 3, 2, 2, 2],
+                next_state_ids=[1, 2, 1, 1, 1],
                 rewards=torch.tensor([-1, -1, -1, -1, -1]),
                 successes=torch.tensor([False, False, False, False, False]),
                 weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
@@ -227,16 +227,16 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             )
         expected_entries = [
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=0, state_id=1, action=1, td_error=-0.998901
+                batch_idx=0, state_id=0, action=1, td_error=-0.998901
             ),
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=0, state_id=1, action=2, td_error=-4.946752
+                batch_idx=0, state_id=0, action=2, td_error=-4.946752
             ),
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=1, state_id=1, action=0, td_error=-0.840642
+                batch_idx=1, state_id=0, action=0, td_error=-0.840642
             ),
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=1, state_id=1, action=1, td_error=-0.924127
+                batch_idx=1, state_id=0, action=1, td_error=-0.924127
             ),
         ]
 
@@ -352,7 +352,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         expected_entries = [
             log_entry.OccurrenceLogEntry(batch_idx=batch_idx, object=state_id)
             for batch_idx, state_id in zip(
-                range(-1, max_steps), [0, 0, 0, 2, 0, 3, 0, 3, 0]
+                range(-1, max_steps), [0, 0, 0, 1, 0, 2, 0, 2, 0]
             )
         ]
 
