@@ -43,6 +43,7 @@ def main():
             object_log_readers.read_object_log(test_dirname, test_basename),
         )
     ):
+        print(f"Analyzing Entry {entry_index}")
         for field in expected_log_batch_entry.__dataclass_fields__:
             expected_object_log_value = getattr(expected_log_batch_entry, field)
             test_object_log_value = getattr(test_log_batch_entry, field)
