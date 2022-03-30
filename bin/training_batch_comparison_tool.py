@@ -5,12 +5,13 @@ import torch
 
 DISPLAY_NUM_ERROR_MSGS = 5
 
+
 def main():
     """Checks that two log files of training batch entries share the same values
     across all attributes.
     Example to run:
     $ python -m bin.training_batch_comparison_tool
-      --path_expected_log_entry object_logging_dir/training_batch 
+      --path_expected_log_entry object_logging_dir/training_batch
       --path_test_log_entry object_logging_dir_2/training_batch
     """
 
@@ -19,13 +20,13 @@ def main():
     )
     parser.add_argument(
         "--path_expected_log_entry",
-        help="The filepath to the first TrainingBatchLogEntry file.", 
-       required=True
+        help="The filepath to the first TrainingBatchLogEntry file.",
+        required=True,
     )
     parser.add_argument(
         "--path_test_log_entry",
         help="The filepath to the second TrainingBatchLogEntry file.",
-       required=True
+        required=True,
     )
     args = parser.parse_args()
 
@@ -36,15 +37,17 @@ def main():
 
     batch_entry_error_counter = 0
 
-    for entry_index, (expected_log_batch_entry, test_log_batch_entry) in enumerate(zip(
+    for entry_index, (expected_log_batch_entry, test_log_batch_entry) in enumerate(
+        zip(
             object_log_readers.read_object_log(expected_dirname, expected_basename),
-            object_log_readers.read_object_log(test_dirname, test_basename))
+            object_log_readers.read_object_log(test_dirname, test_basename),
+        )
     ):
         for field in expected_log_batch_entry.__dataclass_fields__:
             expected_object_log_value = getattr(expected_log_batch_entry, field)
             test_object_log_value = getattr(test_log_batch_entry, field)
             if isinstance(expected_object_log_value, torch.Tensor):
-                if field == 'loss':
+                if field == "loss":
                     if not torch.allclose(
                         expected_object_log_value,
                         test_object_log_value,
@@ -81,7 +84,7 @@ def main():
                     f"\nExpected logged training batch value: \n{expected_object_log_value}",
                     f"\nTest logged training batch value: \n{test_object_log_value}",
                 )
-                batch_entry_error_counter += 1            
+                batch_entry_error_counter += 1
 
         # Exit early if we hit the maximum number of displayed errors.
         if batch_entry_error_counter >= DISPLAY_NUM_ERROR_MSGS:
