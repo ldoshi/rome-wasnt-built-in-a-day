@@ -36,6 +36,7 @@ jobs:
           pytest .
       - name: Check types with pytype
         run: |
-          cd rome
-          pip install .
+	  cd rome/bin
+          pytype .
+          cd ../bridger
           pytype .
