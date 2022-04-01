@@ -12,6 +12,8 @@ from pytorch_lightning.callbacks import EarlyStopping
 
 import torch
 
+from typing import List, Optional
+
 from bridger import builder
 from bridger import builder_trainer
 from bridger import policies
@@ -45,7 +47,7 @@ def _get_model(
     )
 
 
-def _get_trainer(max_steps: int = 1, callbacks: list[Callback] = None) -> Trainer:
+def _get_trainer(max_steps: int = 1, callbacks: Optional[List[Callback]] = None) -> Trainer:
     return Trainer(
         val_check_interval=1,
         # The validation batch size can be adjusted via a config, but
