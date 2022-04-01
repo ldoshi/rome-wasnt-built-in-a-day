@@ -31,8 +31,5 @@ jobs:
           pip install -r dev_requirements.txt
       - name: Check types with pytype
         run: |
-	  ls rome
-          cd rome/bridger
-          pytype .
-	  cd ../bin
+	  cd rome/bin
 	  pytype . 
