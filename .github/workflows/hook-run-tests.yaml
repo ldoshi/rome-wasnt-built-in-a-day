@@ -29,11 +29,6 @@ jobs:
           cd rome/
           pip install -r requirements.txt
           pip install -r dev_requirements.txt
-      - name: Test with pytest
-        run: |
-          cd rome/
-          pip install .
-          pytest .
       - name: Check types with pytype
         run: |
 	  cd rome/bin
