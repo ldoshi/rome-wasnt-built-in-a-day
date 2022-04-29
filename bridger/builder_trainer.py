@@ -6,10 +6,8 @@ import numpy as np
 from bridger import builder
 import pytorch_lightning as pl
 import torch
-from typing import Union
-
 from torch.utils.data import DataLoader
-from typing import Any, Union, Generator, Optional
+from typing import Any, Generator, List, Optional, Union
 
 
 from bridger import config, policies, qfunctions, replay_buffer, training_history, utils
@@ -491,7 +489,26 @@ class BridgeBuilderModel(pl.LightningModule):
             td_errors = weights * td_errors
         return (td_errors ** 2).mean()
 
-    def training_step(self, batch: list[torch.Tensor], batch_idx: int) -> torch.Tensor:
+    def log_batch_attributes(self, states: torch.Tensor, rewards: torch.Tensor, success: torch.Tensor, weights: torch.Tensor) -> None:
+        """Computes and logs several attributes describing a training batch.
+
+        Args:
+          states: The list of states from the training batch.
+        """
+
+        # For the first implementation, we log the average number of
+        # occupied positions per state, ignoring whether the occupier
+        # is a brick or the ground.
+        self.log("training_batch_state_complexity", states.count_nonzero(dim=2).sum(axis=1).mean(dtype=float))
+
+#        import pdb
+ #       pdb.set_trace()
+
+        self.log("training_batch_rewards", rewards.mean(dtype=float))
+        self.log("training_batch_success", success.mean(dtype=float))
+        self.log("training_batch_weights", weights.mean(dtype=float))
+    
+    def training_step(self, batch: List[torch.Tensor], batch_idx: int) -> torch.Tensor:
         """Performs a single training step on the Q network.
 
         The loss is computed across a batch of memories sampled from the replay buffer. The replay buffer sampling weights are updated based on the TD error from the samples.
@@ -505,6 +522,8 @@ class BridgeBuilderModel(pl.LightningModule):
         )
 
         if self.hparams.debug:
+            self.log_batch_attributes(states, rewards, success, weights)
+            
             # TODO(Issue#105): Move more deepcopy calls to logging
             # layer. Check if any deepcopy operations can be avoided.
             indices_copy = copy.deepcopy(indices)
