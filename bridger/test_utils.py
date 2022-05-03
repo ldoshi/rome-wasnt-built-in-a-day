@@ -8,7 +8,7 @@ import shutil
 from bridger.logging import object_logging
 from bridger import builder_trainer
 
-from typing import List
+from typing import List, Optional
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
@@ -48,7 +48,7 @@ def get_model(
     )
 
 
-def get_trainer(max_steps: int = 1, callbacks: List[Callback] = None) -> Trainer:
+def get_trainer(max_steps: int = 1, callbacks: Optional[List[Callback]] = None) -> Trainer:
     return Trainer(
         val_check_interval=1,
         # The validation batch size can be adjusted via a config, but
