@@ -3,7 +3,7 @@ from bridger.logging import object_log_readers
 import os
 import torch
 
-DISPLAY_NUM_ERROR_MSGS = 5
+NUM_ERROR_THRESHOLD = 5
 
 
 def main():
@@ -88,7 +88,7 @@ def main():
                 batch_entry_error_counter += 1
 
         # Exit early if we hit the maximum number of displayed errors.
-        if batch_entry_error_counter >= DISPLAY_NUM_ERROR_MSGS:
+        if batch_entry_error_counter >= NUM_ERROR_THRESHOLD:
             return
 
 

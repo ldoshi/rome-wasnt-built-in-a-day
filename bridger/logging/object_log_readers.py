@@ -16,6 +16,7 @@ import shutil
 import torch
 
 from collections.abc import Hashable
+from typing import Optional
 
 from bridger.logging import log_entry
 
@@ -90,9 +91,9 @@ class TrainingHistoryDatabase:
         self._q_values = pd.DataFrame(
             read_object_log(dirname, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY)
         )
-        self._q_values = self._q_values.drop_duplicates(
-            ["state_id", "action", "batch_idx"]
-        ).sort_values(by=["state_id", "action", "batch_idx"])
+        self._q_values = self._q_values.sort_values(
+            by=["state_id", "action", "batch_idx"]
+        )
         self._q_values.set_index("state_id")
 
         self._td_errors = pd.DataFrame(
@@ -107,7 +108,7 @@ class TrainingHistoryDatabase:
             max(self._q_values["action"].max(), self._td_errors["action"].max()) + 1
         )
 
-    def get_states_by_visit_count(self, n: int = None) -> pd.DataFrame:
+    def get_states_by_visit_count(self, n: Optional[int] = None) -> pd.DataFrame:
         """Retrieves the top-n states by visit count.
 
         Args:
