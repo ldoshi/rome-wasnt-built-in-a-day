@@ -9,7 +9,7 @@ from parameterized import parameterized
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.callbacks import EarlyStopping
-from typing import List
+from typing import List, Optional
 
 import torch
 
@@ -47,7 +47,7 @@ def _get_model(
     )
 
 
-def _get_trainer(max_steps: int = 1, callbacks: List[Callback] = None) -> Trainer:
+def _get_trainer(max_steps: int = 1, callbacks: Optional[List[Callback]] = None) -> Trainer:
     return Trainer(
         val_check_interval=1,
         # The validation batch size can be adjusted via a config, but
