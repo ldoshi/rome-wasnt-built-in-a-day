@@ -16,7 +16,6 @@ import pandas as pd
 from typing import Callable
 
 from bridger import builder_trainer
-from bridger.logging import log_entry
 from bridger.logging import object_log_readers
 
 
