@@ -229,13 +229,13 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 batch_idx=0, state_id=0, action=1, td_error=-0.998901
             ),
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=0, state_id=0, action=2, td_error=-4.946752
+                batch_idx=0, state_id=0, action=2, td_error=-1.946753
             ),
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=1, state_id=0, action=0, td_error=-0.840642
+                batch_idx=1, state_id=0, action=0, td_error=-0.837871
             ),
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=1, state_id=0, action=1, td_error=-0.924127
+                batch_idx=1, state_id=0, action=1, td_error=-0.912947
             ),
         ]
 
@@ -266,22 +266,22 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 batch_idx=0,
                 state_id=0,
                 action=0,
-                q_value=-0.128640,
-                q_target_value=-0.091397,
+                q_value=-0.131546,
+                q_target_value=-0.091432,
             ),
             log_entry.TrainingHistoryQValueLogEntry(
                 batch_idx=0,
                 state_id=0,
                 action=1,
-                q_value=-0.045778,
-                q_target_value=0.028986,
+                q_value=-0.057093,
+                q_target_value=0.028855,
             ),
             log_entry.TrainingHistoryQValueLogEntry(
                 batch_idx=0,
                 state_id=0,
                 action=2,
-                q_value=-0.165802,
-                q_target_value=-0.025232,
+                q_value=-0.160665,
+                q_target_value=-0.025203,
             ),
         ]
 
@@ -407,8 +407,8 @@ class BuilderTest(unittest.TestCase):
             render=False,
         )
         self.assertTrue(build_result.success)
-        # The first gives -1 reward. Then we get a 100 completion bonus.
-        self.assertEqual(build_result.reward, 99)
+        # The first gives -1 reward. 
+        self.assertEqual(build_result.reward, -1)
         self.assertEqual(build_result.steps, 2)
 
 
@@ -443,28 +443,28 @@ class BuildEvaluatorTest(unittest.TestCase):
 
         # Stats manually verified from the following:
         #
-        # [BuildResult(success=True, reward=99, steps=2, final_state=array([
+        # [BuildResult(success=True, reward=-1, steps=2, final_state=array([
         # [0., 0., 0., 0.],
         # [0., 0., 0., 0.],
         # [2., 2., 2., 2.],
         # [1., 0., 0., 1.],
         # [1., 0., 0., 1.],
         # [1., 0., 0., 1.]])),
-        # BuildResult(success=True, reward=97, steps=4, final_state=array([
+        # BuildResult(success=True, reward=-3, steps=4, final_state=array([
         # [0., 0., 0., 0.],
         # [0., 0., 0., 0.],
         # [2., 2., 0., 0.],
         # [2., 2., 2., 2.],
         # [1., 0., 2., 2.],
         # [1., 0., 1., 1.]])),
-        # BuildResult(success=True, reward=99, steps=2, final_state=array([
+        # BuildResult(success=True, reward=-1, steps=2, final_state=array([
         # [0., 0., 0., 0.],
         # [0., 0., 0., 0.],
         # [0., 0., 0., 0.],
         # [2., 2., 0., 0.],
         # [1., 1., 2., 2.],
         # [1., 1., 0., 1.]])),
-        # BuildResult(success=True, reward=100, steps=1, final_state=array([
+        # BuildResult(success=True, reward=0, steps=1, final_state=array([
         # [0., 0., 0., 0.],
         # [0., 0., 0., 0.],
         # [0., 0., 0., 0.],
@@ -485,8 +485,8 @@ class BuildEvaluatorTest(unittest.TestCase):
         )
         self.assertEqual(build_evaluator.build_steps_on_success_mean, 2.25)
         np.testing.assert_array_equal(build_evaluator.build_steps, [2, 4, 2, 1, 4])
-        self.assertEqual(build_evaluator.reward_on_success_mean, 98.75)
-        np.testing.assert_array_equal(build_evaluator.rewards, [99, 97, 99, 100, -4])
+        self.assertEqual(build_evaluator.reward_on_success_mean, -1.25)
+        np.testing.assert_array_equal(build_evaluator.rewards, [-1, -3, -1, 0, -4])
         self.assertEqual(build_evaluator.height_of_highest_block_mean, 2.8)
 
 
