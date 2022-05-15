@@ -45,7 +45,7 @@ def _get_model(
     )
 
 
-def _get_trainer(max_steps: int = 1, callbacks: list[Callback] = None) -> Trainer:
+def _get_trainer(max_steps: int = 1, callbacks: Optional[List[Callback]] = None) -> Trainer:
     return Trainer(
         val_check_interval=1,
         # The validation batch size can be adjusted via a config, but
