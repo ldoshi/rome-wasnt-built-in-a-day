@@ -9,6 +9,7 @@ from parameterized import parameterized
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.callbacks import EarlyStopping
+from typing import Optional, List
 
 import torch
 
