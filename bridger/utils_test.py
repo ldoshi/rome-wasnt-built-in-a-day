@@ -49,6 +49,7 @@ class TestHash(unittest.TestCase):
         ]
     )
     def test_hash_validity(self, name, hash_func, shape, repetitions):
+        torch.manual_seed(0)
         tensors = [torch.rand(shape) for i in range(repetitions)]
         assert all(
             hash_func(x) == hash_func(torch.clone(x)) for x in tensors
