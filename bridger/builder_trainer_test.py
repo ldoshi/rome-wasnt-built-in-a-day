@@ -13,6 +13,8 @@ from typing import Optional, List
 
 import torch
 
+from typing import List, Optional
+
 from bridger import builder
 from bridger import builder_trainer
 from bridger import policies
