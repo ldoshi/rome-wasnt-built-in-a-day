@@ -48,7 +48,9 @@ def _get_model(
     )
 
 
-def _get_trainer(max_steps: int = 1, callbacks: Optional[List[Callback]] = None) -> Trainer:
+def _get_trainer(
+    max_steps: int = 1, callbacks: Optional[List[Callback]] = None
+) -> Trainer:
     return Trainer(
         val_check_interval=1,
         # The validation batch size can be adjusted via a config, but
@@ -410,7 +412,7 @@ class BuilderTest(unittest.TestCase):
             render=False,
         )
         self.assertTrue(build_result.success)
-        # The first gives -1 reward. 
+        # The first gives -1 reward.
         self.assertEqual(build_result.reward, -1)
         self.assertEqual(build_result.steps, 2)
 
