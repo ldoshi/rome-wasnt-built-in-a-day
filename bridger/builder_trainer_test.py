@@ -195,14 +195,14 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         expected_entries = [
             log_entry.TrainingBatchLogEntry(
                 batch_idx=0,
-                indices=torch.tensor([127, 231, 516, 661, 863]),
+                indices=torch.tensor([156, 256, 589, 716, 819]),
                 state_ids=[0, 0, 0, 0, 0],
-                actions=torch.tensor([1, 0, 1, 1, 1]),
-                next_state_ids=[1, 2, 1, 1, 1],
-                rewards=torch.tensor([-1, -1, -1, -1, -1]),
+                actions=torch.tensor([1, 2, 1, 1, 1]),
+                next_state_ids=[1, 0, 1, 1, 1],
+                rewards=torch.tensor([-1, -2, -1, -1, -1]),
                 successes=torch.tensor([False, False, False, False, False]),
                 weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
-                loss=torch.tensor(0.9522, dtype=torch.float64, requires_grad=True),
+                loss=torch.tensor(1.5562, dtype=torch.float64, requires_grad=True),
             )
         ]
 
@@ -235,7 +235,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 batch_idx=0, state_id=0, action=2, td_error=-1.946753
             ),
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=1, state_id=0, action=0, td_error=-0.837871
+                batch_idx=1, state_id=0, action=1, td_error=-0.912947
             ),
             log_entry.TrainingHistoryTDErrorLogEntry(
                 batch_idx=1, state_id=0, action=1, td_error=-0.912947
@@ -330,7 +330,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             expected_batch_idx,
             expected_state_id,
             expected_action,
-        ) in zip(logged_entries, itertools.product([0, 1], [0, 2, 1], [0, 1, 2])):
+        ) in zip(logged_entries, itertools.product([0, 1], [0, 1, 2], [0, 1, 2])):
             self.assertEqual(logged_entry.batch_idx, expected_batch_idx)
             self.assertEqual(logged_entry.state_id, expected_state_id)
             self.assertEqual(logged_entry.action, expected_action)
@@ -354,7 +354,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         expected_entries = [
             log_entry.OccurrenceLogEntry(batch_idx=batch_idx, object=state_id)
             for batch_idx, state_id in zip(
-                range(-1, max_steps), [0, 0, 0, 1, 0, 2, 0, 2, 0]
+                range(-1, max_steps), [0, 1, 0, 1, 0, 2, 0, 2, 0]
             )
         ]
 
