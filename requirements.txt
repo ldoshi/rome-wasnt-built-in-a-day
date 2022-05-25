@@ -2,6 +2,6 @@ gym==0.17.3
 ipython==7.21.0
 matplotlib==3.4.3
 numpy==1.21.2
-pytorch-lightning==1.4.7
+pytorch-lightning==1.6.3
 torch==1.8.0
 protobuf==3.19.4
