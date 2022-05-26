@@ -106,7 +106,9 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
-            test_util.get_trainer(max_steps, callbacks).fit(test_util.get_model(object_log_manager))
+            test_util.get_trainer(max_steps, callbacks).fit(
+                test_util.get_model(object_log_manager)
+            )
 
         if early_stopping_callback:
             self.assertLess(callbacks[0].count, max_steps)
