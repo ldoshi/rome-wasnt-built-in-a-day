@@ -5,6 +5,7 @@ import torch.nn.functional as F
 
 class CNNQ(torch.nn.Module):
     """Base class for CNN Q-function neural network module."""
+
     def __init__(self, image_height, image_width, num_actions):
         super(CNNQ, self).__init__()
         self.image_height = image_height
@@ -40,14 +41,13 @@ class CNNQ(torch.nn.Module):
         return x
 
 
-def encode_enum_state_to_channels(
-    state_tensor: torch.Tensor, num_channels: int
-):
+def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int):
     """Takes a 3-dim state tensor and returns a one-hot tensor with a new channels
     dimension as the second dimension (batch, channels, height, width)"""
     # Note: if memory-usage problems, consider alternatives to int64 tensor
     x = F.one_hot(state_tensor.long(), num_channels)
     return x.permute(0, 3, 1, 2)
+
 
 # This architecture has not yet been validated (and is likely poor).
 choices = {"default": CNNQ}

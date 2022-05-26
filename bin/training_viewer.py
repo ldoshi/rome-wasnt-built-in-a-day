@@ -17,7 +17,7 @@ from bridger.training_panel import TrainingPanel
 def view_training():
     parser = builder_trainer.get_hyperparam_parser()
     hparams = parser.parse_args()
-    
+
     env = builder_trainer.make_env(
         name=hparams.env_name,
         width=hparams.env_width,
