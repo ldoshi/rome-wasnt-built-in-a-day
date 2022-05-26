@@ -18,6 +18,7 @@ from typing import List, Optional
 from bridger import builder
 from bridger import builder_trainer
 from bridger import policies
+from bridger import test_utils
 from bridger.logging import object_logging
 from bridger.logging import object_log_readers
 from bridger.logging import log_entry
@@ -26,40 +27,6 @@ from bridger.logging import log_entry
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 _OBJECT_LOGGING_DIR = "tmp_object_logging_dir"
 _DELTA = 1e-6
-
-
-def _get_model(
-    object_log_manager: object_logging.ObjectLogManager,
-    debug: bool = False,
-    max_episode_length=1,
-    batch_size=5,
-    initial_memories_count=1000,
-) -> builder_trainer.BridgeBuilderModel:
-    return builder_trainer.BridgeBuilderModel(
-        object_log_manager,
-        env_width=3,
-        env_force_standard_config=True,
-        seed=12345,
-        max_episode_length=max_episode_length,
-        val_batch_size=1,
-        batch_size=batch_size,
-        object_logging_dir=_OBJECT_LOGGING_DIR,
-        initial_memories_count=initial_memories_count,
-        debug=debug,
-    )
-
-
-def _get_trainer(
-    max_steps: int = 1, callbacks: Optional[List[Callback]] = None
-) -> Trainer:
-    return Trainer(
-        val_check_interval=1,
-        # The validation batch size can be adjusted via a config, but
-        # we only need a single batch.
-        limit_val_batches=1,
-        max_steps=max_steps,
-        callbacks=callbacks,
-    )
 
 
 class BridgeBuilderTrainerTest(unittest.TestCase):
@@ -139,7 +106,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
-            _get_trainer(max_steps, callbacks).fit(_get_model(object_log_manager))
+            test_util.get_trainer(max_steps, callbacks).fit(test_util.get_model(object_log_manager))
 
         if early_stopping_callback:
             self.assertLess(callbacks[0].count, max_steps)
@@ -152,7 +119,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
-            _get_trainer().fit(_get_model(object_log_manager))
+            test_util.get_trainer().fit(test_util.get_model(object_log_manager))
         path = pathlib.Path(_OBJECT_LOGGING_DIR)
         self.assertTrue(path.is_dir())
         self.assertFalse(list(path.iterdir()))
@@ -192,8 +159,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
-            _get_trainer().fit(
-                _get_model(object_log_manager=object_log_manager, debug=True)
+            test_util.get_trainer().fit(
+                test_util.get_model(object_log_manager=object_log_manager, debug=True)
             )
         expected_entries = [
             log_entry.TrainingBatchLogEntry(
@@ -225,8 +192,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
-            _get_trainer(max_steps=max_steps).fit(
-                _get_model(
+            test_util.get_trainer(max_steps=max_steps).fit(
+                test_util.get_model(
                     object_log_manager=object_log_manager, debug=True, batch_size=2
                 )
             )
@@ -262,8 +229,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
-            _get_trainer(max_steps=max_steps).fit(
-                _get_model(
+            test_util.get_trainer(max_steps=max_steps).fit(
+                test_util.get_model(
                     object_log_manager=object_log_manager, debug=True, batch_size=2
                 )
             )
@@ -313,8 +280,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
-            _get_trainer(max_steps=max_steps).fit(
-                _get_model(
+            test_util.get_trainer(max_steps=max_steps).fit(
+                test_util.get_model(
                     object_log_manager=object_log_manager,
                     debug=True,
                     max_episode_length=2,
@@ -345,8 +312,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
-            _get_trainer(max_steps=max_steps).fit(
-                _get_model(
+            test_util.get_trainer(max_steps=max_steps).fit(
+                test_util.get_model(
                     object_log_manager=object_log_manager,
                     debug=True,
                     max_episode_length=2,
