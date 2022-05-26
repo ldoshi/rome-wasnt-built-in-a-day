@@ -44,8 +44,12 @@ You will need the [gym-bridges](https://github.com/ldoshi/gym-bridges) repo for 
 * Install dependencies (tested for conda)
 
 1. Navigate to the gym-bridges environment and run `./reinstall.sh`. This installs `gym-bridges` within the environment. If you don't do this, running any installation in `rome-wasnt-built-in-a-day` will not be able to install from `setup.py`.
-2. Run the command `pip3 install -e .`. This installs the current directory as a package using the information from `setup.py`. 
-3. Run the command `pip3 install -r requirements.txt`. This installs the packages required to run the library.
+
+2. Run the command pip3 install -e . to install the current directory as a package using the information from setup.py.
+
+3. Run the command pip install -r requirements.txt to install the packages required to run the programs.
+
+4. Run the command pip install -r dev_requirements.txtto install the packages related to the dev workflow.
 
 This project currently uses black to autoformat all code. Highly recommend using black as well to prevent spurious diffs.
 
@@ -61,6 +65,6 @@ To perform typechecking, you can run the command `pytype .` from the root direct
 
 ## Debugging
 
-If the `debug` flag is set, training history details will be stored to the directory indicated by flag `training_history_dir`. 
+If the `debug` flag is set, training history details will be stored to the directory indicated by flag `training_history_dir`.
 
-Run `training_viewer.py` to launch the debugging visualization tool reading data from the directory indicated by flag `training_history_dir`. 
+Run `training_viewer.py` to launch the debugging visualization tool reading data from the directory indicated by flag `training_history_dir`.

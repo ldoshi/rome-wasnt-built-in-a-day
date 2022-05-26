@@ -15,7 +15,7 @@ from bridger.logging import object_log_readers
 from bridger import test_utils
 
 
-_LOG_FILENAME_0 = "log_filename_0"
+_LOG_FILENAME_0 = "log_filename_0_pytest"
 
 
 class TestTrainingHistoryDatabase(unittest.TestCase):

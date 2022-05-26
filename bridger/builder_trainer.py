@@ -97,12 +97,16 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
 # TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
 # mode, debug mode, display mode) as Lightning Callbacks
 
+# TODO(arvind): Redesign the signature checking mechanism. Using
+# utils.validate_input# is not robust with changes in Lightning functionality
+
 # pylint: disable=too-many-instance-attributes
 class BridgeBuilderModel(pl.LightningModule):
     @utils.validate_input("BridgeBuilderModel", config.bridger_config)
     def __init__(
         self,
         object_log_manager: object_logging.ObjectLogManager,
+        *args,
         hparams=None,
         **kwargs
     ):
