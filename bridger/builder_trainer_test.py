@@ -339,6 +339,61 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         self._verify_log_entries(expected_entries, logged_entries)
 
 
+class StateActionCacheTest(unittest.TestCase):
+    """Verifies the creation and population of a StateActionCache."""
+
+    def test_state_action_cache(self):
+        """Populate the StateActionCache with multiple instances of state action pairs. Check that the StateActionCache does not recompute next state, rewards, and completion status (done) for cache hits."""
+        self.test_state_action_cache_env = builder_trainer.make_env(
+            name=_ENV_NAME, width=4, force_standard_config=True
+        )
+        self.state_action_cache = builder_trainer.StateActionCache(
+            self.test_state_action_cache_env
+        )
+
+        initial_state = np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0, 1.0],
+            ]
+        )
+        final_state = np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [2.0, 2.0, 2.0, 2.0],
+                [1.0, 1.0, 0.0, 1.0],
+            ]
+        )
+        self.state_action_cache.cache_get(initial_state, 2)
+        self.assertEqual(self.state_action_cache.hits, 0)
+        self.assertEqual(self.state_action_cache.misses, 1)
+
+        self.state_action_cache.cache_get(initial_state, 2)
+        self.assertEqual(self.state_action_cache.hits, 1)
+        self.assertEqual(self.state_action_cache.misses, 1)
+
+        self.state_action_cache.cache_get(initial_state, 3)
+        self.assertEqual(self.state_action_cache.hits, 1)
+        self.assertEqual(self.state_action_cache.misses, 2)
+
+        self.state_action_cache.cache_get(final_state, 2)
+        self.assertEqual(self.state_action_cache.hits, 1)
+        self.assertEqual(self.state_action_cache.misses, 3)
+
+        self.state_action_cache.cache_get(final_state, 2)
+        self.assertEqual(self.state_action_cache.hits, 2)
+        self.assertEqual(self.state_action_cache.misses, 3)
+
+        self.assertEqual(len(self.state_action_cache), 3)
+
+
 class BuilderTest(unittest.TestCase):
     """Verifies the builder's execution of a policy."""
 
