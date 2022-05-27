@@ -4,7 +4,6 @@ from pytorch_lightning.callbacks import Callback
 
 from bridger import builder_trainer
 from bridger import builder
-from bridger import training_panel
 
 
 class DemoCallback(Callback):
