@@ -28,7 +28,7 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
                 test_utils.get_model(
                     object_log_manager=object_log_manager,
                     debug=True,
-                    max_episode_length=3,
+                    max_episode_length=2,
                     initial_memories_count=9,
                 )
             )
@@ -87,7 +87,7 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         ]
 
         expected_states = [state_with_id_0, state_with_id_2, state_with_id_1]
-        expected_state_ids = [0, 2, 1]
+        expected_state_ids = [0, 1, 2]
         expected_visit_counts = [9, 3, 2]
 
         expected_n = min(max_possible_states, n) if n else max_possible_states
@@ -109,15 +109,16 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
 
         self.assertEqual(len(self.training_history_database.get_td_errors(5, 5)), 0)
 
-        state_id_0_action_2 = self.training_history_database.get_td_errors(
-            state_id=0, action=2
+        state_id_0_action_1 = self.training_history_database.get_td_errors(
+            state_id=0, action=1
         )
-        self.assertEqual(list(state_id_0_action_2["batch_idx"]), [0, 1, 2, 3, 4])
+
+        self.assertEqual(list(state_id_0_action_1["batch_idx"]), [0, 1, 2, 3, 4])
         self.assertTrue(
             all(
                 [
                     isinstance(td_error, float)
-                    for td_error in state_id_0_action_2["td_error"]
+                    for td_error in state_id_0_action_1["td_error"]
                 ]
             )
         )
@@ -125,7 +126,7 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         state_id_1_action_0 = self.training_history_database.get_td_errors(
             state_id=1, action=0
         )
-        self.assertEqual(list(state_id_1_action_0["batch_idx"]), [1, 3, 4])
+        self.assertEqual(list(state_id_1_action_0["batch_idx"]), [0, 3])
         self.assertTrue(
             all(
                 [
