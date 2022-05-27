@@ -6,7 +6,7 @@ import numpy as np
 from bridger import builder
 import pytorch_lightning as pl
 import torch
-from typing import Union
+from typing import Union, Optional, Callable, Hashable
 
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
@@ -92,6 +92,64 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
                 self._policy, self._episode_length, render=False
             )
             yield [build_result.success, build_result.reward, build_result.steps]
+
+
+class StateActionCache:
+    """
+    StateActionCache stores state-action pairs as keys for lookup for state, actions, next_state, rewards, and environment completion status for debugging. States are hashed by their bytes representation.
+    """
+
+    def __init__(
+        self, env: gym.Env, state_hash_fn: Callable[[torch.Tensor], Hashable] = str
+    ):
+        self._cache: dict[np.array, int] = {}
+        self._env: gym.Env = env
+        self._state_hash_fn = state_hash_fn
+        self.hits: int = 0
+        self.misses: int = 0
+
+    def __len__(self):
+        return len(self._cache)
+
+    def _cache_put(
+        self,
+        state: np.array,
+        action: int,
+        next_state: np.array,
+        reward: float,
+        done: bool,
+    ) -> None:
+        """
+        Puts the state-action into the cache along with the associated next_state, reward, and completion state.
+        """
+        self._cache[(self._state_hash_fn(state), action)] = (
+            state,
+            action,
+            next_state,
+            reward,
+            done,
+        )
+
+    def cache_get(
+        self, state: np.array, action: np.array
+    ) -> tuple[np.array, int, np.array, int, bool]:
+        """
+        Get the state-action pair from the cache, otherwise return None.
+        """
+        state_representation = self._state_hash_fn(state)
+        if (state_representation, action) in self._cache:
+            self.hits += 1
+            return self._cache[(state_representation, action)]
+
+        # If the cache misses, then compute the result, add it to the cache, and return the result.
+        self.misses += 1
+
+        # We need a new environment to compute the new action on a state.
+        self._env.reset(state)
+        next_state, reward, done, _ = self._env.step(action)
+        self._cache_put(state, action, next_state, reward, done)
+
+        return self._cache[(state_representation, action)]
 
 
 # TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
@@ -486,7 +544,7 @@ class BridgeBuilderModel(pl.LightningModule):
         """
         if weights is not None:
             td_errors = weights * td_errors
-        return (td_errors ** 2).mean()
+        return (td_errors**2).mean()
 
     def training_step(self, batch: list[torch.Tensor], batch_idx: int) -> torch.Tensor:
         """Performs a single training step on the Q network.
