@@ -5,14 +5,11 @@ import gym
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 
-from bridger import training_panel
 from bridger.builder_trainer import BridgeBuilderModel
 
 # Creates the smallest world where a bridge can be built. Cycles
 # through a series of actions to build simple episodes into the
-# training set. Inspecting the TrainingPanel should show that the
-# value function reflects the experiences encountered.
-
+# training set. 
 
 def tiny_world():
 
@@ -23,13 +20,6 @@ def tiny_world():
         env_force_standard_config=True,
         debug=True,
         max_episode_length=MAX_EPISODE_LENGTH,
-    )
-
-    panel = training_panel.TrainingPanel(
-        states_n=10,
-        state_width=model.env.shape[1],
-        state_height=model.env.shape[0],
-        actions_n=model.env.nA,
     )
 
     class FixedRotatingPolicy(Callback):
@@ -58,8 +48,7 @@ def tiny_world():
     )
     trainer.fit(model)
 
-    panel.update_panel(model.training_history.get_history_by_visit_count())
-    return model, panel
+    return model
 
 
 # env and replay_buffer should be treated as read-only.

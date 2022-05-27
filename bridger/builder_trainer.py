@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
 
 
-from bridger import config, policies, qfunctions, replay_buffer, training_history, utils
+from bridger import config, policies, qfunctions, replay_buffer, utils
 from bridger.logging import object_logging
 from bridger.logging import log_entry
 
@@ -183,13 +183,6 @@ class BridgeBuilderModel(pl.LightningModule):
         self.next_action = None
         self.state = self.env.reset()
         self._breakpoint = {"step": 0, "episode": 0}
-
-        if self.hparams.debug:
-            # TODO(arvind): Move as much of this functionality as possible into
-            # the tensorboard logging already being done here.
-            self.training_history = training_history.TrainingHistory(
-                serialization_dir=self.hparams.training_history_dir
-            )
 
     @property
     def trained_policy(self):

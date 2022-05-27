@@ -13,14 +13,13 @@
 # 3. take_action will take the requested action, potentially multiple times, before
 #    returning to the IPython shell
 
-import subprocess
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import EarlyStopping
 
 from bridger import builder
 from bridger import builder_trainer
-from bridger.callbacks import DemoCallback, HistoryCallback
+from bridger.callbacks import DemoCallback
 from pathlib import Path
 from bridger.logging import object_logging
 
@@ -66,37 +65,12 @@ def test():
         ]
         if hparams.debug:
             callbacks += [
-                HistoryCallback(
-                    steps_per_update=MAX_STEPS,
-                ),
                 DemoCallback(
                     steps_per_update=MAX_STEPS,
                     max_episode_length=MAX_DEMO_EPISODE_LENGTH,
                 ),
             ]
 
-            # TODO(lyric): Replace with multiprocessing.
-            #
-            # Open a subprocess
-            training_viewer_args = ["training_viewer.py"]
-            for key, value in vars(hparams).items():
-                # Special handling for bool because of
-                # BooleanOptionalAction and the inability to pass False to a
-                # boolean flag in argparse.
-                if value is False:
-                    training_viewer_args.append("--no-" + key.replace("_", "-"))
-                else:
-                    training_viewer_args.append("--" + key.replace("_", "-"))
-                    if value is True:
-                        # No value is provided for boolean True flags.
-                        continue
-
-                    training_viewer_args.append(str(value))
-
-            subprocess.Popen(
-                args=training_viewer_args,
-                cwd=Path.cwd(),
-            )
         trainer = Trainer(
             gradient_clip_val=hparams.gradient_clip_val,
             val_check_interval=hparams.val_check_interval,
