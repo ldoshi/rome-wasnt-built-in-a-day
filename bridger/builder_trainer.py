@@ -96,15 +96,24 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
 
 class StateActionCache:
     """
-    StateActionCache stores state-action pairs as keys for lookup for state, actions, next_state, rewards, and environment completion status for debugging. States are hashed by their bytes representation.
+    StateActionCache stores state-action pairs as keys for lookup for state, actions, next_state, rewards, and environment completion status for debugging.
+
+    Attributes:
+    self.hits: The number of cache hits.
+    self.misses: The number of cache misses. TODO(joseph): Double check that the cache does not miss after being generated once with a given build environment.
     """
 
     def __init__(
-        self, env: gym.Env, state_hash_fn: Callable[[torch.Tensor], Hashable] = str
+        self,
+        env: gym.Env,
+        make_hashable_fn: Optional[Callable[[Any], Hashable]] = None,
     ):
-        self._cache: dict[np.array, int] = {}
+        self._cache = {}
         self._env: gym.Env = env
-        self._state_hash_fn = state_hash_fn
+        if make_hashable_fn:
+            self._make_hashable_fn = make_hashable_fn
+        else:
+            self._make_hashable_fn = lambda x: x
         self.hits: int = 0
         self.misses: int = 0
 
@@ -113,16 +122,16 @@ class StateActionCache:
 
     def _cache_put(
         self,
-        state: np.array,
-        action: int,
-        next_state: np.array,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
         reward: float,
         done: bool,
     ) -> None:
         """
         Puts the state-action into the cache along with the associated next_state, reward, and completion state.
         """
-        self._cache[(self._state_hash_fn(state), action)] = (
+        self._cache[(self._make_hashable_fn(state), action)] = (
             state,
             action,
             next_state,
@@ -131,20 +140,19 @@ class StateActionCache:
         )
 
     def cache_get(
-        self, state: np.array, action: np.array
-    ) -> tuple[np.array, int, np.array, int, bool]:
+        self, state: np.ndarray, action: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, float, bool]:
         """
-        Get the state-action pair from the cache, otherwise return None.
+        Get the state-action reward estimator for a future state from the cache. If the cache misses, compute the estimator by stepping through the current env.
         """
-        state_representation = self._state_hash_fn(state)
+        state_representation = self._make_hashable_fn(state)
         if (state_representation, action) in self._cache:
             self.hits += 1
             return self._cache[(state_representation, action)]
 
-        # If the cache misses, then compute the result, add it to the cache, and return the result.
+        # If the cache misses, then compute the resulting (next_state, reward, done) given the (state, action_pair), add it to the cache, and return the result.
         self.misses += 1
 
-        # We need a new environment to compute the new action on a state.
         self._env.reset(state)
         next_state, reward, done, _ = self._env.step(action)
         self._cache_put(state, action, next_state, reward, done)
