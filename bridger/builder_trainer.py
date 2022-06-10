@@ -123,7 +123,7 @@ class StateActionCache:
     def _cache_put(
         self,
         state: np.ndarray,
-        action: np.ndarray,
+        action: int,
         next_state: np.ndarray,
         reward: float,
         done: bool,
@@ -140,8 +140,8 @@ class StateActionCache:
         )
 
     def cache_get(
-        self, state: np.ndarray, action: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, float, bool]:
+        self, state: np.ndarray, action: int
+    ) -> tuple[np.ndarray, int, np.ndarray, float, bool]:
         """
         Get the state-action reward estimator for a future state from the cache. If the cache misses, compute the estimator by stepping through the current env.
         """

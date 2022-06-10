@@ -96,7 +96,7 @@ class TrainingPanel:
 
             state_id = state_ids.iloc[i]
             for action in range(self._training_history_database.actions_n):
-                data = get_data_fn(state_id=state_id, action=action)
+                data = get_data_fn(state_id, action)
 
                 if len(data) > self._max_points_per_plot:
                     subsampled_indices_for_plotting = equally_spaced_indices(
