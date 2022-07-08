@@ -6,7 +6,7 @@ import numpy as np
 from bridger import builder
 import pytorch_lightning as pl
 import torch
-from typing import Union
+from typing import Union, Optional, Callable, Hashable
 
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
@@ -92,6 +92,72 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
                 self._policy, self._episode_length, render=False
             )
             yield [build_result.success, build_result.reward, build_result.steps]
+
+
+class StateActionCache:
+    """
+    StateActionCache stores state-action pairs as keys for lookup for state, actions, next_state, rewards, and environment completion status for debugging.
+
+    Attributes:
+        self.hits: The number of cache hits.
+        self.misses: The number of cache misses. TODO(joseph): Double check that the cache does not miss after being generated once with a given build environment.
+    """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        make_hashable_fn: Optional[Callable[[Any], Hashable]] = None,
+    ):
+        self._cache = {}
+        self._env: gym.Env = env
+        if make_hashable_fn:
+            self._make_hashable_fn = make_hashable_fn
+        else:
+            self._make_hashable_fn = lambda x: x
+        self.hits: int = 0
+        self.misses: int = 0
+
+    def __len__(self):
+        return len(self._cache)
+
+    def _cache_put(
+        self,
+        state: np.ndarray,
+        action: int,
+        next_state: np.ndarray,
+        reward: float,
+        done: bool,
+    ) -> None:
+        """
+        Puts the state-action into the cache along with the associated next_state, reward, and completion state.
+        """
+        self._cache[(self._make_hashable_fn(state), action)] = (
+            state,
+            action,
+            next_state,
+            reward,
+            done,
+        )
+
+    def cache_get(
+        self, state: np.ndarray, action: int
+    ) -> tuple[np.ndarray, int, np.ndarray, float, bool]:
+        """
+        Get the next state, reward, and environment completion status for a given state-action pair. If the cache misses, compute the estimator by stepping through the current env.
+        """
+        state_representation = self._make_hashable_fn(state)
+        if (state_representation, action) in self._cache:
+            self.hits += 1
+            return self._cache[(state_representation, action)]
+
+        # If the cache misses, then compute the resulting (next_state, reward, done) given the (state, action_pair), add it to the cache, and return the result.
+        self.misses += 1
+
+        self._env.reset(state)
+        next_state, reward, done, _ = self._env.step(action)
+        self._cache_put(state, action, next_state, reward, done)
+
+        return self._cache[(state_representation, action)]
 
 
 # TODO(arvind): Encapsulate all optional parts of workflow (e.g. interactive
@@ -486,7 +552,7 @@ class BridgeBuilderModel(pl.LightningModule):
         """
         if weights is not None:
             td_errors = weights * td_errors
-        return (td_errors ** 2).mean()
+        return (td_errors**2).mean()
 
     def training_step(self, batch: list[torch.Tensor], batch_idx: int) -> torch.Tensor:
         """Performs a single training step on the Q network.
