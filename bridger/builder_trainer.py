@@ -99,8 +99,8 @@ class StateActionCache:
     StateActionCache stores state-action pairs as keys for lookup for state, actions, next_state, rewards, and environment completion status for debugging.
 
     Attributes:
-    self.hits: The number of cache hits.
-    self.misses: The number of cache misses. TODO(joseph): Double check that the cache does not miss after being generated once with a given build environment.
+        self.hits: The number of cache hits.
+        self.misses: The number of cache misses. TODO(joseph): Double check that the cache does not miss after being generated once with a given build environment.
     """
 
     def __init__(
@@ -143,7 +143,7 @@ class StateActionCache:
         self, state: np.ndarray, action: int
     ) -> tuple[np.ndarray, int, np.ndarray, float, bool]:
         """
-        Get the state-action reward estimator for a future state from the cache. If the cache misses, compute the estimator by stepping through the current env.
+        Get the next state, reward, and environment completion status for a given state-action pair. If the cache misses, compute the estimator by stepping through the current env.
         """
         state_representation = self._make_hashable_fn(state)
         if (state_representation, action) in self._cache:

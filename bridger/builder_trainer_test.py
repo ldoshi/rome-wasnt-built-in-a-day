@@ -455,35 +455,35 @@ class BuildEvaluatorTest(unittest.TestCase):
 
         # Stats manually verified from the following:
         #
-        # [BuildResult(success=True, reward=-1, steps=2, another_state=array([
+        # [BuildResult(success=True, reward=-1, steps=2, final_state=array([
         # [0., 0., 0., 0.],
         # [0., 0., 0., 0.],
         # [2., 2., 2., 2.],
         # [1., 0., 0., 1.],
         # [1., 0., 0., 1.],
         # [1., 0., 0., 1.]])),
-        # BuildResult(success=True, reward=-3, steps=4, another_state=array([
+        # BuildResult(success=True, reward=-3, steps=4, final_state=array([
         # [0., 0., 0., 0.],
         # [0., 0., 0., 0.],
         # [2., 2., 0., 0.],
         # [2., 2., 2., 2.],
         # [1., 0., 2., 2.],
         # [1., 0., 1., 1.]])),
-        # BuildResult(success=True, reward=-1, steps=2, another_state=array([
+        # BuildResult(success=True, reward=-1, steps=2, final_state=array([
         # [0., 0., 0., 0.],
         # [0., 0., 0., 0.],
         # [0., 0., 0., 0.],
         # [2., 2., 0., 0.],
         # [1., 1., 2., 2.],
         # [1., 1., 0., 1.]])),
-        # BuildResult(success=True, reward=0, steps=1, another_state=array([
+        # BuildResult(success=True, reward=0, steps=1, final_state=array([
         # [0., 0., 0., 0.],
         # [0., 0., 0., 0.],
         # [0., 0., 0., 0.],
         # [2., 2., 1., 1.],
         # [1., 0., 1., 1.],
         # [1., 0., 1., 1.]])),
-        # BuildResult(success=False, reward=-4, steps=4, another_state=array([
+        # BuildResult(success=False, reward=-4, steps=4, final_state=array([
         # [0., 0., 0., 0.],
         # [2., 2., 0., 0.],
         # [2., 2., 0., 0.],
