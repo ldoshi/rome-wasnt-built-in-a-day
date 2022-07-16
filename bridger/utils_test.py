@@ -44,34 +44,40 @@ class TestHash(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("String Hash", str, (6, 7), 10000),
-            ("Tuple Hash", hash_tensor, (6, 7), 10000),
+            ("String Hash", str, 10000),
+            ("Tuple Hash", hash_tensor, 10000),
         ]
     )
-    def test_hash_validity(self, name, hash_func, shape, repetitions):
+    def test_hash_validity(self, name, hash_func, repetitions, shape=(6, 7)):
         torch.manual_seed(0)
-        tensors = [torch.rand(shape) for i in range(repetitions)]
-        assert all(
-            hash_func(x) == hash_func(torch.clone(x)) for x in tensors
-        ), f"Hash {name} failed for identical tensors"
-
         hashed_tensors = {}
-        for tensor_hash, tensor in zip(map(hash_func, tensors), tensors):
+        for i in range(repetitions):
+            tensor = torch.rand(shape)
+            tensor_hash = hash_func(tensor)
+
+            self.assertEqual(
+                tensor_hash, hash_func(torch.clone(tensor))
+            ), f"Hash {name} failed for identical tensors"
+
+            self.assertNotEqual(
+                tensor_hash, hash_func(tensor.T)
+            ), f"Hash {name} failed for identical tensors"
+
             if tensor_hash in hashed_tensors:
-                assert (
-                    tensor == hashed_tensors[tensor_hash]
-                ).all(), f"Hash {name} failed for non-identical tensors"
+                self.assertTrue(
+                    (tensor == hashed_tensors[tensor_hash]).all()
+                ), f"Hash {name} failed for non-identical tensors"
             else:
                 hashed_tensors[tensor_hash] = tensor
 
     @parameterized.expand(
         [
-            ("String Hash", str, (6, 7), 10000),
-            ("Tuple Hash", hash_tensor, (6, 7), 10000),
+            ("String Hash", str, 10000),
+            ("Tuple Hash", hash_tensor, 10000),
         ]
     )
     @pytest.mark.integtest
-    def test_hash_speed(self, name, hash_func, shape, repetitions):
+    def test_hash_speed(self, name, hash_func, repetitions, shape=(6, 7)):
         keys = [torch.rand(shape) for i in range(repetitions)]
         values = torch.rand(repetitions).tolist()
         test_dict = {}
