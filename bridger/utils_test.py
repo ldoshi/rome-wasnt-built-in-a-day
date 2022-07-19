@@ -51,7 +51,7 @@ class TestHash(unittest.TestCase):
     def test_hash_validity(self, name, hash_func, repetitions, shape=(6, 7)):
         torch.manual_seed(0)
         hashed_tensors = {}
-        for i in range(repetitions):
+        for _ in range(repetitions):
             tensor = torch.rand(shape)
             tensor_hash = hash_func(tensor)
 
@@ -59,9 +59,13 @@ class TestHash(unittest.TestCase):
                 tensor_hash, hash_func(torch.clone(tensor))
             ), f"Hash {name} failed for identical tensors"
 
+            reshaped_tensor = tensor.reshape(tensor.shape[::-1])
+            self.assertTrue(
+                (tensor.reshape(-1) == reshaped_tensor.reshape(-1)).all()
+            ), "Attempted reshape in test is invalid"
             self.assertNotEqual(
-                tensor_hash, hash_func(tensor.T)
-            ), f"Hash {name} failed for identical tensors"
+                tensor_hash, hash_func(reshaped_tensor)
+            ), f"Hash {name} failed for reshaped tensors"
 
             if tensor_hash in hashed_tensors:
                 self.assertTrue(
