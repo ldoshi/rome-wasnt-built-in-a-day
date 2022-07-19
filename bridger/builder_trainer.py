@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
 
 
-from bridger import config, policies, qfunctions, replay_buffer, utils
+from bridger import config, policies, qfunctions, replay_buffer
 from bridger.logging import object_logging
 from bridger.logging import log_entry
 
@@ -164,11 +164,11 @@ class StateActionCache:
 # mode, debug mode, display mode) as Lightning Callbacks
 
 # TODO(arvind): Redesign the signature checking mechanism. Using
-# utils.validate_input# is not robust with changes in Lightning functionality
+# config.validate_input# is not robust with changes in Lightning functionality
 
 # pylint: disable=too-many-instance-attributes
 class BridgeBuilderModel(pl.LightningModule):
-    @utils.validate_input("BridgeBuilderModel", config.bridger_config)
+    @config.validate_input("BridgeBuilderModel", config.bridger_config)
     def __init__(
         self,
         object_log_manager: object_logging.ObjectLogManager,
@@ -552,7 +552,7 @@ class BridgeBuilderModel(pl.LightningModule):
         """
         if weights is not None:
             td_errors = weights * td_errors
-        return (td_errors**2).mean()
+        return (td_errors ** 2).mean()
 
     def training_step(self, batch: list[torch.Tensor], batch_idx: int) -> torch.Tensor:
         """Performs a single training step on the Q network.

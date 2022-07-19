@@ -5,7 +5,7 @@ import unittest
 from time import process_time
 from parameterized import parameterized
 
-from bridger.utils import hash_tensor
+from bridger.hash import hash_tensor
 
 
 def _check_hash_time(keys, values=None, test_dict=None, hash_func=None):
