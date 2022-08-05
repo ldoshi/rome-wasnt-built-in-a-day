@@ -267,6 +267,7 @@ class BridgeBuilderModel(pl.LightningModule):
             force_standard_config=self.hparams.env_force_standard_config,
             seed=torch.rand(1).item(),
         )
+        self._state_action_cache = StateActionCache(env=self._validation_env, make_hashable_fn=str)
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
             capacity=self.hparams.capacity,
@@ -650,18 +651,68 @@ class BridgeBuilderModel(pl.LightningModule):
                 ),
             )
 
-            for state, action, td_error in zip(
-                states, actions.tolist(), td_errors.tolist()
-            ):
-                self._object_log_manager.log(
-                    log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
-                    log_entry.TrainingHistoryTDErrorLogEntry(
-                        batch_idx=batch_idx,
-                        state_id=self._state_logger.get_logged_object_id(state),
-                        action=action,
-                        td_error=td_error,
-                    ),
+            frequent_states = self._state_visit_logger.get_top_n(
+                _FREQUENTLY_VISITED_STATE_COUNT
+            )
+            # A list of metadata of states, actions, next states, rewards, and completion statuses for calculating TD errors.
+            top_n_states_metadata = {
+                metadata: []
+                for metadata in (
+                    "states",
+                    "actions",
+                    "next_states",
+                    "rewards",
+                    "environment_completion_statuses",
                 )
+            }
+
+            for frequent_state in frequent_states:
+                for action in range(self.env.nA):
+                    (
+                        state,
+                        action,
+                        next_state,
+                        reward,
+                        environment_completion_status,
+                    ) = self._state_action_cache.cache_get(
+                        frequent_state.numpy(), action
+                    )
+                    top_n_states_metadata["states"].append(torch.tensor(state))
+                    top_n_states_metadata["actions"].append(torch.tensor(action))
+
+                    top_n_states_metadata["next_states"].append(
+                        torch.tensor(next_state)
+                    )
+                    top_n_states_metadata["rewards"].append(torch.tensor(reward))
+                    top_n_states_metadata["environment_completion_statuses"].append(
+                        torch.tensor(environment_completion_status),
+                    )
+
+            # Converts the list of tensors into one large tensor.
+            for metadata in top_n_states_metadata:
+                top_n_states_metadata[metadata] = torch.stack(
+                    top_n_states_metadata[metadata]
+                )
+
+            self._object_log_manager.log(
+                log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
+                log_entry.TrainingHistoryTDErrorLogEntry(
+                    batch_idx=batch_idx,
+                    state_id=self._state_logger.get_logged_object_id(
+                        torch.from_numpy(state)
+                    ),
+                    action=action,
+                    td_error=self.get_td_error(
+                        states=top_n_states_metadata["states"],
+                        actions=top_n_states_metadata["actions"],
+                        next_states=top_n_states_metadata["next_states"],
+                        rewards=top_n_states_metadata["rewards"],
+                        success=top_n_states_metadata[
+                            "environment_completion_statuses"
+                        ],
+                    ),
+                ),
+            )
 
         if self.hparams.debug_action_inversion_checker:
             action_inversion_reports = self._action_inversion_checker.check(
