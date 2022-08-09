@@ -132,11 +132,11 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         self.assertEqual(len(expected_entries), len(logged_entries))
         for expected_entry, logged_entry in zip(expected_entries, logged_entries):
             for field in expected_entry.__dataclass_fields__:
+                print(field, expected_entry, logged_entry)
                 expected_entry_value = getattr(expected_entry, field)
                 logged_entry_value = getattr(logged_entry, field)
-                print(field, expected_entry_value, logged_entry_value)
                 if isinstance(expected_entry_value, torch.Tensor):
-                    if field == "loss" or field == "td_error" or field == "weights":
+                    if field == "loss" or field == "td_error":
                         self.assertTrue(
                             torch.allclose(
                                 expected_entry_value, logged_entry_value, atol=1e-4
@@ -170,10 +170,10 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 state_ids=[0, 0, 0, 0, 0],
                 actions=torch.tensor([1, 2, 1, 1, 1]),
                 next_state_ids=[1, 0, 1, 1, 1],
-                rewards=torch.tensor([-1, -5, -1, -1, -1]),
+                rewards=torch.tensor([-1, -2, -1, -1, -1]),
                 successes=torch.tensor([False, False, False, False, False]),
                 weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
-                loss=torch.tensor(5.6923, dtype=torch.float64, requires_grad=True),
+                loss=torch.tensor(1.5562, dtype=torch.float64, requires_grad=True),
             )
         ]
 
@@ -200,10 +200,10 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             )
         expected_entries = [
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=0, state_id=0, action=2, td_error=torch.tensor([-0.8775, -0.9989, -4.9468])
+                batch_idx=0, state_id=0, action=2, td_error=torch.tensor([-0.8775, -0.9989, -1.9468])
             ),
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=1, state_id=0, action=2, td_error=torch.tensor([-0.8406, -0.9241, -4.8055])
+                batch_idx=1, state_id=0, action=2, td_error=torch.tensor([-0.8379, -0.9129, -1.8108])
             ),
         ]
 
@@ -236,22 +236,22 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 batch_idx=0,
                 state_id=0,
                 action=0,
-                q_value= -0.12864065170288086,
-                q_target_value=-0.09139707684516907,
+                q_value= -0.131546,
+                q_target_value=-0.091432,
             ),
             log_entry.TrainingHistoryQValueLogEntry(
                 batch_idx=0,
                 state_id=0,
                 action=1,
-                q_value=-0.04577836021780968,
-                q_target_value=0.02898656576871872,
+                q_value=-0.057093,
+                q_target_value=0.028855,
             ),
             log_entry.TrainingHistoryQValueLogEntry(
                 batch_idx=0,
                 state_id=0,
                 action=2,
-                q_value=-0.16580212116241455,
-                q_target_value=-0.025232883170247078,
+                q_value=-0.160665,
+                q_target_value=-0.025203,
             ),
         ]
 
@@ -488,7 +488,7 @@ class BuilderTest(unittest.TestCase):
         )
         self.assertTrue(build_result.success)
         # The first gives -1 reward.
-        self.assertEqual(build_result.reward, 99)
+        self.assertEqual(build_result.reward, -1)
         self.assertEqual(build_result.steps, 2)
 
 
@@ -565,8 +565,8 @@ class BuildEvaluatorTest(unittest.TestCase):
         )
         self.assertEqual(build_evaluator.build_steps_on_success_mean, 2.25)
         np.testing.assert_array_equal(build_evaluator.build_steps, [2, 4, 2, 1, 4])
-        self.assertEqual(build_evaluator.reward_on_success_mean, 98.75)
-        np.testing.assert_array_equal(build_evaluator.rewards, [99, 97, 99, 100, -4])
+        self.assertEqual(build_evaluator.reward_on_success_mean, -1.25)
+        np.testing.assert_array_equal(build_evaluator.rewards, [-1, -3, -1, 0, -4])
         self.assertEqual(build_evaluator.height_of_highest_block_mean, 2.8)
 
 
