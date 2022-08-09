@@ -132,7 +132,6 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         self.assertEqual(len(expected_entries), len(logged_entries))
         for expected_entry, logged_entry in zip(expected_entries, logged_entries):
             for field in expected_entry.__dataclass_fields__:
-                print(field, expected_entry, logged_entry)
                 expected_entry_value = getattr(expected_entry, field)
                 logged_entry_value = getattr(logged_entry, field)
                 if isinstance(expected_entry_value, torch.Tensor):
