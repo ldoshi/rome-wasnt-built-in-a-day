@@ -135,7 +135,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 expected_entry_value = getattr(expected_entry, field)
                 logged_entry_value = getattr(logged_entry, field)
                 if isinstance(expected_entry_value, torch.Tensor):
-                    if field == "loss" or field == "td_error":
+                    if field == "loss":
                         self.assertTrue(
                             torch.allclose(
                                 expected_entry_value, logged_entry_value, atol=1e-4
@@ -199,10 +199,22 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             )
         expected_entries = [
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=0, state_id=0, action=2, td_error=torch.tensor([-0.8775, -0.9989, -1.9468])
+                batch_idx=0, state_id=0, action=0, td_error=-0.9405094385147095
             ),
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=1, state_id=0, action=2, td_error=torch.tensor([-0.8379, -0.9129, -1.8108])
+                batch_idx=0, state_id=0, action=1, td_error=-1.060692548751831
+            ),
+            log_entry.TrainingHistoryTDErrorLogEntry(
+                batch_idx=0, state_id=0, action=2, td_error=-2.0057506561279297
+            ),
+            log_entry.TrainingHistoryTDErrorLogEntry(
+                batch_idx=1, state_id=0, action=0, td_error=-0.8990352153778076
+            ),
+            log_entry.TrainingHistoryTDErrorLogEntry(
+                batch_idx=1, state_id=0, action=1, td_error=-0.972866952419281
+            ),
+            log_entry.TrainingHistoryTDErrorLogEntry(
+                batch_idx=1, state_id=0, action=2, td_error=-1.86790132522583
             ),
         ]
 
@@ -235,7 +247,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 batch_idx=0,
                 state_id=0,
                 action=0,
-                q_value= -0.131546,
+                q_value=-0.131546,
                 q_target_value=-0.091432,
             ),
             log_entry.TrainingHistoryQValueLogEntry(

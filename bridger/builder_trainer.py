@@ -162,9 +162,9 @@ class StateActionCache:
 
     def _cache_put(
         self,
-        state: np.ndarray,
+        state: torch.Tensor,
         action: int,
-        next_state: np.ndarray,
+        next_state: torch.Tensor,
         reward: float,
         done: bool,
     ) -> None:
@@ -180,8 +180,8 @@ class StateActionCache:
         )
 
     def cache_get(
-        self, state: np.ndarray, action: int
-    ) -> tuple[np.ndarray, int, np.ndarray, float, bool]:
+        self, state: torch.Tensor, action: int
+    ) -> tuple[torch.Tensor, int, torch.Tensor, float, bool]:
         """
         Get the next state, reward, and environment completion status for a given state-action pair. If the cache misses, compute the estimator by stepping through the current env.
         """
@@ -193,8 +193,10 @@ class StateActionCache:
         # If the cache misses, then compute the resulting (next_state, reward, done) given the (state, action_pair), add it to the cache, and return the result.
         self.misses += 1
 
-        self._env.reset(state)
+        self._env.reset()
         next_state, reward, done, _ = self._env.step(action)
+        # For some reason, the next_state returned from step is a numpy array instead of a tensor, so we have to cast it back to a tensor.
+        next_state = torch.Tensor(next_state)
         self._cache_put(state, action, next_state, reward, done)
 
         return self._cache[(state_representation, action)]
@@ -267,7 +269,9 @@ class BridgeBuilderModel(pl.LightningModule):
             force_standard_config=self.hparams.env_force_standard_config,
             seed=torch.rand(1).item(),
         )
-        self._state_action_cache = StateActionCache(env=self._validation_env, make_hashable_fn=str)
+        self._state_action_cache = StateActionCache(
+            env=self._validation_env, make_hashable_fn=str
+        )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
             capacity=self.hparams.capacity,
@@ -586,7 +590,6 @@ class BridgeBuilderModel(pl.LightningModule):
             rewards: The reward gained through the transition.
             success: Whether the transition marked the end of the episode.
         """
-
         row_idx = torch.arange(actions.shape[0])
         qvals = self.Q(states)[row_idx, actions]
         with torch.no_grad():
@@ -654,83 +657,34 @@ class BridgeBuilderModel(pl.LightningModule):
             frequent_states = self._state_visit_logger.get_top_n(
                 _FREQUENTLY_VISITED_STATE_COUNT
             )
-            # A list of metadata of states, actions, next states, rewards, and completion statuses for calculating TD errors.
-            top_n_states_metadata = {
-                metadata: []
-                for metadata in (
-                    "states",
-                    "actions",
-                    "next_states",
-                    "rewards",
-                    "environment_completion_statuses",
-                )
-            }
+            # Sample all possible actions over the state space.
+            actions = torch.arange(self.env.nA).unsqueeze(1)
 
             for frequent_state in frequent_states:
-                for action in range(self.env.nA):
+                for action in actions:
                     (
                         state,
                         action,
                         next_state,
                         reward,
                         environment_completion_status,
-                    ) = self._state_action_cache.cache_get(
-                        frequent_state.numpy(), action
+                    ) = self._state_action_cache.cache_get(frequent_state, action)
+
+                    self._object_log_manager.log(
+                        log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
+                        log_entry.TrainingHistoryTDErrorLogEntry(
+                            batch_idx=batch_idx,
+                            state_id=self._state_logger.get_logged_object_id(state),
+                            action=action.item(),
+                            td_error=self.get_td_error(
+                                states=state,
+                                actions=action,
+                                next_states=next_state,
+                                rewards=reward,
+                                success=environment_completion_status,
+                            ).item(),
+                        ),
                     )
-                    top_n_states_metadata["states"].append(torch.tensor(state))
-                    top_n_states_metadata["actions"].append(torch.tensor(action))
-
-                    top_n_states_metadata["next_states"].append(
-                        torch.tensor(next_state)
-                    )
-                    top_n_states_metadata["rewards"].append(torch.tensor(reward))
-                    top_n_states_metadata["environment_completion_statuses"].append(
-                        torch.tensor(environment_completion_status),
-                    )
-
-            # Converts the list of tensors into one large tensor.
-            for metadata in top_n_states_metadata:
-                top_n_states_metadata[metadata] = torch.stack(
-                    top_n_states_metadata[metadata]
-                )
-
-            self._object_log_manager.log(
-                log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
-                log_entry.TrainingHistoryTDErrorLogEntry(
-                    batch_idx=batch_idx,
-                    state_id=self._state_logger.get_logged_object_id(
-                        torch.from_numpy(state)
-                    ),
-                    action=action,
-                    td_error=self.get_td_error(
-                        states=top_n_states_metadata["states"],
-                        actions=top_n_states_metadata["actions"],
-                        next_states=top_n_states_metadata["next_states"],
-                        rewards=top_n_states_metadata["rewards"],
-                        success=top_n_states_metadata[
-                            "environment_completion_statuses"
-                        ],
-                    ),
-                ),
-            )
-
-        if self.hparams.debug_action_inversion_checker:
-            action_inversion_reports = self._action_inversion_checker.check(
-                policy=self._validation_policy
-            )
-
-            self.log("action_inversion_incident_rate", len(action_inversion_reports))
-
-            for report in action_inversion_reports:
-                self._object_log_manager.log(
-                    log_entry.ACTION_INVERSION_REPORT_ENTRY,
-                    log_entry.ActionInversionReportEntry(
-                        batch_idx=batch_idx,
-                        state_id=self._state_logger.get_logged_object_id(report.state),
-                        preferred_actions=report.preferred_actions,
-                        policy_action=report.policy_action,
-                    ),
-                )
 
         # Update replay buffer.
         self.replay_buffer.update_priorities(indices, td_errors)

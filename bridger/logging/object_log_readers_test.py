@@ -127,7 +127,7 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         state_id_1_action_0 = self.training_history_database.get_td_errors(
             state_id=1, action=0
         )
-        self.assertEqual(list(state_id_1_action_0["batch_idx"]), [0, 3])
+        self.assertEqual(list(state_id_1_action_0["batch_idx"]), [0, 1, 2, 3, 4])
         self.assertTrue(
             all(
                 [
