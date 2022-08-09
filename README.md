@@ -45,11 +45,11 @@ You will need the [gym-bridges](https://github.com/ldoshi/gym-bridges) repo for 
 
 1. Navigate to the gym-bridges environment and run `./reinstall.sh`. This installs `gym-bridges` within the environment. If you don't do this, running any installation in `rome-wasnt-built-in-a-day` will not be able to install from `setup.py`.
 
-2. Run the command pip3 install -e . to install the current directory as a package using the information from setup.py.
+2. Run the command `pip3 install -e .` to install the current directory as a package using the information from setup.py.
 
-3. Run the command pip install -r requirements.txt to install the packages required to run the programs.
+3. Run the command `pip3 install -r requirements.txt` to install the packages required to run the programs.
 
-4. Run the command pip install -r dev_requirements.txtto install the packages related to the dev workflow.
+4. Run the command `pip3 install -r dev_requirements.txt` to install the packages related to the dev workflow.
 
 This project currently uses black to autoformat all code. Highly recommend using black as well to prevent spurious diffs.
 
@@ -57,7 +57,7 @@ This project currently uses black to autoformat all code. Highly recommend using
 
 In `gym-bridges`, run `./reinstall.sh`. You will need to do this every time the gym-bridges environment code changes.
 
-Then, from this repository, call `pip install .` to install this package (`bridger`).
+Then, from this repository, call `pip3 install .` to install this package (`bridger`).
 
 The main testing entrypoint is to call `bridge_builder.py` from command line. Default arguments are available for all inputs, and can be viewed by calling `bridge_builder.py --help`
 

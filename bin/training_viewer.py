@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Display training and debugging information. 
+"""Display training and debugging information.
 
 The training viewer reads training history files from the directory
 indicated by the flag `object_logging_dir` and displays it via the
