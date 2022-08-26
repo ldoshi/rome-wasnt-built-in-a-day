@@ -162,9 +162,9 @@ class StateActionCache:
 
     def _cache_put(
         self,
-        state: torch.Tensor,
+        state: np.ndarray,
         action: int,
-        next_state: torch.Tensor,
+        next_state: np.ndarray,
         reward: float,
         done: bool,
     ) -> None:
@@ -180,8 +180,8 @@ class StateActionCache:
         )
 
     def cache_get(
-        self, state: torch.Tensor, action: int
-    ) -> tuple[torch.Tensor, int, torch.Tensor, float, bool]:
+        self, state: np.ndarray, action: int
+    ) -> tuple[np.ndarray, int, np.ndarray, float, bool]:
         """
         Get the next state, reward, and environment completion status for a given state-action pair. If the cache misses, compute the estimator by stepping through the current env.
         """
@@ -193,10 +193,8 @@ class StateActionCache:
         # If the cache misses, then compute the resulting (next_state, reward, done) given the (state, action_pair), add it to the cache, and return the result.
         self.misses += 1
 
-        self._env.reset()
+        self._env.reset(state)
         next_state, reward, done, _ = self._env.step(action)
-        # For some reason, the next_state returned from step is a numpy array instead of a tensor, so we have to cast it back to a tensor.
-        next_state = torch.Tensor(next_state)
         self._cache_put(state, action, next_state, reward, done)
 
         return self._cache[(state_representation, action)]
@@ -654,34 +652,38 @@ class BridgeBuilderModel(pl.LightningModule):
                 ),
             )
 
-            frequent_states = self._state_visit_logger.get_top_n(
+            frequent_states: list[torch.Tensor] = self._state_visit_logger.get_top_n(
                 _FREQUENTLY_VISITED_STATE_COUNT
             )
             # Sample all possible actions over the state space.
-            actions = torch.arange(self.env.nA).unsqueeze(1)
+            actions = range(self.env.nA)
 
             for frequent_state in frequent_states:
-                for action in actions:
+                for cache_action in actions:
                     (
                         state,
                         action,
                         next_state,
                         reward,
                         environment_completion_status,
-                    ) = self._state_action_cache.cache_get(frequent_state, action)
+                    ) = self._state_action_cache.cache_get(
+                        frequent_state.numpy(), cache_action
+                    )
 
                     self._object_log_manager.log(
                         log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
                         log_entry.TrainingHistoryTDErrorLogEntry(
                             batch_idx=batch_idx,
-                            state_id=self._state_logger.get_logged_object_id(state),
-                            action=action.item(),
+                            state_id=self._state_logger.get_logged_object_id(
+                                torch.tensor([state])
+                            ),
+                            action=action,
                             td_error=self.get_td_error(
-                                states=state,
-                                actions=action,
-                                next_states=next_state,
-                                rewards=reward,
-                                success=environment_completion_status,
+                                states=torch.tensor([state]),
+                                actions=torch.tensor([action]),
+                                next_states=torch.tensor([next_state]),
+                                rewards=torch.tensor([reward]),
+                                success=torch.tensor([environment_completion_status]),
                             ).item(),
                         ),
                     )

@@ -197,25 +197,23 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                     object_log_manager=object_log_manager, debug=True, batch_size=2
                 )
             )
+
+        td_errors = [
+            -0.8774998784065247,
+            -0.9989010691642761,
+            -1.9467530250549316,
+            -0.8378710746765137,
+            -0.9129469394683838,
+            -1.8107686042785645,
+        ]
+
         expected_entries = [
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=0, state_id=0, action=0, td_error=-0.9405094385147095
-            ),
-            log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=0, state_id=0, action=1, td_error=-1.060692548751831
-            ),
-            log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=0, state_id=0, action=2, td_error=-2.0057506561279297
-            ),
-            log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=1, state_id=0, action=0, td_error=-0.8990352153778076
-            ),
-            log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=1, state_id=0, action=1, td_error=-0.972866952419281
-            ),
-            log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=1, state_id=0, action=2, td_error=-1.86790132522583
-            ),
+                batch_idx=batch_idx, state_id=state_id, action=action, td_error=td_error
+            )
+            for (batch_idx, state_id, action), td_error in zip(
+                itertools.product([0, 1], [2], [0, 1, 2]), td_errors
+            )
         ]
 
         logged_entries = list(
