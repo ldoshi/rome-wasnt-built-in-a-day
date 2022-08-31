@@ -17,9 +17,15 @@ import dataclasses
 import gym
 import numpy as np
 import torch
-from typing import List, Callable
+from typing import Callable, List, Set
 
 from bridger import policies
+
+
+@dataclasses.dataclass
+class PreferredActionEntry:
+    state: torch.Tensor
+    preferred_actions: Set[int]
 
 
 @dataclasses.dataclass
@@ -85,7 +91,7 @@ class ActionInversionChecker:
                     f"For example,\n{starting_state}\nvs\n{new_starting_state}"
                 )
 
-        self._preferred_actions = {}
+        self._states_to_preferred_actions = {}
         self._populate_preferred_actions(
             env=env,
             actions=actions,
@@ -112,8 +118,11 @@ class ActionInversionChecker:
                 preferred_actions.append((index, action_list[action_index]))
 
         if preferred_actions:
-            self._preferred_actions[self._state_hash_fn(state)] = set(
-                [element[1] for element in preferred_actions]
+            self._states_to_preferred_actions[
+                self._state_hash_fn(state)
+            ] = PreferredActionEntry(
+                state=state,
+                preferred_actions=set([element[1] for element in preferred_actions]),
             )
 
             for index, action in preferred_actions:
@@ -126,7 +135,7 @@ class ActionInversionChecker:
                 action_indices[index] -= 1
 
     def check(
-        self, policy: policies.Policy, states: List[torch.Tensor]
+        self, policy: policies.Policy, states: List[torch.Tensor] = None
     ) -> List[ActionInversionReport]:
         """
 
@@ -136,13 +145,21 @@ class ActionInversionChecker:
         """
 
         action_inversions = []
+
+        if states is None:
+            states = [
+                entry.state for entry in self._states_to_preferred_actions.values()
+            ]
+
         for state in states:
             state_hash = self._state_hash_fn(state)
 
-            if state_hash not in self._preferred_actions:
+            if state_hash not in self._states_to_preferred_actions:
                 continue
 
-            preferred_actions = self._preferred_actions[state_hash]
+            preferred_actions = self._states_to_preferred_actions[
+                state_hash
+            ].preferred_actions
             policy_action = policy(state)
 
             if (

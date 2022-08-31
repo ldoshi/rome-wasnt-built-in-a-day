@@ -43,7 +43,17 @@ class ActionInversionCheckerTest(unittest.TestCase):
             for constant_estimator in self._constant_estimators
         ]
 
-    def test_check_unknown_state(self):
+    @parameterized.expand(
+        [
+            ("0", 0),
+            ("1", 1),
+            ("2", 2),
+            ("3", 3),
+            ("4", 4),
+            ("5", 5),
+        ]
+    )
+    def test_check_unknown_state(self, name: str, policy_index: int):
         """Verifies a state that should not be visited does not report inversion."""
         actions = [[0, 1], [4, 3]]
         checker = action_inversion_checker.ActionInversionChecker(
@@ -54,8 +64,9 @@ class ActionInversionCheckerTest(unittest.TestCase):
         self._env.step(0)
         state, _, _, _ = self._env.step(0)
 
-        for policy in self._policies:
-            self.assertEqual(checker.check(policy=policy, states=[state]), [])
+        self.assertEqual(
+            checker.check(policy=self._policies[policy_index], states=[state]), []
+        )
 
     def test_check_converged_and_preferred(self):
         """Verifies management of converged and preferred states."""
@@ -171,6 +182,40 @@ class ActionInversionCheckerTest(unittest.TestCase):
             action_inversion_checker.ActionInversionChecker,
             env=self._env,
             actions=actions,
+        )
+
+    @parameterized.expand(
+        [
+            ("Always 0", 0, 5),
+            ("Always 1", 1, 5),
+            ("Always 2", 2, 8),
+            ("Always 3", 3, 5),
+            ("Always 4", 4, 5),
+            ("Always 5", 5, 8),
+        ]
+    )
+    def test_check_using_all_bridge_states(
+        self, name: str, policy_index: int, expected_inversion_count: int
+    ):
+        """Verifies that checking all the states involved in building the bridge.
+
+        Actions 2 and 5 are never correct and result in an inversion for every state (8).
+
+        The remaining actions are each valid for 3 of 8 states.
+        """
+        actions = [[0, 1], [4, 3]]
+        checker = action_inversion_checker.ActionInversionChecker(
+            env=self._env, actions=actions
+        )
+
+        # Converge every state.
+        for policy in self._policies:
+            checker.check(policy=policy)
+
+        # Check the number of inversions for the current policy.
+        self.assertEqual(
+            len(checker.check(policy=self._policies[policy_index])),
+            expected_inversion_count,
         )
 
 
