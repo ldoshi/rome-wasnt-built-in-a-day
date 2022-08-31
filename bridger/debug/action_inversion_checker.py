@@ -21,23 +21,23 @@ from typing import List, Callable
 
 from bridger import policies
 
+
 @dataclasses.dataclass
 class ActionInversionReport:
     state: torch.Tensor
     preferred_actions: List[int]
     policy_action: int
 
-class ActionInversionChecker:
-    """The 
 
-    """
+class ActionInversionChecker:
+    """The"""
 
     def __init__(
         self,
         env: gym.Env,
         actions: List[List[int]],
-            # TODO(lyric): Swap in the new one.
-        state_hash_fn: Callable[[torch.Tensor], Hashable] = str
+        # TODO(lyric): Swap in the new one.
+        state_hash_fn: Callable[[torch.Tensor], Hashable] = str,
     ):
         """Initialize expected actions based on the provided contruction sequence.
 
@@ -70,7 +70,9 @@ class ActionInversionChecker:
         """
         self._state_hash_fn = state_hash_fn
         if len(actions) != 2:
-            raise ValueError(f"Actions must contain exactly 2 elements, provided {len(actions)}")
+            raise ValueError(
+                f"Actions must contain exactly 2 elements, provided {len(actions)}"
+            )
 
         # Empirically check that env.reset() seems to consistently
         # return the same starting state.
@@ -78,34 +80,54 @@ class ActionInversionChecker:
         for _ in range(10):
             new_starting_state = env.reset()
             if (starting_state != new_starting_state).any():
-                raise ValueError("The env.reset() does not return the same starting state."
-                                 f"For example,\n{starting_state}\nvs\n{new_starting_state}")
+                raise ValueError(
+                    "The env.reset() does not return the same starting state."
+                    f"For example,\n{starting_state}\nvs\n{new_starting_state}"
+                )
 
         self._preferred_actions = {}
-        self._populate_preferred_actions(env=env,actions=actions, action_indices=[0] * len(actions), state=env.reset())
+        self._populate_preferred_actions(
+            env=env,
+            actions=actions,
+            action_indices=[0] * len(actions),
+            state=env.reset(),
+        )
         # Contains states which have converged to align with the
         # ActionInversionChecker. Once a state converges, it should
         # not diverge.
         self._converged_states = set()
 
-    def _populate_preferred_actions(self, env: gym.Env, actions: List[List[int]], action_indices: List[int], state: List[torch.Tensor]) -> None:
+    def _populate_preferred_actions(
+        self,
+        env: gym.Env,
+        actions: List[List[int]],
+        action_indices: List[int],
+        state: List[torch.Tensor],
+    ) -> None:
         preferred_actions = []
-        for index, (action_list, action_index) in enumerate(zip(actions, action_indices)):
+        for index, (action_list, action_index) in enumerate(
+            zip(actions, action_indices)
+        ):
             if action_index < len(action_list):
                 preferred_actions.append((index, action_list[action_index]))
 
         if preferred_actions:
-            self._preferred_actions[self._state_hash_fn(state)] = set([element[1] for element in preferred_actions])
-            
-            for index, action in preferred_actions:                
+            self._preferred_actions[self._state_hash_fn(state)] = set(
+                [element[1] for element in preferred_actions]
+            )
+
+            for index, action in preferred_actions:
                 env.reset(state)
-                next_state, _,_,_ = env.step(action)
+                next_state, _, _, _ = env.step(action)
                 action_indices[index] += 1
-                self._populate_preferred_actions(env, actions, action_indices, next_state)
+                self._populate_preferred_actions(
+                    env, actions, action_indices, next_state
+                )
                 action_indices[index] -= 1
-        
-    
-    def check(self, states: List[torch.Tensor], policy: policies.Policy) -> List[ActionInversionReport]:
+
+    def check(
+        self, policy: policies.Policy, states: List[torch.Tensor]
+    ) -> List[ActionInversionReport]:
         """
 
         Args:
@@ -123,17 +145,27 @@ class ActionInversionChecker:
             preferred_actions = self._preferred_actions[state_hash]
             policy_action = policy(state)
 
-            if policy_action not in preferred_actions and state_hash in self._converged_states:
-                action_inversions.append(ActionInversionReport(state=state,preferred_actions=preferred_actions,policy_action=policy_action))
-            if policy_action in preferred_actions and state_hash not in self._converged_states:
+            if (
+                policy_action not in preferred_actions
+                and state_hash in self._converged_states
+            ):
+                action_inversions.append(
+                    ActionInversionReport(
+                        state=state,
+                        preferred_actions=preferred_actions,
+                        policy_action=policy_action,
+                    )
+                )
+            if (
+                policy_action in preferred_actions
+                and state_hash not in self._converged_states
+            ):
                 self._converged_states.add(state_hash)
-                
-            
-        
-#        in theory, want to cover all states we have here. but...
-#        need support for two things: Don't worry about states they are not visited yet. this is subsumed by dont' worry about states for which we havent converged to best action yet. once converged, not allowed to leave. so keep a set() of states that are expected to match! 
 
-# Either in this class or the caller, consider options like a) allowed n inversion before flagged or b) wait until batch_idx = n before enforcing. 
-        
+        #        in theory, want to cover all states we have here. but...
+        #        need support for two things: Don't worry about states they are not visited yet. this is subsumed by dont' worry about states for which we havent converged to best action yet. once converged, not allowed to leave. so keep a set() of states that are expected to match!
+
+        # Either in this class or the caller, consider options like a) allowed n inversion before flagged or b) wait until batch_idx = n before enforcing.
+
         # Verifies that all states do not have an inversion from policy (or complain aptly?)
         return action_inversions
