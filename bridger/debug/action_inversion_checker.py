@@ -7,7 +7,13 @@ starts unexpectedly deteriorating during training.
 
 This tool is intended for debugging purposes only.
 
-  Typical Usage:
+Usage:
+  actions = [[0, 1], [4, 3]]
+  checker = ActionInversionChecker(env=env, actions=actions)
+
+  for each training step:
+    <update policy>
+    report = checker.check(policy)
 
 """
 
@@ -24,12 +30,14 @@ from bridger import policies
 
 @dataclasses.dataclass
 class PreferredActionEntry:
+    """A state paired with the preferred actions to take from that state."""
     state: torch.Tensor
     preferred_actions: Set[int]
 
 
 @dataclasses.dataclass
 class ActionInversionReport:
+    """An incidence of action inversion for a particular state."""
     state: torch.Tensor
     preferred_actions: List[int]
     policy_action: int
@@ -52,13 +60,12 @@ class ActionInversionChecker:
         valid permutations of the construction sequence.
 
         This implementation presumes an environment where the bridge
-        is built up from the left and the right without an
-        intermediate supports.
+        is built up from edge to edge without intermediate supports.
 
         Args:
 
           env: A gym for simulating construction. The current
-            implementation assumes that reset() allows returns the same
+            implementation assumes that reset() always returns the same
             starting state.
           actions: The sequence of construction actions defining the
             target outcome. We expect actions to be populated with
@@ -72,7 +79,6 @@ class ActionInversionChecker:
 
         Raises:
           ValueError if actions does not have the correct format.
-
         """
         self._state_hash_fn = state_hash_fn
         if len(actions) != 2:
@@ -179,10 +185,4 @@ class ActionInversionChecker:
             ):
                 self._converged_states.add(state_hash)
 
-        #        in theory, want to cover all states we have here. but...
-        #        need support for two things: Don't worry about states they are not visited yet. this is subsumed by dont' worry about states for which we havent converged to best action yet. once converged, not allowed to leave. so keep a set() of states that are expected to match!
-
-        # Either in this class or the caller, consider options like a) allowed n inversion before flagged or b) wait until batch_idx = n before enforcing.
-
-        # Verifies that all states do not have an inversion from policy (or complain aptly?)
         return action_inversions
