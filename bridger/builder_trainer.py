@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
 
 
-from bridger import config, policies, qfunctions, replay_buffer
+from bridger import config, hash_utils, policies, qfunctions, replay_buffer
 from bridger.logging import object_logging
 from bridger.logging import log_entry
 
@@ -191,13 +191,11 @@ class BridgeBuilderModel(pl.LightningModule):
 
         super().__init__()
         self._object_log_manager = object_log_manager
-        # TODO(Issue#106): Find a more efficient make_hashable_fn than
-        # str.
         self._state_logger = object_logging.LoggerAndNormalizer(
             log_filename=log_entry.STATE_NORMALIZED_LOG_ENTRY,
             object_log_manager=self._object_log_manager,
             log_entry_object_class=torch.Tensor,
-            make_hashable_fn=str,
+            make_hashable_fn=hash_utils.hash_tensor,
         )
         self._state_visit_logger = object_logging.OccurrenceLogger(
             log_filename=log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY,
