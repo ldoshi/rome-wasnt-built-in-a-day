@@ -25,6 +25,7 @@ import numpy as np
 import torch
 from typing import Callable, List, Set
 
+from bridger import hash_utils
 from bridger import policies
 
 
@@ -51,7 +52,7 @@ class ActionInversionChecker:
         env: gym.Env,
         actions: List[List[int]],
         # TODO(lyric): Swap in the new one.
-        state_hash_fn: Callable[[torch.Tensor], Hashable] = str,
+        state_hash_fn: Callable[[torch.Tensor], Hashable] = hash_utils.hash_tensor,
     ):
         """Initialize expected actions based on the provided contruction sequence.
 

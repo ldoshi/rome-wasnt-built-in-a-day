@@ -16,7 +16,6 @@ from typing import List, Optional
 from bridger.debug import action_inversion_checker
 from bridger import builder_trainer
 from bridger import policies
-from bridger import 
 
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 
@@ -214,7 +213,7 @@ class ActionInversionCheckerTest(unittest.TestCase):
 
         # Check the inversions for the current policy.
         reports = checker.check(policy=self._policies[policy_index])
-        self.assertEqual(            len(report),            expected_inversion_count        )
+        self.assertEqual(            len(reports),            expected_inversion_count        )
         for report in reports:
             self.assertEqual(report.policy_action, policy_index)
 
