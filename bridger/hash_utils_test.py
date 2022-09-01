@@ -5,7 +5,7 @@ import unittest
 from time import process_time
 from parameterized import parameterized
 
-from bridger.hash import hash_tensor
+from bridger import hash_utils
 
 
 def _check_hash_time(keys, values=None, test_dict=None, hash_func=None):
@@ -45,7 +45,7 @@ class TestHash(unittest.TestCase):
     @parameterized.expand(
         [
             ("String Hash", str, 10000),
-            ("Tuple Hash", hash_tensor, 10000),
+            ("Tuple Hash", hash_utils.hash_tensor, 10000),
         ]
     )
     def test_hash_validity(self, name, hash_func, repetitions, shape=(6, 7)):
@@ -84,7 +84,7 @@ class TestHash(unittest.TestCase):
     @parameterized.expand(
         [
             ("String Hash", str, 10000),
-            ("Tuple Hash", hash_tensor, 10000),
+            ("Tuple Hash", hash_utils.hash_tensor, 10000),
         ]
     )
     @pytest.mark.integtest
