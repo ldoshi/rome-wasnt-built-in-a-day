@@ -17,6 +17,7 @@ from typing import List, Optional
 
 from bridger import builder
 from bridger import builder_trainer
+from bridger import hash_utils
 from bridger import policies
 from bridger import test_utils
 from bridger.logging import object_logging
@@ -348,7 +349,7 @@ class StateActionCacheTest(unittest.TestCase):
             name=_ENV_NAME, width=4, force_standard_config=True
         )
         state_action_cache = builder_trainer.StateActionCache(
-            state_action_cache_env, make_hashable_fn=str
+            state_action_cache_env, make_hashable_fn=hash_utils.hash_tensor
         )
 
         initial_state = state_action_cache_env.reset()
