@@ -23,7 +23,7 @@ import dataclasses
 import gym
 import numpy as np
 import torch
-from typing import Callable, List, Set
+from typing import Callable, List, Optional, Set
 
 from bridger import hash_utils
 from bridger import policies
@@ -42,7 +42,7 @@ class ActionInversionReport:
     """An incidence of action inversion for a particular state."""
 
     state: torch.Tensor
-    preferred_actions: List[int]
+    preferred_actions: Set[int]
     policy_action: int
 
 
@@ -172,7 +172,7 @@ class ActionInversionChecker:
                 action_indices[index] -= 1
 
     def check(
-        self, policy: policies.Policy, states: List[torch.Tensor] = None
+        self, policy: policies.Policy, states: Optional[List[torch.Tensor]] = None
     ) -> List[ActionInversionReport]:
         """Checks the policy for action inversions.
 
