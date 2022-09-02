@@ -213,7 +213,7 @@ class ActionInversionCheckerTest(unittest.TestCase):
 
         # Check the inversions for the current policy.
         reports = checker.check(policy=self._policies[policy_index])
-        self.assertEqual(            len(reports),            expected_inversion_count        )
+        self.assertEqual(len(reports), expected_inversion_count)
         for report in reports:
             self.assertEqual(report.policy_action, policy_index)
 
