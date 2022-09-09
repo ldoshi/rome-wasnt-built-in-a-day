@@ -68,8 +68,9 @@ class ActionInversionChecker:
         action candidates for each intermediate state attained via all
         valid permutations of the construction sequence.
 
-        This implementation presumes an environment where the bridge
-        is built up from edge to edge without intermediate supports.
+        This implementation presumes an environment of even width
+        where the bridge is built up from edge to edge without
+        intermediate supports.
 
         Args:
           env: A gym for simulating construction. The current
@@ -87,6 +88,7 @@ class ActionInversionChecker:
 
         Raises:
           ValueError if actions does not have the correct format.
+
         """
         self._state_hash_fn = state_hash_fn
         if len(actions) != 2:
