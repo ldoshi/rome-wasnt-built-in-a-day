@@ -68,8 +68,9 @@ class ActionInversionChecker:
         action candidates for each intermediate state attained via all
         valid permutations of the construction sequence.
 
-        This implementation presumes an environment where the bridge
-        is built up from edge to edge without intermediate supports.
+        This implementation presumes an environment of even width
+        where the bridge is built up from edge to edge without
+        intermediate supports.
 
         Args:
           env: A gym for simulating construction. The current
@@ -87,6 +88,7 @@ class ActionInversionChecker:
 
         Raises:
           ValueError if actions does not have the correct format.
+
         """
         self._state_hash_fn = state_hash_fn
         if len(actions) != 2:
@@ -122,7 +124,7 @@ class ActionInversionChecker:
         env: gym.Env,
         actions: List[List[int]],
         action_indices: List[int],
-        state: List[torch.Tensor],
+        state: np.ndarray,
     ) -> None:
         """Populates the preferred actions per state.
 
@@ -158,7 +160,7 @@ class ActionInversionChecker:
             self._states_to_preferred_actions[
                 self._state_hash_fn(state)
             ] = PreferredActionEntry(
-                state=state,
+                state=torch.Tensor(state),
                 preferred_actions=set([element[1] for element in preferred_actions]),
             )
 
