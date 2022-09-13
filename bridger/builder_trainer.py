@@ -13,6 +13,7 @@ from typing import Any, Union, Generator, Optional
 
 
 from bridger import config, hash_utils, policies, qfunctions, replay_buffer
+from bridger.debug import action_inversion_checker
 from bridger.logging import object_logging
 from bridger.logging import log_entry
 
@@ -187,7 +188,11 @@ class BridgeBuilderModel(pl.LightningModule):
             A dictionary containing hyperparameters to be used for initializing this LightningModule.
 
         Note - if a key is found in both `hparams` and `kwargs`, the value in
-            `kwargs` will be used"""
+            `kwargs` will be used
+
+        Raises:
+          ValueError: If a param value does not match expectations.
+        """
 
         super().__init__()
         self._object_log_manager = object_log_manager
@@ -247,6 +252,18 @@ class BridgeBuilderModel(pl.LightningModule):
         self.next_action = None
         self.state = self.env.reset()
         self._breakpoint = {"step": 0, "episode": 0}
+
+        self._action_inversion_checker = None
+        if self.hparams.debug_action_inversion_checker:
+            # The current ActionInversionChecker implementation
+            # presumes an environment where the bridge is built up
+            # from edge to edge without intermediate supports. The
+            # actions are initialized based on this presumption.
+            if self.hparams.env_width % 2:
+                raise ValueError(f"The env width ({self.hparams.env_width}) must be even to use the ActionInversionChecker.")
+            bricks_per_side = int((self.hparams.env_width - 2) / 2)
+            actions = [list(range(0, bricks_per_side)), list(range(self.hparams.env_width - 2, self.hparams.env_width - 2 - bricks_per_side, -1))]
+            self._action_inversion_checker = action_inversion_checker.ActionInversionChecker(env=self._validation_env, actions=actions)
 
     @property
     def trained_policy(self):
@@ -608,6 +625,9 @@ class BridgeBuilderModel(pl.LightningModule):
                     ),
                 )
 
+        if self.hparams.debug_action_inversion_checker:
+            print("Ran check: ", self._action_inversion_checker.check(policy=self._validation_policy))
+                
         # Update replay buffer.
         self.replay_buffer.update_priorities(indices, td_errors)
         self._update_beta()

@@ -30,13 +30,15 @@ def delete_temp_dir():
 def get_model(
     object_log_manager: object_logging.ObjectLogManager,
     debug: bool = False,
+    debug_action_inversion_checker: bool = False,
+    env_width=3,
     max_episode_length=1,
     batch_size=5,
     initial_memories_count=1000,
 ) -> builder_trainer.BridgeBuilderModel:
     return builder_trainer.BridgeBuilderModel(
         object_log_manager,
-        env_width=3,
+        env_width=env_width,
         env_force_standard_config=True,
         seed=12345,
         max_episode_length=max_episode_length,
@@ -45,6 +47,7 @@ def get_model(
         object_logging_dir=_OBJECT_LOGGING_DIR,
         initial_memories_count=initial_memories_count,
         debug=debug,
+        debug_action_inversion_checker=debug_action_inversion_checker,
     )
 
 

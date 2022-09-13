@@ -42,6 +42,11 @@ hparam_dict[key] = {"type": bool, "default": False, "action": BooleanOptionalAct
 help_str = "Whether to log to TrainingHistory for debugging purposes"
 hparam_dict[key]["help"] = help_str
 
+key = "debug_action_inversion_checker"
+hparam_dict[key] = {"type": bool, "default": False, "action": BooleanOptionalAction}
+help_str = "Whether to check and log action inversions for debugging purposes"
+hparam_dict[key]["help"] = help_str
+
 key = "object_logging_dir"
 hparam_dict[key] = {"type": str, "default": "object_logging"}
 help_str = "Path to folder in which all object logs will be saved"

@@ -3,7 +3,7 @@
 import dataclasses
 import numpy as np
 import torch
-from typing import Any, List
+from typing import Any, List, Set
 
 TRAINING_BATCH_LOG_ENTRY = "training_batch"
 STATE_NORMALIZED_LOG_ENTRY = "state_normalized"
@@ -11,6 +11,8 @@ STATE_NORMALIZED_LOG_ENTRY = "state_normalized"
 TRAINING_HISTORY_VISIT_LOG_ENTRY = "training_history_visit"
 TRAINING_HISTORY_TD_ERROR_LOG_ENTRY = "training_history_td_error"
 TRAINING_HISTORY_Q_VALUE_LOG_ENTRY = "training_history_q_value"
+
+ACTION_INVERSION_REPORT_ENTRY = "action_inversion_report"
 
 @dataclasses.dataclass
 class TrainingHistoryTDErrorLogEntry:
@@ -95,3 +97,25 @@ class OccurrenceLogEntry:
 
     batch_idx: int
     object: Any
+
+
+@dataclasses.dataclass
+class ActionInversionReportEntry:
+    """A report of an action inversion in the current policy.
+
+    For simple debug cases, an ActionInversionChecker can be used to
+    identify action inversions when following the current policy
+    compared to an optimal policy. The batch_idx identifies which
+    training step this ActionInversionReportEntry corresponds
+    to. ActionInversionReports are expected to be unique per
+    (batch_idx, state_id).
+
+    """
+
+    batch_idx: int
+    state_id: int
+    preferred_actions: Set[int]
+    policy_action: int
+
+
+
