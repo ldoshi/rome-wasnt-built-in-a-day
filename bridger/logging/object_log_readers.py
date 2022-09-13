@@ -21,8 +21,8 @@ from typing import Optional
 from bridger.logging import log_entry
 
 
-def read_object_log(dirname: str, log_filename: str):
-    with open(os.path.join(dirname, log_filename), "rb") as f:
+def read_object_log(log_filepath: str):
+    with open(log_filepath, "rb") as f:
         buffer = None
         while True:
             try:
@@ -33,6 +33,10 @@ def read_object_log(dirname: str, log_filename: str):
 
             except EOFError:
                 break
+
+
+def _read_object_log(dirname: str, log_filename: str):
+    yield from read_object_log(log_filepath=os.path.join(dirname, log_filename))
 
 
 def _get_values_by_state_and_action(
@@ -80,16 +84,16 @@ class TrainingHistoryDatabase:
           dirname: The directory containing the training history log files.
         """
         self._states = pd.DataFrame(
-            read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY)
+            _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY)
         )
         self._states.set_index("id")
 
         self._visits = pd.DataFrame(
-            read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY)
+            _read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY)
         )
 
         self._q_values = pd.DataFrame(
-            read_object_log(dirname, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY)
+            _read_object_log(dirname, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY)
         )
         self._q_values = self._q_values.sort_values(
             by=["state_id", "action", "batch_idx"]
@@ -97,7 +101,7 @@ class TrainingHistoryDatabase:
         self._q_values.set_index("state_id")
 
         self._td_errors = pd.DataFrame(
-            read_object_log(dirname, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY)
+            _read_object_log(dirname, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY)
         )
         self._td_errors = self._td_errors.drop_duplicates(
             ["state_id", "action", "batch_idx"]
