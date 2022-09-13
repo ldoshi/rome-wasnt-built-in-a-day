@@ -626,7 +626,14 @@ class BridgeBuilderModel(pl.LightningModule):
                 )
 
         if self.hparams.debug_action_inversion_checker:
-            print("Ran check: ", self._action_inversion_checker.check(policy=self._validation_policy))
+            for report in self._action_inversion_checker.check(policy=self._validation_policy):
+                self._object_log_manager.log(
+                    log_entry.ACTION_INVERSION_REPORT_ENTRY,
+                    log_entry.ActionInversionReportEntry(
+                        batch_idx=batch_idx,
+                        state_id=self._state_logger.get_logged_object_id(report.state),
+                        preferred_actions=report.preferred_actions,
+                        policy_action=report.policy_action))
                 
         # Update replay buffer.
         self.replay_buffer.update_priorities(indices, td_errors)

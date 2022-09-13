@@ -352,7 +352,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
     def test_action_inversion_checker_logging(self):
         """Verifies action inversion reports are logged when in debug_action_inversion_checker mode."""
-        max_steps = 3
+        max_steps = 4
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
@@ -367,19 +367,16 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             )
 
         expected_entries = [
-#            log_entry.OccurrenceLogEntry(batch_idx=batch_idx, object=state_id)
-#            for batch_idx, state_id in zip(
-#                range(-1, max_steps), [0, 1, 0, 1, 0, 2, 0, 2, 0]
- #           )
+            log_entry.ActionInversionReportEntry(batch_idx=3, state_id=0, preferred_actions={2}, policy_action=0)
         ]
 
         logged_entries = list(
-  #          object_log_readers.read_object_log(
-   #             _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY
-    #        )
+            object_log_readers.read_object_log(
+                _OBJECT_LOGGING_DIR, log_entry.ACTION_INVERSION_REPORT_ENTRY
+            )
         )
 
-     #   self._verify_log_entries(expected_entries, logged_entries)
+        self._verify_log_entries(expected_entries, logged_entries)
         
 
 class StateActionCacheTest(unittest.TestCase):
