@@ -124,7 +124,7 @@ class ActionInversionChecker:
         env: gym.Env,
         actions: List[List[int]],
         action_indices: List[int],
-        state: List[torch.Tensor],
+        state: np.ndarray,
     ) -> None:
         """Populates the preferred actions per state.
 
@@ -160,7 +160,7 @@ class ActionInversionChecker:
             self._states_to_preferred_actions[
                 self._state_hash_fn(state)
             ] = PreferredActionEntry(
-                state=state,
+                state=torch.Tensor(state),
                 preferred_actions=set([element[1] for element in preferred_actions]),
             )
 
