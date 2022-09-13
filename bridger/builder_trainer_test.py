@@ -181,7 +181,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         logged_entries = list(
             object_log_readers.read_object_log(
-                _OBJECT_LOGGING_DIR, log_entry.TRAINING_BATCH_LOG_ENTRY
+                os.path.join(_OBJECT_LOGGING_DIR, log_entry.TRAINING_BATCH_LOG_ENTRY)
             )
         )
 
@@ -217,7 +217,9 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         logged_entries = list(
             object_log_readers.read_object_log(
-                _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY
+                os.path.join(
+                    _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY
+                )
             )
         )
 
@@ -263,7 +265,9 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         logged_entries = list(
             object_log_readers.read_object_log(
-                _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
+                os.path.join(
+                    _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
+                )
             )
         )
 
@@ -294,7 +298,9 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         logged_entries = list(
             object_log_readers.read_object_log(
-                _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
+                os.path.join(
+                    _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
+                )
             )
         )
 
@@ -333,7 +339,9 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         logged_entries = list(
             object_log_readers.read_object_log(
-                _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY
+                os.path.join(
+                    _OBJECT_LOGGING_DIR, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY
+                )
             )
         )
 
