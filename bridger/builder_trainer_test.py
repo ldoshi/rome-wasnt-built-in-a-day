@@ -345,10 +345,13 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
-            self.assertRaisesRegex(ValueError, "env width must be even",
-                                   test_utils.get_model,
-                                   object_log_manager=object_log_manager,
-                                   debug_action_inversion_checker=True)
+            self.assertRaisesRegex(
+                ValueError,
+                "env width must be even",
+                test_utils.get_model,
+                object_log_manager=object_log_manager,
+                debug_action_inversion_checker=True,
+            )
 
     def test_action_inversion_checker_logging(self):
         """Verifies action inversion reports are logged when in debug_action_inversion_checker mode."""
@@ -367,7 +370,9 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             )
 
         expected_entries = [
-            log_entry.ActionInversionReportEntry(batch_idx=3, state_id=0, preferred_actions={2}, policy_action=0)
+            log_entry.ActionInversionReportEntry(
+                batch_idx=3, state_id=0, preferred_actions={2}, policy_action=0
+            )
         ]
 
         logged_entries = list(
@@ -377,7 +382,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         )
 
         self._verify_log_entries(expected_entries, logged_entries)
-        
+
 
 class StateActionCacheTest(unittest.TestCase):
     """Verifies the creation and population of a StateActionCache."""

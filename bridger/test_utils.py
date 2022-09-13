@@ -16,16 +16,20 @@ from pytorch_lightning.callbacks import Callback
 TMP_DIR = "tmp/nested_tmp"
 _OBJECT_LOGGING_DIR = "tmp_object_logging_dir"
 
+
 def object_logging_dir():
     return os.path.join(TMP_DIR, _OBJECT_LOGGING_DIR)
+
 
 def create_temp_dir():
     path = pathlib.Path(TMP_DIR)
     path.mkdir(parents=True, exist_ok=True)
 
+
 def delete_temp_dir():
     path = pathlib.Path(TMP_DIR)
     shutil.rmtree(path.parts[0], ignore_errors=True)
+
 
 def get_model(
     object_log_manager: object_logging.ObjectLogManager,
@@ -51,7 +55,9 @@ def get_model(
     )
 
 
-def get_trainer(max_steps: int = 1, callbacks: Optional[List[Callback]] = None) -> Trainer:
+def get_trainer(
+    max_steps: int = 1, callbacks: Optional[List[Callback]] = None
+) -> Trainer:
     return Trainer(
         val_check_interval=1,
         # The validation batch size can be adjusted via a config, but
@@ -60,4 +66,3 @@ def get_trainer(max_steps: int = 1, callbacks: Optional[List[Callback]] = None) 
         max_steps=max_steps,
         callbacks=callbacks,
     )
-

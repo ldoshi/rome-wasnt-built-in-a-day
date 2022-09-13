@@ -14,6 +14,7 @@ TRAINING_HISTORY_Q_VALUE_LOG_ENTRY = "training_history_q_value"
 
 ACTION_INVERSION_REPORT_ENTRY = "action_inversion_report"
 
+
 @dataclasses.dataclass
 class TrainingHistoryTDErrorLogEntry:
     """The TD Error for a (state, action) pair from a training step.
@@ -116,6 +117,3 @@ class ActionInversionReportEntry:
     state_id: int
     preferred_actions: Set[int]
     policy_action: int
-
-
-

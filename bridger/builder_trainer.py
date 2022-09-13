@@ -175,7 +175,7 @@ class BridgeBuilderModel(pl.LightningModule):
         object_log_manager: object_logging.ObjectLogManager,
         *args,
         hparams=None,
-        **kwargs
+        **kwargs,
     ):
         """Constructor for the BridgeBuilderModel Module
 
@@ -260,10 +260,25 @@ class BridgeBuilderModel(pl.LightningModule):
             # from edge to edge without intermediate supports. The
             # actions are initialized based on this presumption.
             if self.hparams.env_width % 2:
-                raise ValueError(f"The env width ({self.hparams.env_width}) must be even to use the ActionInversionChecker.")
+                raise ValueError(
+                    f"The env width ({self.hparams.env_width}) must be even to use the ActionInversionChecker."
+                )
             bricks_per_side = int((self.hparams.env_width - 2) / 2)
-            actions = [list(range(0, bricks_per_side)), list(range(self.hparams.env_width - 2, self.hparams.env_width - 2 - bricks_per_side, -1))]
-            self._action_inversion_checker = action_inversion_checker.ActionInversionChecker(env=self._validation_env, actions=actions)
+            actions = [
+                list(range(0, bricks_per_side)),
+                list(
+                    range(
+                        self.hparams.env_width - 2,
+                        self.hparams.env_width - 2 - bricks_per_side,
+                        -1,
+                    )
+                ),
+            ]
+            self._action_inversion_checker = (
+                action_inversion_checker.ActionInversionChecker(
+                    env=self._validation_env, actions=actions
+                )
+            )
 
     @property
     def trained_policy(self):
@@ -567,7 +582,7 @@ class BridgeBuilderModel(pl.LightningModule):
         """
         if weights is not None:
             td_errors = weights * td_errors
-        return (td_errors ** 2).mean()
+        return (td_errors**2).mean()
 
     def training_step(self, batch: list[torch.Tensor], batch_idx: int) -> torch.Tensor:
         """Performs a single training step on the Q network.
@@ -626,15 +641,19 @@ class BridgeBuilderModel(pl.LightningModule):
                 )
 
         if self.hparams.debug_action_inversion_checker:
-            for report in self._action_inversion_checker.check(policy=self._validation_policy):
+            for report in self._action_inversion_checker.check(
+                policy=self._validation_policy
+            ):
                 self._object_log_manager.log(
                     log_entry.ACTION_INVERSION_REPORT_ENTRY,
                     log_entry.ActionInversionReportEntry(
                         batch_idx=batch_idx,
                         state_id=self._state_logger.get_logged_object_id(report.state),
                         preferred_actions=report.preferred_actions,
-                        policy_action=report.policy_action))
-                
+                        policy_action=report.policy_action,
+                    ),
+                )
+
         # Update replay buffer.
         self.replay_buffer.update_priorities(indices, td_errors)
         self._update_beta()
