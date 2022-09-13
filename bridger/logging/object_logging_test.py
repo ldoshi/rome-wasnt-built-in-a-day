@@ -48,12 +48,12 @@ class TestObjectLogManager(unittest.TestCase):
                 logger.log(_LOG_FILENAME_1, log_entry)
 
         logged_entries_0 = list(
-            object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_0)
+            object_log_readers.read_object_log(os.path.join(_TMP_DIR, _LOG_FILENAME_0))
         )
         self.assertEqual(expected_log_entries_0, logged_entries_0)
 
         logged_entries_1 = list(
-            object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_1)
+            object_log_readers.read_object_log(os.path.join(_TMP_DIR, _LOG_FILENAME_1))
         )
         self.assertEqual(expected_log_entries_1, logged_entries_1)
 
@@ -91,7 +91,7 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             log_entry.NormalizedLogEntry(id=1, object=object_1),
         ]
         logged_entries = list(
-            object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_0)
+            object_log_readers.read_object_log(os.path.join(_TMP_DIR, _LOG_FILENAME_0))
         )
         self.assertEqual(logged_entries, expected_entries)
 
@@ -225,7 +225,7 @@ class TestOccurrenceLogger(unittest.TestCase):
             for batch_idx, object in zip([0, 0, 1, 1, 1, 2], expected_logged_objects)
         ]
         logged_entries = list(
-            object_log_readers.read_object_log(_TMP_DIR, _LOG_FILENAME_1)
+            object_log_readers.read_object_log(os.path.join(_TMP_DIR, _LOG_FILENAME_1))
         )
         self.assertEqual(logged_entries, expected_entries)
 
