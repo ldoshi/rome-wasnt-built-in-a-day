@@ -75,7 +75,9 @@ def make_env(
     return env
 
 
-def get_action_inversion_checker_actions_standard_configuration(env_width: int) -> List[List[int]]:
+def get_action_inversion_checker_actions_standard_configuration(
+    env_width: int,
+) -> List[List[int]]:
     """Produces action inversion checker actions.
 
     The current ActionInversionChecker implementation presumes an
@@ -86,7 +88,7 @@ def get_action_inversion_checker_actions_standard_configuration(env_width: int) 
     Args:
       env_width: The width of the environment.
 
-    Returns: 
+    Returns:
       The sequence of actions defining the target outcome when starting
       with the standard configuration.
 
@@ -97,9 +99,18 @@ def get_action_inversion_checker_actions_standard_configuration(env_width: int) 
         raise ValueError(
             f"The env width ({env_width}) must be even to use the ActionInversionChecker."
         )
-                
+
     bricks_per_side = int((env_width - 2) / 2)
-    actions = [        list(range(0, bricks_per_side)),        list(            range(                env_width - 2,                env_width - 2 - bricks_per_side,                -1,            )        ),    ]
+    actions = [
+        list(range(0, bricks_per_side)),
+        list(
+            range(
+                env_width - 2,
+                env_width - 2 - bricks_per_side,
+                -1,
+            )
+        ),
+    ]
     return actions
 
 
@@ -283,7 +294,9 @@ class BridgeBuilderModel(pl.LightningModule):
 
         self._action_inversion_checker = None
         if self.hparams.debug_action_inversion_checker:
-            actions = get_action_inversion_checker_actions_standard_configuration(self.hparams.env_width)
+            actions = get_action_inversion_checker_actions_standard_configuration(
+                self.hparams.env_width
+            )
             self._action_inversion_checker = (
                 action_inversion_checker.ActionInversionChecker(
                     env=self._validation_env, actions=actions
