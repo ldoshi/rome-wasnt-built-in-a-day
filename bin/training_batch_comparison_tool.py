@@ -30,17 +30,12 @@ def main():
     )
     args = parser.parse_args()
 
-    expected_basename = os.path.basename(args.path_expected_log_entry)
-    expected_dirname = os.path.dirname(args.path_expected_log_entry)
-    test_basename = os.path.basename(args.path_test_log_entry)
-    test_dirname = os.path.dirname(args.path_test_log_entry)
-
     batch_entry_error_counter = 0
 
     for entry_index, (expected_log_batch_entry, test_log_batch_entry) in enumerate(
         zip(
-            object_log_readers.read_object_log(expected_dirname, expected_basename),
-            object_log_readers.read_object_log(test_dirname, test_basename),
+            object_log_readers.read_object_log(args.path_expected_log_entry),
+            object_log_readers.read_object_log(args.path_test_log_entry),
         )
     ):
         print(f"Analyzing Entry {entry_index}")

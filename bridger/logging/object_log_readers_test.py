@@ -2,6 +2,7 @@ import dataclasses
 import pickle
 import math
 import itertools
+import os
 import unittest
 
 import torch
@@ -207,7 +208,9 @@ class TestReadObjectLog(unittest.TestCase):
         _log_entries(expected_entries, buffer_size)
 
         logged_entries = list(
-            object_log_readers.read_object_log(test_utils.TMP_DIR, _LOG_FILENAME_0)
+            object_log_readers.read_object_log(
+                os.path.join(test_utils.TMP_DIR, _LOG_FILENAME_0)
+            )
         )
         self.assertEqual(expected_entries, logged_entries)
 
