@@ -87,7 +87,7 @@ class ActionInversionChecker:
             that can be hashed.
 
         Raises:
-          ValueError if actions does not have the correct format.
+          ValueError: If actions does not have the correct format.
 
         """
         self._state_hash_fn = state_hash_fn
