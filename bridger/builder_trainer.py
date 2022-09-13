@@ -6,7 +6,7 @@ import numpy as np
 from bridger import builder
 import pytorch_lightning as pl
 import torch
-from typing import Union, Optional, Callable, Hashable
+from typing import Union, Optional, Callable, Hashable, List
 
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
@@ -73,6 +73,34 @@ def make_env(
         name, width=width, force_standard_config=force_standard_config, seed=seed
     )
     return env
+
+
+def get_action_inversion_checker_actions_standard_configuration(env_width: int) -> List[List[int]]:
+    """Produces action inversion checker actions.
+
+    The current ActionInversionChecker implementation presumes an
+    environment of even width where the bridge is built up from edge
+    to edge without intermediate supports. The actions are initialized
+    based on this presumption.
+
+    Args:
+      env_width: The width of the environment.
+
+    Returns: 
+      The sequence of actions defining the target outcome when starting
+      with the standard configuration.
+
+    Raises:
+      ValueError: If the env_width is not even.
+    """
+    if env_width % 2:
+        raise ValueError(
+            f"The env width ({env_width}) must be even to use the ActionInversionChecker."
+        )
+                
+    bricks_per_side = int((env_width - 2) / 2)
+    actions = [        list(range(0, bricks_per_side)),        list(            range(                env_width - 2,                env_width - 2 - bricks_per_side,                -1,            )        ),    ]
+    return actions
 
 
 class ValidationBuilder(torch.utils.data.IterableDataset):
@@ -255,25 +283,7 @@ class BridgeBuilderModel(pl.LightningModule):
 
         self._action_inversion_checker = None
         if self.hparams.debug_action_inversion_checker:
-            # The current ActionInversionChecker implementation
-            # presumes an environment where the bridge is built up
-            # from edge to edge without intermediate supports. The
-            # actions are initialized based on this presumption.
-            if self.hparams.env_width % 2:
-                raise ValueError(
-                    f"The env width ({self.hparams.env_width}) must be even to use the ActionInversionChecker."
-                )
-            bricks_per_side = int((self.hparams.env_width - 2) / 2)
-            actions = [
-                list(range(0, bricks_per_side)),
-                list(
-                    range(
-                        self.hparams.env_width - 2,
-                        self.hparams.env_width - 2 - bricks_per_side,
-                        -1,
-                    )
-                ),
-            ]
+            actions = get_action_inversion_checker_actions_standard_configuration(self.hparams.env_width)
             self._action_inversion_checker = (
                 action_inversion_checker.ActionInversionChecker(
                     env=self._validation_env, actions=actions

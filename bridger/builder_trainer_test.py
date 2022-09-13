@@ -347,11 +347,26 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ) as object_log_manager:
             self.assertRaisesRegex(
                 ValueError,
-                "env width must be even",
+                "must be even to use",
                 test_utils.get_model,
                 object_log_manager=object_log_manager,
                 debug_action_inversion_checker=True,
             )
+
+    def test_get_action_inversion_checker_actions_standard_configuration_illegal_usage(self):
+        """Verifies checking illegal arguments when building the actions sequence."""
+        self.assertRaisesRegex(
+            ValueError,
+            "must be even to use",
+            builder_trainer.get_action_inversion_checker_actions_standard_configuration,
+                env_width=7
+        )
+
+    def test_get_action_inversion_checker_actions_standard_configuration(self):
+        """Verifies building the actions sequence."""
+        actions = builder_trainer.get_action_inversion_checker_actions_standard_configuration(env_width=8)
+        expected = [[0, 1, 2], [6, 5, 4]]
+        self.assertEqual(actions, expected)
 
     def test_action_inversion_checker_logging(self):
         """Verifies action inversion reports are logged when in debug_action_inversion_checker mode."""
