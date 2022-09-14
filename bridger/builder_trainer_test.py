@@ -407,7 +407,9 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         logged_entries = list(
             object_log_readers.read_object_log(
-                _OBJECT_LOGGING_DIR, log_entry.ACTION_INVERSION_REPORT_ENTRY
+                os.path.join(
+                    _OBJECT_LOGGING_DIR, log_entry.ACTION_INVERSION_REPORT_ENTRY
+                )
             )
         )
 
