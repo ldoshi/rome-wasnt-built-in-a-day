@@ -11,21 +11,21 @@ def main():
     across all attributes.
     Example to run:
     $ python -m bin.training_batch_comparison_tool
-      --path_expected_log_entry object_logging_dir/training_batch
-      --path_test_log_entry object_logging_dir_2/training_batch
+      --path_expected_log object_logging_dir/training_batch
+      --path_test_log object_logging_dir_2/training_batch
     """
 
     parser = argparse.ArgumentParser(
         description="Compare two object log managers for equality."
     )
     parser.add_argument(
-        "--path_expected_log_entry",
-        help="The filepath to the first TrainingBatchLogEntry file.",
+        "--path_expected_log",
+        help="The filepath to the first TrainingBatchLogEntry log file.",
         required=True,
     )
     parser.add_argument(
-        "--path_test_log_entry",
-        help="The filepath to the second TrainingBatchLogEntry file.",
+        "--path_test_log",
+        help="The filepath to the second TrainingBatchLogEntry log file.",
         required=True,
     )
     args = parser.parse_args()
@@ -34,8 +34,8 @@ def main():
 
     for entry_index, (expected_log_batch_entry, test_log_batch_entry) in enumerate(
         zip(
-            object_log_readers.read_object_log(args.path_expected_log_entry),
-            object_log_readers.read_object_log(args.path_test_log_entry),
+            object_log_readers.read_object_log(args.path_expected_log),
+            object_log_readers.read_object_log(args.path_test_log),
         )
     ):
         print(f"Analyzing Entry {entry_index}")
