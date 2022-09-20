@@ -16,7 +16,8 @@ from bridger.logging import log_entry
 
 
 class ShowReportsDisplayType(enum.IntEnum):
-    _order_ = "EMPTY GROUND BRICK PREFERRED_ACTION POLICY_ACTION MATCHING_ACTION"
+    _order_ = ("EMPTY GROUND BRICK PREFERRED_ACTION "
+               "POLICY_ACTION MATCHING_ACTION")
     EMPTY = 0
     GROUND = 1
     BRICK = 2
@@ -123,7 +124,8 @@ def _remap_display_data(display_data: np.ndarray) -> colors.ListedColormap:
     current_max_index = len(display_types) - 1
     for i, display_type in enumerate(display_types):
         if (display_data == display_type).any():
-            # The display_type exists so we add its color in the corresponding position.
+            # The display_type exists so we add its color in the
+            # corresponding position.
             color_mapping.append(_SHOW_REPORTS_COLOR_MAPPING[display_type])
             assert (len(color_mapping) - 1) == display_type
         else:
@@ -345,7 +347,8 @@ class ActionInversionAnalyzer:
         # consistent columns.
         display_width = max(len(f"{divergences[-1].batch_idx}"), 3)
         print(
-            "Column order: batch index (BI), convergence run length (CRL), divergence magnitude (DM)"
+            "Column order: batch index (BI), convergence run length "
+            "(CRL), divergence magnitude (DM)"
         )
         print()
         print(
