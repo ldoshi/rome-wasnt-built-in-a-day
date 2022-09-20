@@ -664,9 +664,11 @@ class BridgeBuilderModel(pl.LightningModule):
                 )
 
         if self.hparams.debug_action_inversion_checker:
-            for report in self._action_inversion_checker.check(
-                policy=self._validation_policy
-            ):
+            action_inversion_reports = self._action_inversion_checker.check(                policy=self._validation_policy            )
+
+            self.log("action_inversion_incident_rate", len(action_inversion_reports))
+
+            for report in action_inversion_reports:
                 self._object_log_manager.log(
                     log_entry.ACTION_INVERSION_REPORT_ENTRY,
                     log_entry.ActionInversionReportEntry(
