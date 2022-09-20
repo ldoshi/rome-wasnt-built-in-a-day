@@ -212,7 +212,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 batch_idx=batch_idx, state_id=state_id, action=action, td_error=td_error
             )
             for (batch_idx, state_id, action), td_error in zip(
-                itertools.product([0, 1], [2], [0, 1, 2]), td_errors
+                itertools.product([0, 1], [0], [0, 1, 2]), td_errors
             )
         ]
 

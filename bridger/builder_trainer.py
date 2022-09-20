@@ -675,7 +675,7 @@ class BridgeBuilderModel(pl.LightningModule):
                         log_entry.TrainingHistoryTDErrorLogEntry(
                             batch_idx=batch_idx,
                             state_id=self._state_logger.get_logged_object_id(
-                                torch.tensor([state])
+                                torch.tensor(state)
                             ),
                             action=action,
                             td_error=self.get_td_error(
