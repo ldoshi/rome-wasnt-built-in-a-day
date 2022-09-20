@@ -66,6 +66,7 @@ def _load_states(state_normalized_log: str) -> Dict[int, torch.Tensor]:
     return states
 
 def _build_actions_display(report: log_entry.ActionInversionReportEntry, env_width: int) -> np.ndarray:
+    """Returns an array with display values corresponding to action designations per position."""
     actions_display = np.zeros(env_width)
 
     for i in range(env_width):
@@ -143,17 +144,36 @@ class ActionInversionAnalyzer:
     def __init__(self, action_inversion_log: str, state_normalized_log: str):
         self._reports = _load_reports(action_inversion_log)
         self._states = _load_states(state_normalized_log)
-        
-#TODO(lyric): the reports len across batch idx plot
-#print the summary. done.
-# fix interactive ness. ion i think?
+        self._divergences = self._summarize_divergences()
 
-    def summarize_divergences(self, start_batch_idx: Optional[int] = None, end_batch_idx: Optional[int] = None) -> List[DivergenceEntry]:
-        """Summarizes incidents of divergence in the provided range.
+    def _summarize_divergences(self) -> List[DivergenceEntry]:
+        """Summarizes incidents of divergence.
 
         A divergence is defined as an incident of logging at least one
         action inversion report following a period of one or more
         batches during which 0 action inversion reports logged.
+
+        Returns:
+          A list of DivergenceEntry to summarize all the divergences.
+ 
+        """
+        # TODO(lyric): Consider a more efficient data structure if
+        # we're still using this tool with much larger log files.
+        divergences = []
+        # Initialize to immediately before the batch idx of the first
+        # report.
+        last_batch_with_reports = next(iter(self._reports.items()))[0] - 1
+        for (batch_idx, reports) in self._reports.items():
+            if len(reports):
+                convergence_run_length = (batch_idx - last_batch_with_reports - 1)
+                if convergence_run_length:
+                    divergences.append(DivergenceEntry(batch_idx=batch_idx, convergence_run_length=convergence_run_length, divergence_magnitude=len(reports)))
+                last_batch_with_reports = batch_idx
+                
+        return divergences
+
+    def _get_divergences(self, start_batch_idx: Optional[int] = None, end_batch_idx: Optional[int] = None) -> List[DivergenceEntry]:
+        """Returns divergences occurring within the provided range.
 
         Args:
           start_batch_idx: The first batch index to consider when
@@ -163,30 +183,25 @@ class ActionInversionAnalyzer:
             inclusive. Defaults to final batch.
 
         Returns:
-        A list of DivergenceEntry to summarize all the divergences.
+          A list of DivergenceEntry to summarize all the divergences
+          between start_batch_idx and end_batch_idx.
 
         """
-        # TODO(lyric): Consider a more efficient data structure if
-        # we're still using this tool with much larger log files.
-        divergences = []
-        convergence_run_length = 0
-        for (batch_idx, reports) in self._reports.items():
-            if start_batch_idx is not None and batch_idx < start_batch_idx:
-                continue
-            if end_batch_idx is not None and batch_idx > end_batch_idx:
-                break
+        start = 0
+        if start_batch_idx is not None:
+            for i, entry in enumerate(self._divergences):
+                if start_batch_idx <= entry.batch_idx:
+                    break
+                start = i + 1
 
-            print(batch_idx)
-            
-            if len(reports):
-                if convergence_run_length:
-                    divergences.append(DivergenceEntry(batch_idx=batch_idx, convergence_run_length=convergence_run_length, divergence_magnitude=len(reports)))
-                    convergence_run_length = 0
-                
-            else:
-                convergence_run_length += 1
-                
-        return divergences
+        end = len(self._divergences)
+        if end_batch_idx is not None:
+            for i in range(len(self._divergences)-1, 0-1, -1):
+                if self._divergences[i].batch_idx <= end_batch_idx:
+                    break
+                end = i
+
+        return self._divergences[start:end]
 
     def show_incidence_rate(self, start_batch_idx: Optional[int] = None, end_batch_idx: Optional[int] = None) -> None:
         """Visualizes the number of action inversion reports per batch.
@@ -210,10 +225,11 @@ class ActionInversionAnalyzer:
             xs.append(batch_idx)
             ys.append(len(reports))
 
-        plt.bar(xs, ys)
-        plt.title("Number of Action Inversion Reports Per Batch")
-        plt.xlabel("Batch")
-        plt.ylabel("Action Inversion Reports")
+        fig, axs = plt.subplots(            1,1                    )
+        axs.bar(xs, ys)
+        axs.set_title("Number of Action Inversion Reports Per Batch")
+        axs.set_xlabel("Batch")
+        axs.set_ylabel("Action Inversion Reports")
         plt.show()
 
     def show_divergences(self, start_batch_idx: Optional[int] = None, end_batch_idx: Optional[int] = None) -> None:
@@ -231,17 +247,18 @@ class ActionInversionAnalyzer:
             inclusive. Defaults to final batch.
 
         """
-        divergences = self.summarize_divergences(start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx)
+        divergences = self._get_divergences(start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx)
         xs = []
         ys = []
         for divergence in divergences:
             xs.append(divergence.batch_idx)
             ys.append(divergence.divergence_magnitude)
 
-        plt.bar(xs, ys)
-        plt.title("Divergence Magnitudes Across Batches")
-        plt.xlabel("Batch")
-        plt.ylabel("Divegence Magnitude (# Reports Logged)")
+        fig, axs = plt.subplots(            1,1                    )
+        axs.bar(xs, ys)
+        axs.set_title("Divergence Magnitudes Across Batches")
+        axs.set_xlabel("Batch")
+        axs.set_ylabel("Divegence Magnitude (# Reports Logged)")
         plt.show()
 
 
@@ -272,7 +289,7 @@ class ActionInversionAnalyzer:
             sort_by_divergence_magnitude are provided.
 
         """
-        divergences = self.summarize_divergences(start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx)
+        divergences = self._get_divergences(start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx)
         count = n if n is not None else len(divergences)
 
         print("Divergence Summary")
@@ -282,11 +299,11 @@ class ActionInversionAnalyzer:
             return
 
         if sort_by_convergence_run_length and sort_by_divergence_magnitude:
-            sort_key = lambda entry: (-entry.convergence_run_length, -entry.divergence_magnitude, batch_idx)
+            sort_key = lambda entry: (-entry.convergence_run_length, -entry.divergence_magnitude, entry.batch_idx)
         elif sort_by_convergence_run_length:
-            sort_key = lambda entry: (-entry.convergence_run_length, batch_idx)
+            sort_key = lambda entry: (-entry.convergence_run_length, entry.batch_idx)
         elif sort_by_divergence_magnitude:
-            sort_key = lambda entry: (-entry.divergence_magnitude, batch_idx)
+            sort_key = lambda entry: (-entry.divergence_magnitude, entry.batch_idx)
         else:
             sort_key = lambda entry: entry.batch_idx
             
@@ -294,13 +311,16 @@ class ActionInversionAnalyzer:
 
         # Print all numbers using the width of the widest to ensure
         # consistent columns.
-        display_width = len(f"{divergences[-1].batch_idx}")
-        print("Column order: batch index, convergence run length, divergence magnitude")
+        display_width = max(len(f"{divergences[-1].batch_idx}"), 3)
+        print("Column order: batch index (BI), convergence run length (CRL), divergence magnitude (DM)")
         print()
+        print(f"{'BI':{display_width}}  "
+              f"{'CRL':{display_width}}  "
+              f"{'DM':{display_width}}")
         for entry in divergences_sorted[:count]:
-            print(f"Entry:  {entry.batch_idx:{max_display_width}d}  "
-                  "{entry.convergence_run_length:{max_display_width}d}  "
-                  "{entry.divergence_magnitude:{max_display_width}d}")
+            print(f"{entry.batch_idx:{display_width}d}  "
+                  f"{entry.convergence_run_length:{display_width}d}  "
+                  f"{entry.divergence_magnitude:{display_width}d}")
     
     def show_reports(self, batch_idx: int, width: int = _SHOW_REPORTS_WIDTH) -> None:
         """Visualizes the action inversion reports for a batch.
@@ -347,12 +367,19 @@ class ActionInversionAnalyzer:
         plt.show()
     
 def main():
-    """Checks that two log files of training batch entries share the same values
-    across all attributes.
+    """Enables interactive analysis of logged action inversion reports.
+
     Example to run:
     $ python -m bin.action_inversion_analysis_tool
       --action_inversion_log object_logging_dir/action_inversion_report
       --state_normalized_log object_logging_dir/state_normalized
+
+    This will drop into an interactive prompt with the analyzer object
+    already defined. From there, call ActionInversionAnalyzer
+    functions like show_reports. Use the following to list public
+    functions:
+      [ function for function in dir(analyzer) if not function.startswith('_')]
+
     """
 
     parser = argparse.ArgumentParser(
@@ -371,15 +398,15 @@ def main():
     args = parser.parse_args()
 
     analyzer = ActionInversionAnalyzer(action_inversion_log=args.action_inversion_log, state_normalized_log= args.state_normalized_log)
-#    print(analyzer.summarize_divergences(end_batch_idx=20))
-#    analyzer.show_reports(5)
-#    IPython.embed()
+    print("\nWelcome to the Action Inversion Analyzer!\n"
+          "To render plots, please first run:\n" 
+          "  %matplotlib\n")
+    IPython.embed()
 
-#if __name__ == "__main__":
-#    main()
+if __name__ == "__main__":
+    plt.ion()
+    main()
 
-analyzer = ActionInversionAnalyzer(action_inversion_log=action_inversion_log, state_normalized_log= state_normalized_log)
-#analyzer.show_reports(5)
-#analyzer.show_incidence_rate()
-#analyzer.show_divergences(2, 20)
-analyzer.print_divergences(2, 20)
+
+
+
