@@ -6,7 +6,6 @@ import IPython
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import numpy as np
-import os
 import torch
 
 from typing import Dict, List, Optional
