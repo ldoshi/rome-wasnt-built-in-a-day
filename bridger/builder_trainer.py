@@ -6,13 +6,14 @@ import numpy as np
 from bridger import builder
 import pytorch_lightning as pl
 import torch
-from typing import Union, Optional, Callable, Hashable
+from typing import Union, Optional, Callable, Hashable, List
 
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
 
 
 from bridger import config, hash_utils, policies, qfunctions, replay_buffer
+from bridger.debug import action_inversion_checker
 from bridger.logging import object_logging
 from bridger.logging import log_entry
 
@@ -72,6 +73,45 @@ def make_env(
         name, width=width, force_standard_config=force_standard_config, seed=seed
     )
     return env
+
+
+def get_action_inversion_checker_actions_standard_configuration(
+    env_width: int,
+) -> List[List[int]]:
+    """Produces action inversion checker actions.
+
+    The current ActionInversionChecker implementation presumes an
+    environment of even width where the bridge is built up from edge
+    to edge without intermediate supports. The actions are initialized
+    based on this presumption.
+
+    Args:
+      env_width: The width of the environment.
+
+    Returns:
+      The sequence of actions defining the target outcome when starting
+      with the standard configuration.
+
+    Raises:
+      ValueError: If the env_width is not even.
+    """
+    if env_width % 2:
+        raise ValueError(
+            f"The env width ({env_width}) must be even to use the ActionInversionChecker."
+        )
+
+    bricks_per_side = int((env_width - 2) / 2)
+    actions = [
+        list(range(0, bricks_per_side)),
+        list(
+            range(
+                env_width - 2,
+                env_width - 2 - bricks_per_side,
+                -1,
+            )
+        ),
+    ]
+    return actions
 
 
 class ValidationBuilder(torch.utils.data.IterableDataset):
@@ -174,7 +214,7 @@ class BridgeBuilderModel(pl.LightningModule):
         object_log_manager: object_logging.ObjectLogManager,
         *args,
         hparams=None,
-        **kwargs
+        **kwargs,
     ):
         """Constructor for the BridgeBuilderModel Module
 
@@ -187,7 +227,11 @@ class BridgeBuilderModel(pl.LightningModule):
             A dictionary containing hyperparameters to be used for initializing this LightningModule.
 
         Note - if a key is found in both `hparams` and `kwargs`, the value in
-            `kwargs` will be used"""
+            `kwargs` will be used
+
+        Raises:
+          ValueError: If a param value does not match expectations.
+        """
 
         super().__init__()
         self._object_log_manager = object_log_manager
@@ -247,6 +291,17 @@ class BridgeBuilderModel(pl.LightningModule):
         self.next_action = None
         self.state = self.env.reset()
         self._breakpoint = {"step": 0, "episode": 0}
+
+        self._action_inversion_checker = None
+        if self.hparams.debug_action_inversion_checker:
+            actions = get_action_inversion_checker_actions_standard_configuration(
+                self.hparams.env_width
+            )
+            self._action_inversion_checker = (
+                action_inversion_checker.ActionInversionChecker(
+                    env=self._validation_env, actions=actions
+                )
+            )
 
     @property
     def trained_policy(self):
@@ -550,7 +605,7 @@ class BridgeBuilderModel(pl.LightningModule):
         """
         if weights is not None:
             td_errors = weights * td_errors
-        return (td_errors ** 2).mean()
+        return (td_errors**2).mean()
 
     def training_step(self, batch: list[torch.Tensor], batch_idx: int) -> torch.Tensor:
         """Performs a single training step on the Q network.
@@ -605,6 +660,20 @@ class BridgeBuilderModel(pl.LightningModule):
                         state_id=self._state_logger.get_logged_object_id(state),
                         action=action,
                         td_error=td_error,
+                    ),
+                )
+
+        if self.hparams.debug_action_inversion_checker:
+            for report in self._action_inversion_checker.check(
+                policy=self._validation_policy
+            ):
+                self._object_log_manager.log(
+                    log_entry.ACTION_INVERSION_REPORT_ENTRY,
+                    log_entry.ActionInversionReportEntry(
+                        batch_idx=batch_idx,
+                        state_id=self._state_logger.get_logged_object_id(report.state),
+                        preferred_actions=report.preferred_actions,
+                        policy_action=report.policy_action,
                     ),
                 )
 

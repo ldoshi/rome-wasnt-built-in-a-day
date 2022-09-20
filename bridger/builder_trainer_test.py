@@ -348,6 +348,73 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         self._verify_log_entries(expected_entries, logged_entries)
 
+    def test_action_inversion_checker_illegal_init(self):
+        """Verifies init args when debugging with action inversion checker."""
+        max_steps = 1
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR
+        ) as object_log_manager:
+            self.assertRaisesRegex(
+                ValueError,
+                "must be even to use",
+                test_utils.get_model,
+                object_log_manager=object_log_manager,
+                debug_action_inversion_checker=True,
+            )
+
+    def test_get_action_inversion_checker_actions_standard_configuration_illegal_usage(
+        self,
+    ):
+        """Verifies checking illegal arguments when building the actions sequence."""
+        self.assertRaisesRegex(
+            ValueError,
+            "must be even to use",
+            builder_trainer.get_action_inversion_checker_actions_standard_configuration,
+            env_width=7,
+        )
+
+    def test_get_action_inversion_checker_actions_standard_configuration(self):
+        """Verifies building the actions sequence."""
+        actions = (
+            builder_trainer.get_action_inversion_checker_actions_standard_configuration(
+                env_width=8
+            )
+        )
+        expected = [[0, 1, 2], [6, 5, 4]]
+        self.assertEqual(actions, expected)
+
+    def test_action_inversion_checker_logging(self):
+        """Verifies action inversion reports are logged when in debug_action_inversion_checker mode."""
+        max_steps = 4
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR
+        ) as object_log_manager:
+            test_utils.get_trainer(max_steps=max_steps).fit(
+                test_utils.get_model(
+                    object_log_manager=object_log_manager,
+                    debug_action_inversion_checker=True,
+                    env_width=4,
+                    max_episode_length=10,
+                    initial_memories_count=1,
+                )
+            )
+
+        expected_entries = [
+            log_entry.ActionInversionReportEntry(
+                batch_idx=3, state_id=0, preferred_actions={2}, policy_action=0
+            )
+        ]
+
+        logged_entries = list(
+            object_log_readers.read_object_log(
+                os.path.join(
+                    _OBJECT_LOGGING_DIR, log_entry.ACTION_INVERSION_REPORT_ENTRY
+                )
+            )
+        )
+
+        self._verify_log_entries(expected_entries, logged_entries)
+
 
 class StateActionCacheTest(unittest.TestCase):
     """Verifies the creation and population of a StateActionCache."""

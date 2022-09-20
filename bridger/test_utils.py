@@ -16,27 +16,33 @@ from pytorch_lightning.callbacks import Callback
 TMP_DIR = "tmp/nested_tmp"
 _OBJECT_LOGGING_DIR = "tmp_object_logging_dir"
 
+
 def object_logging_dir():
     return os.path.join(TMP_DIR, _OBJECT_LOGGING_DIR)
+
 
 def create_temp_dir():
     path = pathlib.Path(TMP_DIR)
     path.mkdir(parents=True, exist_ok=True)
 
+
 def delete_temp_dir():
     path = pathlib.Path(TMP_DIR)
     shutil.rmtree(path.parts[0], ignore_errors=True)
 
+
 def get_model(
     object_log_manager: object_logging.ObjectLogManager,
     debug: bool = False,
+    debug_action_inversion_checker: bool = False,
+    env_width=3,
     max_episode_length=1,
     batch_size=5,
     initial_memories_count=1000,
 ) -> builder_trainer.BridgeBuilderModel:
     return builder_trainer.BridgeBuilderModel(
         object_log_manager,
-        env_width=3,
+        env_width=env_width,
         env_force_standard_config=True,
         seed=12345,
         max_episode_length=max_episode_length,
@@ -45,10 +51,13 @@ def get_model(
         object_logging_dir=_OBJECT_LOGGING_DIR,
         initial_memories_count=initial_memories_count,
         debug=debug,
+        debug_action_inversion_checker=debug_action_inversion_checker,
     )
 
 
-def get_trainer(max_steps: int = 1, callbacks: Optional[List[Callback]] = None) -> Trainer:
+def get_trainer(
+    max_steps: int = 1, callbacks: Optional[List[Callback]] = None
+) -> Trainer:
     return Trainer(
         val_check_interval=1,
         # The validation batch size can be adjusted via a config, but
@@ -57,4 +66,3 @@ def get_trainer(max_steps: int = 1, callbacks: Optional[List[Callback]] = None) 
         max_steps=max_steps,
         callbacks=callbacks,
     )
-
