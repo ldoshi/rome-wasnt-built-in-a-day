@@ -413,7 +413,7 @@ def main():
     """Enables interactive analysis of logged action inversion reports.
 
     Example to run:
-    $ python -m bin.action_inversion_analysis_tool
+    $ python -m tools.action_inversion_analysis_tool
       --action_inversion_log object_logging_dir/action_inversion_report
       --state_normalized_log object_logging_dir/state_normalized
 
