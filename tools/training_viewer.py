@@ -19,7 +19,7 @@ from bridger import builder_trainer
 from bridger.logging import object_log_readers
 
 
-def equally_spaced_indices(length, n):
+def _equally_spaced_indices(length, n):
     return np.round(np.linspace(0, length - 1, n)).astype(int)
 
 
@@ -99,7 +99,7 @@ class TrainingPanel:
                 data = get_data_fn(state_id, action)
 
                 if len(data) > self._max_points_per_plot:
-                    subsampled_indices_for_plotting = equally_spaced_indices(
+                    subsampled_indices_for_plotting = _equally_spaced_indices(
                         len(data), self._max_points_per_plot
                     )
                     data = data.iloc[subsampled_indices_for_plotting]
