@@ -55,6 +55,7 @@ class TrainingPanel:
             figsize=([2 * width, 2 * self._states_n]),
         )
 
+        plt.ion()
         plt.show()
 
     def _state_plots_init(self):
@@ -156,7 +157,6 @@ def plot_training_data(log_dir: str, num_states: int):
         dirname=log_dir
     )
 
-    plt.ion()
     panel = TrainingPanel(
         states_n=num_states, training_history_database=training_history_database
     )
