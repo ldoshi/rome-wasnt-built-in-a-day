@@ -26,6 +26,7 @@ _OBJECT_LOGGING_DIR_0 = "tmp_object_logging_dir_0"
 _OBJECT_LOGGING_DIR_1 = "tmp_object_logging_dir_1"
 _TRAINING_BATCH_LOG = "training_batch"
 
+
 class ToolsSmokeTest(unittest.TestCase):
     """Verifies tool usage flow."""
 
@@ -52,8 +53,13 @@ class ToolsSmokeTest(unittest.TestCase):
             test_utils.get_trainer().fit(
                 test_utils.get_model(object_log_manager=object_log_manager, debug=True)
             )
-            
-        self.assertTrue(training_batch_comparison_tool.compare_training_batches(            expected_log=os.path.join(_OBJECT_LOGGING_DIR_0, _TRAINING_BATCH_LOG),            test_log=os.path.join(_OBJECT_LOGGING_DIR_1, _TRAINING_BATCH_LOG)            ))
+
+        self.assertTrue(
+            training_batch_comparison_tool.compare_training_batches(
+                expected_log=os.path.join(_OBJECT_LOGGING_DIR_0, _TRAINING_BATCH_LOG),
+                test_log=os.path.join(_OBJECT_LOGGING_DIR_1, _TRAINING_BATCH_LOG),
+            )
+        )
 
     def test_training_batch_comparison_tool_different(self):
         """Verifies comparison two training batches that differ."""
@@ -69,10 +75,17 @@ class ToolsSmokeTest(unittest.TestCase):
             dirname=_OBJECT_LOGGING_DIR_1
         ) as object_log_manager:
             test_utils.get_trainer().fit(
-                test_utils.get_model(object_log_manager=object_log_manager, batch_size=4, debug=True)
+                test_utils.get_model(
+                    object_log_manager=object_log_manager, batch_size=4, debug=True
+                )
             )
-            
-        self.assertFalse(training_batch_comparison_tool.compare_training_batches(            expected_log=os.path.join(_OBJECT_LOGGING_DIR_0, _TRAINING_BATCH_LOG),            test_log=os.path.join(_OBJECT_LOGGING_DIR_1, _TRAINING_BATCH_LOG)            ))
+
+        self.assertFalse(
+            training_batch_comparison_tool.compare_training_batches(
+                expected_log=os.path.join(_OBJECT_LOGGING_DIR_0, _TRAINING_BATCH_LOG),
+                test_log=os.path.join(_OBJECT_LOGGING_DIR_1, _TRAINING_BATCH_LOG),
+            )
+        )
 
 
 if __name__ == "__main__":

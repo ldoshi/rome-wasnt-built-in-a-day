@@ -5,6 +5,7 @@ import torch
 
 NUM_ERROR_THRESHOLD = 5
 
+
 def compare_training_batches(expected_log: str, test_log: str) -> bool:
     """Compares training batches between two log files.
 
@@ -77,7 +78,7 @@ def compare_training_batches(expected_log: str, test_log: str) -> bool:
         if batch_entry_error_counter >= NUM_ERROR_THRESHOLD:
             return False
 
-    return batch_entry_error_counter == 0 
+    return batch_entry_error_counter == 0
 
 
 def main():
@@ -107,6 +108,7 @@ def main():
         print("Success!")
     else:
         print("Failed!")
+
 
 if __name__ == "__main__":
     main()
