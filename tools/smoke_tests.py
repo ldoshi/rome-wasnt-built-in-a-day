@@ -16,6 +16,7 @@ import unittest
 from bridger import test_utils
 
 from tools import training_batch_comparison_tool
+from tools import training_viewer
 
 from bridger.logging import object_logging
 from bridger.logging import object_log_readers
@@ -86,6 +87,20 @@ class ToolsSmokeTest(unittest.TestCase):
                 test_log=os.path.join(_OBJECT_LOGGING_DIR_1, _TRAINING_BATCH_LOG),
             )
         )
+
+
+    def test_training_viewer(self):
+        """Verifies training viewer can build."""
+
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR_0
+        ) as object_log_manager:
+            test_utils.get_trainer().fit(
+                test_utils.get_model(object_log_manager=object_log_manager, debug=True)
+            )
+
+        training_viewer.plot_training_data(log_dir=_OBJECT_LOGGING_DIR_0, num_states=5)
+
 
 
 if __name__ == "__main__":
