@@ -1,3 +1,17 @@
+"""Enables interactive analysis of logged action inversion reports.
+
+   Usage:
+   $ python -m tools.action_inversion_analysis_tool
+     --action_inversion_log object_logging_dir/action_inversion_report
+     --state_normalized_log object_logging_dir/state_normalized
+
+   This will drop into an interactive prompt with the analyzer object
+   already defined. From there, call ActionInversionAnalyzer functions
+   like show_reports. Use the following to list public functions:
+   [ function for function in dir(analyzer) if not function.startswith('_')]
+
+"""
+
 import argparse
 import collections
 import dataclasses
@@ -247,6 +261,7 @@ class ActionInversionAnalyzer:
         axs.set_title("Number of Action Inversion Reports Per Batch")
         axs.set_xlabel("Batch")
         axs.set_ylabel("Action Inversion Reports")
+        plt.ion()
         plt.show()
 
     def show_divergences(
@@ -410,21 +425,6 @@ class ActionInversionAnalyzer:
 
 
 def main():
-    """Enables interactive analysis of logged action inversion reports.
-
-    Example to run:
-    $ python -m tools.action_inversion_analysis_tool
-      --action_inversion_log object_logging_dir/action_inversion_report
-      --state_normalized_log object_logging_dir/state_normalized
-
-    This will drop into an interactive prompt with the analyzer object
-    already defined. From there, call ActionInversionAnalyzer
-    functions like show_reports. Use the following to list public
-    functions:
-      [ function for function in dir(analyzer) if not function.startswith('_')]
-
-    """
-
     parser = argparse.ArgumentParser(
         description="Load action inversion reports for analysis."
     )
@@ -453,5 +453,4 @@ def main():
 
 
 if __name__ == "__main__":
-    plt.ion()
     main()
