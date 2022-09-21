@@ -1,3 +1,12 @@
+"""Checks that two log files of training batch entries share the same values
+    across all attributes.
+
+    Usage:
+    $ python -m tools.training_batch_comparison_tool
+      --expected_log object_logging_dir/training_batch
+      --test_log object_logging_dir_2/training_batch
+"""
+
 import argparse
 from bridger.logging import object_log_readers
 import os
@@ -82,14 +91,6 @@ def compare_training_batches(expected_log: str, test_log: str) -> bool:
 
 
 def main():
-    """Checks that two log files of training batch entries share the same values
-    across all attributes.
-    Example to run:
-    $ python -m tools.training_batch_comparison_tool
-      --expected_log object_logging_dir/training_batch
-      --test_log object_logging_dir_2/training_batch
-    """
-
     parser = argparse.ArgumentParser(
         description="Compare two object log managers for equality."
     )
