@@ -88,7 +88,6 @@ class ToolsSmokeTest(unittest.TestCase):
             )
         )
 
-
     def test_training_viewer(self):
         """Verifies training viewer can build."""
 
@@ -100,7 +99,6 @@ class ToolsSmokeTest(unittest.TestCase):
             )
 
         training_viewer.plot_training_data(log_dir=_OBJECT_LOGGING_DIR_0, num_states=5)
-
 
 
 if __name__ == "__main__":

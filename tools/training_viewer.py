@@ -16,6 +16,7 @@ from bridger.logging import object_log_readers
 
 _NUM_STATES_TO_DISPLAY = 10
 
+
 def _equally_spaced_indices(length, n):
     return np.round(np.linspace(0, length - 1, n)).astype(int)
 
@@ -151,8 +152,10 @@ def plot_training_data(log_dir: str, num_states: int):
         visited.
 
     """
-    training_history_database = object_log_readers.TrainingHistoryDatabase(        dirname=log_dir    )
-    
+    training_history_database = object_log_readers.TrainingHistoryDatabase(
+        dirname=log_dir
+    )
+
     plt.ion()
     panel = TrainingPanel(
         states_n=num_states, training_history_database=training_history_database
@@ -186,7 +189,7 @@ def main():
     args = parser.parse_args()
     plot_training_data(log_dir=args.log_dir, num_states=args.n)
     IPython.embed()
-    
+
 
 if __name__ == "__main__":
     main()
