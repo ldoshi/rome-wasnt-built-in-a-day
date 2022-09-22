@@ -72,9 +72,6 @@ def _load_reports(
 ) -> Dict[int, log_entry.ActionInversionReportEntry]:
     reports = collections.defaultdict(list)
     for log_entry in object_log_readers.read_object_log(action_inversion_log):
-        if log_entry.batch_idx < 30 and log_entry.batch_idx > 10:
-            print("hi")
-            continue
         reports[log_entry.batch_idx].append(log_entry)
 
     return reports
@@ -348,6 +345,8 @@ class ActionInversionAnalyzer:
         print(f"Printing {count} of {len(divergences)} entries.")
 
         if not divergences:
+            if return_divergences:
+                return []
             return
 
         if sort_by_convergence_run_length and sort_by_divergence_magnitude:

@@ -118,28 +118,30 @@ class ToolsSmokeTest(unittest.TestCase):
             state_normalized_log=os.path.join(  _OBJECT_LOGGING_DIR_0, _STATE_NORMALIZED_LOG )
         )
 
-        self.assertEqual(analyzer.print_divergences(), 1)
-        self.assertEqual(analyzer.print_divergences(start_batch_idx=20), 1)
-        self.assertEqual(analyzer.print_divergences(start_batch_idx=190), 0)
-        self.assertEqual(analyzer.print_divergences(end_batch_idx=40), 0)
-        self.assertEqual(analyzer.print_divergences(end_batch_idx=190), 1)
-        self.assertEqual(analyzer.print_divergences(n=6), 1)
-        self.assertEqual(analyzer.print_divergences(sort_by_convergence_run_length=True), 1)
-        self.assertEqual(analyzer.print_divergences(sort_by_divergence_magnitude=True), 1)
-        self.assertEqual(analyzer.print_divergences(sort_by_convergence_run_length=True, sort_by_divergence_magnitude=True), 1)
+        divergences = analyzer.print_divergences(return_divergences=True)
+        self.assertEqual(len(divergences), 1)
 
+        skip_one_start_batch_idx = divergences[0].batch_idx + 1
+        skip_one_end_batch_idx = divergences[0].batch_idx - 1
+
+        self.assertEqual(len(analyzer.print_divergences(start_batch_idx=skip_one_start_batch_idx, return_divergences=True)), 0)
+        self.assertEqual(len(analyzer.print_divergences(end_batch_idx=skip_one_end_batch_idx, return_divergences=True)), 0)
+        self.assertEqual(len(analyzer.print_divergences(n=6, return_divergences=True)), 1)
+        self.assertEqual(len(analyzer.print_divergences(sort_by_convergence_run_length=True, return_divergences=True)), 1)
+        self.assertEqual(len(analyzer.print_divergences(sort_by_divergence_magnitude=True, return_divergences=True)), 1)
+        self.assertEqual(len(analyzer.print_divergences(sort_by_convergence_run_length=True, sort_by_divergence_magnitude=True, return_divergences=True)), 1)
         
         analyzer.plot_incidence_rate()
-        analyzer.plot_incidence_rate(start_batch_idx=20)
-        analyzer.plot_incidence_rate(end_batch_idx=40)
+        analyzer.plot_incidence_rate(start_batch_idx=skip_one_start_batch_idx)
+        analyzer.plot_incidence_rate(end_batch_idx=skip_one_end_batch_idx)
 
         analyzer.plot_divergences()
-        analyzer.plot_divergences(start_batch_idx=20)
-        analyzer.plot_divergences(end_batch_idx=40)
+        analyzer.plot_divergences(start_batch_idx=skip_one_start_batch_idx)
+        analyzer.plot_divergences(end_batch_idx=skip_one_end_batch_idx)
 
-        analyzer.plot_reports(batch_idx=1)
-        analyzer.plot_reports(batch_idx=173)
-
+        analyzer.plot_reports(batch_idx=divergences[0].batch_idx)
+        # No reports should be found.
+        analyzer.plot_reports(batch_idx=skip_one_end_batch_idx)
 
 if __name__ == "__main__":
     unittest.main()
