@@ -448,7 +448,10 @@ def main():
     print(
         "\nWelcome to the Action Inversion Analyzer!\n"
         "To render plots, please first run:\n"
-        "  %matplotlib\n"
+        "  %matplotlib\n\n"
+        "An instance of ActionInversionAnalyzer called analyzer has been created.\n"
+        "Execute the following to list its public functions:\n"
+        "  [ function for function in dir(analyzer) if not function.startswith('_')]\n"
     )
     IPython.embed()
 
