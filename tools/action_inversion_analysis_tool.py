@@ -55,7 +55,7 @@ class DivergenceEntry:
 
 def _load_reports(
     action_inversion_log: str,
-) -> Dict[int, log_entry.ActionInversionReportEntry]:
+) -> Dict[int, List[log_entry.ActionInversionReportEntry]]:
     reports = collections.defaultdict(list)
     for log_entry in object_log_readers.read_object_log(action_inversion_log):
         reports[log_entry.batch_idx].append(log_entry)
