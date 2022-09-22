@@ -72,6 +72,9 @@ def _load_reports(
 ) -> Dict[int, log_entry.ActionInversionReportEntry]:
     reports = collections.defaultdict(list)
     for log_entry in object_log_readers.read_object_log(action_inversion_log):
+        if log_entry.batch_idx < 30 and log_entry.batch_idx > 10:
+            print("hi")
+            continue
         reports[log_entry.batch_idx].append(log_entry)
 
     return reports
@@ -304,7 +307,8 @@ class ActionInversionAnalyzer:
         n: int = None,
         sort_by_convergence_run_length: bool = False,
         sort_by_divergence_magnitude: bool = False,
-    ) -> None:
+        return_divergences: bool = False
+    ) -> Optional[List[DivergenceEntry]]:
         """Prints a summary of the divergences.
 
         A divergence is defined as an incident of logging at least one
@@ -329,6 +333,12 @@ class ActionInversionAnalyzer:
             divergence magnitude, batch_idx) if both
             sort_by_convergence_run_length and
             sort_by_divergence_magnitude are provided.
+          return_divergences: Return the list of divergence entries
+            matching the provided criteria if True.
+
+        Returns:
+          The list of divergence entries that were printed if
+          return_divergences. 
 
         """
         divergences = self._get_divergences(
@@ -377,6 +387,10 @@ class ActionInversionAnalyzer:
                 f"{entry.divergence_magnitude:{display_width}d}"
             )
 
+        if return_divergences:
+            return divergences_sorted
+
+
     def plot_reports(self, batch_idx: int, width: int = _PLOT_REPORTS_WIDTH) -> None:
         """Visualizes the action inversion reports for a batch.
 
@@ -398,14 +412,15 @@ class ActionInversionAnalyzer:
         reports = self._reports[batch_idx]
         if not reports:
             print(f"No action inversion reports for batch_idx: {batch_idx}.")
+            return
 
         width = min(width, len(reports))
         height = (len(reports) + width - 1) // width
 
         fig, axs = plt.subplots(height, width)
-        # If either dimension is 1, the default uses a 1D array
-        # instead of a 2D array. Make it 2D here in all cases for
-        # consistent access below.
+        # Make axs a 2D array in all cases for consistent access below.
+        if type(axs) != np.ndarray:
+            axs = [axs]
         axs = axs.reshape(height, width)
 
         for i, report in enumerate(reports):

@@ -15,6 +15,7 @@ import unittest
 
 from bridger import test_utils
 
+from tools import action_inversion_analysis_tool
 from tools import training_batch_comparison_tool
 from tools import training_viewer
 
@@ -108,36 +109,36 @@ class ToolsSmokeTest(unittest.TestCase):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR_0
         ) as object_log_manager:
-            test_utils.get_trainer().fit(
-                test_utils.get_model(object_log_manager=object_log_manager, debug_action_inversion_checker=True)
+            test_utils.get_trainer(max_steps=200).fit(
+                test_utils.get_model(object_log_manager=object_log_manager, env_width=6, debug_action_inversion_checker=True)
             )
 
-        analyzer = ActionInversionAnalyzer(
+        analyzer = action_inversion_analysis_tool.ActionInversionAnalyzer(
             action_inversion_log=os.path.join( _OBJECT_LOGGING_DIR_0, _ACTION_INVERSION_REPORT_LOG  ),
             state_normalized_log=os.path.join(  _OBJECT_LOGGING_DIR_0, _STATE_NORMALIZED_LOG )
         )
 
-        analyzer.show_incidence_rate()
-        analyzer.show_incidence_rate(start_batch_idx=3)
-        analyzer.show_incidence_rate(end_batch_idx=6)
-
-        analyzer.show_divergences()
-        analyzer.show_divergences(start_batch_idx=3)
-        analyzer.show_divergences(end_batch_idx=6)
-
-        analyzer.print_divergences()
-        analyzer.print_divergences(start_batch_idx=3)
-        analyzer.print_divergences(end_batch_idx=6)
-        analyzer.print_divergences(n=6)
-        analyzer.print_divergences(sort_by_convergence_run_length=True)
-        analyzer.print_divergences(sort_by_divergence_magnitude=True)
-        analyzer.print_divergences(sort_by_convergence_run_length=True, sort_by_divergence_magnitude=True)
+        self.assertEqual(analyzer.print_divergences(), 1)
+        self.assertEqual(analyzer.print_divergences(start_batch_idx=20), 1)
+        self.assertEqual(analyzer.print_divergences(start_batch_idx=190), 0)
+        self.assertEqual(analyzer.print_divergences(end_batch_idx=40), 0)
+        self.assertEqual(analyzer.print_divergences(end_batch_idx=190), 1)
+        self.assertEqual(analyzer.print_divergences(n=6), 1)
+        self.assertEqual(analyzer.print_divergences(sort_by_convergence_run_length=True), 1)
+        self.assertEqual(analyzer.print_divergences(sort_by_divergence_magnitude=True), 1)
+        self.assertEqual(analyzer.print_divergences(sort_by_convergence_run_length=True, sort_by_divergence_magnitude=True), 1)
 
         
-        
+        analyzer.plot_incidence_rate()
+        analyzer.plot_incidence_rate(start_batch_idx=20)
+        analyzer.plot_incidence_rate(end_batch_idx=40)
 
-        
+        analyzer.plot_divergences()
+        analyzer.plot_divergences(start_batch_idx=20)
+        analyzer.plot_divergences(end_batch_idx=40)
 
+        analyzer.plot_reports(batch_idx=1)
+        analyzer.plot_reports(batch_idx=173)
 
 
 if __name__ == "__main__":
