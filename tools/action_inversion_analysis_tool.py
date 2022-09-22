@@ -7,7 +7,7 @@
 
    This will drop into an interactive prompt with the analyzer object
    already defined. From there, call ActionInversionAnalyzer functions
-   like show_reports. Use the following to list public functions:
+   like plot_reports. Use the following to list public functions:
    [ function for function in dir(analyzer) if not function.startswith('_')]
 
 """
@@ -28,9 +28,8 @@ from bridger.logging import object_log_readers
 from bridger.logging import log_entry
 
 
-class ShowReportsDisplayType(enum.IntEnum):
-    _order_ = ("EMPTY GROUND BRICK PREFERRED_ACTION "
-               "POLICY_ACTION MATCHING_ACTION")
+class PlotReportsDisplayType(enum.IntEnum):
+    _order_ = "EMPTY GROUND BRICK PREFERRED_ACTION " "POLICY_ACTION MATCHING_ACTION"
     EMPTY = 0
     GROUND = 1
     BRICK = 2
@@ -39,14 +38,14 @@ class ShowReportsDisplayType(enum.IntEnum):
     MATCHING_ACTION = 5
 
 
-_SHOW_REPORTS_WIDTH = 6
-_SHOW_REPORTS_COLOR_MAPPING = {
-    ShowReportsDisplayType.EMPTY: "white",
-    ShowReportsDisplayType.GROUND: "grey",
-    ShowReportsDisplayType.BRICK: "black",
-    ShowReportsDisplayType.PREFERRED_ACTION: "lightgreen",
-    ShowReportsDisplayType.POLICY_ACTION: "red",
-    ShowReportsDisplayType.MATCHING_ACTION: "darkgreen",
+_PLOT_REPORTS_WIDTH = 6
+_PLOT_REPORTS_COLOR_MAPPING = {
+    PlotReportsDisplayType.EMPTY: "white",
+    PlotReportsDisplayType.GROUND: "grey",
+    PlotReportsDisplayType.BRICK: "black",
+    PlotReportsDisplayType.PREFERRED_ACTION: "lightgreen",
+    PlotReportsDisplayType.POLICY_ACTION: "red",
+    PlotReportsDisplayType.MATCHING_ACTION: "darkgreen",
 }
 
 
@@ -94,15 +93,15 @@ def _build_actions_display(
 
     for i in range(env_width):
         if i in report.preferred_actions and i == report.policy_action:
-            actions_display[i] = ShowReportsDisplayType.MATCHING_ACTION
+            actions_display[i] = PlotReportsDisplayType.MATCHING_ACTION
             continue
 
         if i in report.preferred_actions:
-            actions_display[i] = ShowReportsDisplayType.PREFERRED_ACTION
+            actions_display[i] = PlotReportsDisplayType.PREFERRED_ACTION
             continue
 
         if i == report.policy_action:
-            actions_display[i] = ShowReportsDisplayType.POLICY_ACTION
+            actions_display[i] = PlotReportsDisplayType.POLICY_ACTION
             continue
 
     return actions_display
@@ -133,13 +132,13 @@ def _remap_display_data(display_data: np.ndarray) -> colors.ListedColormap:
     # represents the color to use when rendering the corresponding
     # value in display_data.
     color_mapping = []
-    display_types = list(ShowReportsDisplayType)
+    display_types = list(PlotReportsDisplayType)
     current_max_index = len(display_types) - 1
     for i, display_type in enumerate(display_types):
         if (display_data == display_type).any():
             # The display_type exists so we add its color in the
             # corresponding position.
-            color_mapping.append(_SHOW_REPORTS_COLOR_MAPPING[display_type])
+            color_mapping.append(_PLOT_REPORTS_COLOR_MAPPING[display_type])
             assert (len(color_mapping) - 1) == display_type
         else:
             # The current display_type does not occur so we swap in
@@ -151,7 +150,7 @@ def _remap_display_data(display_data: np.ndarray) -> colors.ListedColormap:
 
                 if (display_data == candidate).any():
                     display_data[(display_data == candidate)] = display_type
-                    color_mapping.append(_SHOW_REPORTS_COLOR_MAPPING[candidate])
+                    color_mapping.append(_PLOT_REPORTS_COLOR_MAPPING[candidate])
                     assert (len(color_mapping) - 1) == display_type
                     break
 
@@ -232,7 +231,7 @@ class ActionInversionAnalyzer:
 
         return self._divergences[start:end]
 
-    def show_incidence_rate(
+    def plot_incidence_rate(
         self, start_batch_idx: Optional[int] = None, end_batch_idx: Optional[int] = None
     ) -> None:
         """Visualizes the number of action inversion reports per batch.
@@ -264,7 +263,7 @@ class ActionInversionAnalyzer:
         plt.ion()
         plt.show()
 
-    def show_divergences(
+    def plot_divergences(
         self, start_batch_idx: Optional[int] = None, end_batch_idx: Optional[int] = None
     ) -> None:
         """Visualizes the incidents of divergence in the provided range.
@@ -303,7 +302,7 @@ class ActionInversionAnalyzer:
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
         n: int = None,
-        sort_by_convergence_run_length: bool = True,
+        sort_by_convergence_run_length: bool = False,
         sort_by_divergence_magnitude: bool = False,
     ) -> None:
         """Prints a summary of the divergences.
@@ -378,7 +377,7 @@ class ActionInversionAnalyzer:
                 f"{entry.divergence_magnitude:{display_width}d}"
             )
 
-    def show_reports(self, batch_idx: int, width: int = _SHOW_REPORTS_WIDTH) -> None:
+    def plot_reports(self, batch_idx: int, width: int = _PLOT_REPORTS_WIDTH) -> None:
         """Visualizes the action inversion reports for a batch.
 
         Plots a visual representation of the state, the preferred
