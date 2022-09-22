@@ -166,9 +166,7 @@ class ActionInversionAnalyzer:
         # TODO(lyric): Consider a more efficient data structure if
         # we're still using this tool with much larger log files.
         divergences = []
-        # Initialize to immediately before the batch idx of the first
-        # report.
-        last_batch_with_reports = next(iter(self._reports.items()))[0] - 1
+        last_batch_with_reports = 0
         for (batch_idx, reports) in self._reports.items():
             if len(reports):
                 convergence_run_length = batch_idx - last_batch_with_reports - 1
