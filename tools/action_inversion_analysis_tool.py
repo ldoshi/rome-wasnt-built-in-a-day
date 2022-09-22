@@ -295,6 +295,7 @@ class ActionInversionAnalyzer:
         axs.set_title("Divergence Magnitudes Across Batches")
         axs.set_xlabel("Batch")
         axs.set_ylabel("Divegence Magnitude (# Reports Logged)")
+        plt.ion()
         plt.show()
 
     def print_divergences(
@@ -421,6 +422,7 @@ class ActionInversionAnalyzer:
             ax.matshow(state_and_actions_display, cmap=cmap)
 
         fig.suptitle(f"Action Inversion Reports for Batch {batch_idx}")
+        plt.ion()
         plt.show()
 
 

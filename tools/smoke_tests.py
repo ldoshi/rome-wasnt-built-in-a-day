@@ -26,6 +26,8 @@ from bridger.logging import log_entry
 _OBJECT_LOGGING_DIR_0 = "tmp_object_logging_dir_0"
 _OBJECT_LOGGING_DIR_1 = "tmp_object_logging_dir_1"
 _TRAINING_BATCH_LOG = "training_batch"
+_STATE_NORMALIZED_LOG = "state_normalized"
+_ACTION_INVERSION_REPORT_LOG = "action_inversion_report"
 
 
 class ToolsSmokeTest(unittest.TestCase):
@@ -99,6 +101,43 @@ class ToolsSmokeTest(unittest.TestCase):
             )
 
         training_viewer.plot_training_data(log_dir=_OBJECT_LOGGING_DIR_0, num_states=5)
+
+    def test_action_inversion_analyzer(self):
+        """Verifies action inversion analyzer can build."""
+
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR_0
+        ) as object_log_manager:
+            test_utils.get_trainer().fit(
+                test_utils.get_model(object_log_manager=object_log_manager, debug_action_inversion_checker=True)
+            )
+
+        analyzer = ActionInversionAnalyzer(
+            action_inversion_log=os.path.join( _OBJECT_LOGGING_DIR_0, _ACTION_INVERSION_REPORT_LOG  ),
+            state_normalized_log=os.path.join(  _OBJECT_LOGGING_DIR_0, _STATE_NORMALIZED_LOG )
+        )
+
+        analyzer.show_incidence_rate()
+        analyzer.show_incidence_rate(start_batch_idx=3)
+        analyzer.show_incidence_rate(end_batch_idx=6)
+
+        analyzer.show_divergences()
+        analyzer.show_divergences(start_batch_idx=3)
+        analyzer.show_divergences(end_batch_idx=6)
+
+        analyzer.print_divergences()
+        analyzer.print_divergences(start_batch_idx=3)
+        analyzer.print_divergences(end_batch_idx=6)
+        analyzer.print_divergences(n=6)
+        analyzer.print_divergences(sort_by_convergence_run_length=True)
+        analyzer.print_divergences(sort_by_divergence_magnitude=True)
+        analyzer.print_divergences(sort_by_convergence_run_length=True, sort_by_divergence_magnitude=True)
+
+        
+        
+
+        
+
 
 
 if __name__ == "__main__":
