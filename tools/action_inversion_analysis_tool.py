@@ -302,7 +302,7 @@ class ActionInversionAnalyzer:
         n: int = None,
         sort_by_convergence_run_length: bool = False,
         sort_by_divergence_magnitude: bool = False,
-        return_divergences: bool = False
+        return_divergences: bool = False,
     ) -> Optional[List[DivergenceEntry]]:
         """Prints a summary of the divergences.
 
@@ -333,7 +333,7 @@ class ActionInversionAnalyzer:
 
         Returns:
           The list of divergence entries that were printed if
-          return_divergences. 
+          return_divergences.
 
         """
         divergences = self._get_divergences(
@@ -386,7 +386,6 @@ class ActionInversionAnalyzer:
 
         if return_divergences:
             return divergences_sorted
-
 
     def plot_reports(self, batch_idx: int, width: int = _PLOT_REPORTS_WIDTH) -> None:
         """Visualizes the action inversion reports for a batch.
