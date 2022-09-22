@@ -416,7 +416,7 @@ class ActionInversionAnalyzer:
         fig, axs = plt.subplots(height, width)
         # Make axs a 2D array in all cases for consistent access below.
         if type(axs) != np.ndarray:
-            axs = [axs]
+            axs = np.array([axs])
         axs = axs.reshape(height, width)
 
         for i, report in enumerate(reports):
