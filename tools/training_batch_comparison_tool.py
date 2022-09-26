@@ -10,7 +10,7 @@ def main():
     """Checks that two log files of training batch entries share the same values
     across all attributes.
     Example to run:
-    $ python -m bin.training_batch_comparison_tool
+    $ python -m tools.training_batch_comparison_tool
       --path_expected_log object_logging_dir/training_batch
       --path_test_log object_logging_dir_2/training_batch
     """
