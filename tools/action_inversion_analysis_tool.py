@@ -29,7 +29,7 @@ from bridger.logging import log_entry
 
 
 class PlotReportsDisplayType(enum.IntEnum):
-    _order_ = "EMPTY GROUND BRICK PREFERRED_ACTION " "POLICY_ACTION MATCHING_ACTION"
+    _order_ = "EMPTY GROUND BRICK PREFERRED_ACTION POLICY_ACTION MATCHING_ACTION"
     EMPTY = 0
     GROUND = 1
     BRICK = 2
@@ -173,6 +173,10 @@ class ActionInversionAnalyzer:
         action inversion report following a period of one or more
         batches during which 0 action inversion reports logged.
 
+        This function assumes ActionInversionReportEntry's are
+        iterated in the same order in which they were logged, i.e. in
+        increasing order of batch_idx.
+
         Returns:
           A list of DivergenceEntry to summarize all the divergences.
 
@@ -222,7 +226,7 @@ class ActionInversionAnalyzer:
 
         end = len(self._divergences)
         if end_batch_idx is not None:
-            for i in range(len(self._divergences) - 1, 0 - 1, -1):
+            for i in range(len(self._divergences) - 1, -1, -1):
                 if self._divergences[i].batch_idx <= end_batch_idx:
                     break
                 end = i
