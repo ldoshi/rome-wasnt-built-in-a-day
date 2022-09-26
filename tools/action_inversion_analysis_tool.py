@@ -1,3 +1,17 @@
+"""Enables interactive analysis of logged action inversion reports.
+
+   Usage:
+   $ python -m tools.action_inversion_analysis_tool
+     --action_inversion_log object_logging_dir/action_inversion_report
+     --state_normalized_log object_logging_dir/state_normalized
+
+   This will drop into an interactive prompt with the analyzer object
+   already defined. From there, call ActionInversionAnalyzer functions
+   like plot_reports. Use the following to list public functions:
+   [ function for function in dir(analyzer) if not function.startswith('_')]
+
+"""
+
 import argparse
 import collections
 import dataclasses
@@ -248,6 +262,7 @@ class ActionInversionAnalyzer:
         axs.set_title("Number of Action Inversion Reports Per Batch")
         axs.set_xlabel("Batch")
         axs.set_ylabel("Action Inversion Reports")
+        plt.ion()
         plt.show()
 
     def plot_divergences(
@@ -281,6 +296,7 @@ class ActionInversionAnalyzer:
         axs.set_title("Divergence Magnitudes Across Batches")
         axs.set_xlabel("Batch")
         axs.set_ylabel("Divegence Magnitude (# Reports Logged)")
+        plt.ion()
         plt.show()
 
     def print_divergences(
@@ -290,7 +306,8 @@ class ActionInversionAnalyzer:
         n: Optional[int] = None,
         sort_by_convergence_run_length: bool = False,
         sort_by_divergence_magnitude: bool = False,
-    ) -> None:
+        return_divergences: bool = False,
+    ) -> Optional[List[DivergenceEntry]]:
         """Prints a summary of the divergences.
 
         A divergence is defined as an incident of logging at least one
@@ -315,6 +332,12 @@ class ActionInversionAnalyzer:
             divergence magnitude, batch_idx) if both
             sort_by_convergence_run_length and
             sort_by_divergence_magnitude are provided.
+          return_divergences: Return the list of divergence entries
+            matching the provided criteria if True.
+
+        Returns:
+          The list of divergence entries that were printed if
+          return_divergences.
 
         """
         divergences = self._get_divergences(
@@ -326,6 +349,8 @@ class ActionInversionAnalyzer:
         print(f"Printing {count} of {len(divergences)} entries.")
 
         if not divergences:
+            if return_divergences:
+                return []
             return
 
         if sort_by_convergence_run_length and sort_by_divergence_magnitude:
@@ -363,6 +388,9 @@ class ActionInversionAnalyzer:
                 f"{entry.divergence_magnitude:{display_width}d}"
             )
 
+        if return_divergences:
+            return divergences_sorted
+
     def plot_reports(self, batch_idx: int, width: int = _PLOT_REPORTS_WIDTH) -> None:
         """Visualizes the action inversion reports for a batch.
 
@@ -384,14 +412,15 @@ class ActionInversionAnalyzer:
         reports = self._reports[batch_idx]
         if not reports:
             print(f"No action inversion reports for batch_idx: {batch_idx}.")
+            return
 
         width = min(width, len(reports))
         height = (len(reports) + width - 1) // width
 
         fig, axs = plt.subplots(height, width)
-        # If either dimension is 1, the default uses a 1D array
-        # instead of a 2D array. Make it 2D here in all cases for
-        # consistent access below.
+        # Make axs a 2D array in all cases for consistent access below.
+        if type(axs) != np.ndarray:
+            axs = np.array([axs])
         axs = axs.reshape(height, width)
 
         for i, report in enumerate(reports):
@@ -407,25 +436,11 @@ class ActionInversionAnalyzer:
             ax.matshow(state_and_actions_display, cmap=cmap)
 
         fig.suptitle(f"Action Inversion Reports for Batch {batch_idx}")
+        plt.ion()
         plt.show()
 
 
 def main():
-    """Enables interactive analysis of logged action inversion reports.
-
-    Example to run:
-    $ python -m tools.action_inversion_analysis_tool
-      --action_inversion_log object_logging_dir/action_inversion_report
-      --state_normalized_log object_logging_dir/state_normalized
-
-    This will drop into an interactive prompt with the analyzer object
-    already defined. From there, call ActionInversionAnalyzer
-    functions like plot_reports. Use the following to list public
-    functions:
-      [ function for function in dir(analyzer) if not function.startswith('_')]
-
-    """
-
     parser = argparse.ArgumentParser(
         description="Load action inversion reports for analysis."
     )
@@ -457,5 +472,4 @@ def main():
 
 
 if __name__ == "__main__":
-    plt.ion()
     main()
