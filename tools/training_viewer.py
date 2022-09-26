@@ -1,25 +1,23 @@
-#!/usr/bin/env python
+"""Displays logged training and debugging information.
 
-"""Display training and debugging information.
-
-The training viewer reads training history files from the directory
-indicated by the flag `object_logging_dir` and displays it via the
-TrainingPanel.
-
+   Usage:
+   $ python -m tools.training_viewer --log_dir object_logging_dir
 """
 
+import argparse
+import IPython
 import matplotlib.pyplot as plt
-
 import numpy as np
 import pandas as pd
 
 from typing import Callable
 
-from bridger import builder_trainer
 from bridger.logging import object_log_readers
 
+_NUM_STATES_TO_DISPLAY = 10
 
-def equally_spaced_indices(length, n):
+
+def _equally_spaced_indices(length, n):
     return np.round(np.linspace(0, length - 1, n)).astype(int)
 
 
@@ -99,7 +97,7 @@ class TrainingPanel:
                 data = get_data_fn(state_id, action)
 
                 if len(data) > self._max_points_per_plot:
-                    subsampled_indices_for_plotting = equally_spaced_indices(
+                    subsampled_indices_for_plotting = _equally_spaced_indices(
                         len(data), self._max_points_per_plot
                     )
                     data = data.iloc[subsampled_indices_for_plotting]
@@ -145,26 +143,53 @@ class TrainingPanel:
         self._fig.canvas.flush_events()
 
 
-def view_training():
-    parser = builder_trainer.get_hyperparam_parser()
-    hparams = parser.parse_args()
+def plot_training_data(log_dir: str, num_states: int):
+    """Plots log entries into a series of charts for analysis.
 
+    Args:
+      log_dir: The path to the object logging dir.
+      num_states: The number of states for which to display logged
+        training data. The states are selected from most to least
+        visited.
+
+    """
     training_history_database = object_log_readers.TrainingHistoryDatabase(
-        hparams.object_logging_dir
+        dirname=log_dir
     )
 
-    states_n = 10
     panel = TrainingPanel(
-        states_n=states_n, training_history_database=training_history_database
+        states_n=num_states, training_history_database=training_history_database
     )
 
     most_visited_states = training_history_database.get_states_by_visit_count(
-        n=states_n
+        n=num_states
     )
+
     panel.update_panel(most_visited_states)
 
-    plt.pause(1000000)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Display logged training and debugging information."
+    )
+    parser.add_argument(
+        "--log_dir",
+        help="The path to the object logging dir.",
+        required=True,
+    )
+    parser.add_argument(
+        "--n",
+        help="The number of states for which to display logged"
+        "training data. The states are selected from most to least"
+        "visited.",
+        type=int,
+        default=_NUM_STATES_TO_DISPLAY,
+        required=False,
+    )
+    args = parser.parse_args()
+    plot_training_data(log_dir=args.log_dir, num_states=args.n)
+    IPython.embed()
 
 
 if __name__ == "__main__":
-    view_training()
+    main()
