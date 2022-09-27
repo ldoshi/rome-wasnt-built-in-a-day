@@ -109,10 +109,10 @@ class ToolsSmokeTest(unittest.TestCase):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR_0
         ) as object_log_manager:
-            test_utils.get_trainer(max_steps=200).fit(
+            test_utils.get_trainer(max_steps=12).fit(
                 test_utils.get_model(
                     object_log_manager=object_log_manager,
-                    env_width=6,
+                    env_width=4,
                     debug_action_inversion_checker=True,
                 )
             )
@@ -127,15 +127,25 @@ class ToolsSmokeTest(unittest.TestCase):
         )
 
         divergences = analyzer.print_divergences(return_divergences=True)
-        self.assertEqual(len(divergences), 1)
+        self.assertEqual(len(divergences), 2)
 
         skip_one_start_batch_idx = divergences[0].batch_idx + 1
-        skip_one_end_batch_idx = divergences[0].batch_idx - 1
+        skip_two_start_batch_idx = divergences[1].batch_idx + 1
+        skip_one_end_batch_idx = divergences[1].batch_idx - 1
+        skip_two_end_batch_idx = divergences[0].batch_idx - 1
 
         self.assertEqual(
             len(
                 analyzer.print_divergences(
                     start_batch_idx=skip_one_start_batch_idx, return_divergences=True
+                )
+            ),
+            1,
+        )
+        self.assertEqual(
+            len(
+                analyzer.print_divergences(
+                    start_batch_idx=skip_two_start_batch_idx, return_divergences=True
                 )
             ),
             0,
@@ -146,10 +156,18 @@ class ToolsSmokeTest(unittest.TestCase):
                     end_batch_idx=skip_one_end_batch_idx, return_divergences=True
                 )
             ),
+            1,
+        )
+        self.assertEqual(
+            len(
+                analyzer.print_divergences(
+                    end_batch_idx=skip_two_end_batch_idx, return_divergences=True
+                )
+            ),
             0,
         )
         self.assertEqual(
-            len(analyzer.print_divergences(n=6, return_divergences=True)), 1
+            len(analyzer.print_divergences(n=6, return_divergences=True)), 2
         )
         self.assertEqual(
             len(
@@ -157,7 +175,7 @@ class ToolsSmokeTest(unittest.TestCase):
                     sort_by_convergence_run_length=True, return_divergences=True
                 )
             ),
-            1,
+            2,
         )
         self.assertEqual(
             len(
@@ -165,7 +183,7 @@ class ToolsSmokeTest(unittest.TestCase):
                     sort_by_divergence_magnitude=True, return_divergences=True
                 )
             ),
-            1,
+            2,
         )
         self.assertEqual(
             len(
@@ -175,20 +193,24 @@ class ToolsSmokeTest(unittest.TestCase):
                     return_divergences=True,
                 )
             ),
-            1,
+            2,
         )
 
         analyzer.plot_incidence_rate()
         analyzer.plot_incidence_rate(start_batch_idx=skip_one_start_batch_idx)
         analyzer.plot_incidence_rate(end_batch_idx=skip_one_end_batch_idx)
+        # Prunes out all divergences so there is no data to plot.
+        analyzer.plot_incidence_rate(start_batch_idx=skip_two_start_batch_idx)
 
         analyzer.plot_divergences()
         analyzer.plot_divergences(start_batch_idx=skip_one_start_batch_idx)
         analyzer.plot_divergences(end_batch_idx=skip_one_end_batch_idx)
+        # Prunes out all divergences so there is no data to plot.
+        analyzer.plot_divergences(start_batch_idx=skip_two_start_batch_idx)
 
         analyzer.plot_reports(batch_idx=divergences[0].batch_idx)
         # No reports should be found.
-        analyzer.plot_reports(batch_idx=skip_one_end_batch_idx)
+        analyzer.plot_reports(batch_idx=skip_two_end_batch_idx)
 
 
 if __name__ == "__main__":
