@@ -199,13 +199,13 @@ class ToolsSmokeTest(unittest.TestCase):
         analyzer.plot_incidence_rate()
         analyzer.plot_incidence_rate(start_batch_idx=skip_one_start_batch_idx)
         analyzer.plot_incidence_rate(end_batch_idx=skip_one_end_batch_idx)
-        # Prunes out all data.
+        # Prunes out all divergences so there is no data to plot.
         analyzer.plot_incidence_rate(start_batch_idx=skip_two_start_batch_idx)
 
         analyzer.plot_divergences()
         analyzer.plot_divergences(start_batch_idx=skip_one_start_batch_idx)
         analyzer.plot_divergences(end_batch_idx=skip_one_end_batch_idx)
-        # Prunes out all data.
+        # Prunes out all divergences so there is no data to plot.
         analyzer.plot_divergences(start_batch_idx=skip_two_start_batch_idx)
 
         analyzer.plot_reports(batch_idx=divergences[0].batch_idx)
