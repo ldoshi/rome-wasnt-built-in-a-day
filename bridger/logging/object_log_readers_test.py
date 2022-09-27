@@ -106,33 +106,19 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
             )
 
     def test_get_td_errors(self):
-        """Spot check a few state/action pairs to verify the shape of the response."""
+        """Ensure that for all batches, certain states will log td errors for all actions to verify the shape of the response."""
 
         self.assertEqual(len(self.training_history_database.get_td_errors(5, 5)), 0)
 
-        state_id_0_action_1 = self.training_history_database.get_td_errors(
-            state_id=0, action=1
-        )
-
-        self.assertEqual(list(state_id_0_action_1["batch_idx"]), [0, 1, 2, 3, 4])
-        self.assertTrue(
+        state_ids = list(range(10))
+        actions = [0, 1, 2]
+        for (state_id, action) in itertools.product(state_ids, actions):
+            td_errors = self.training_history_database.get_td_errors(state_id=state_id, action=action)
+            self.assertTrue(
             all(
                 [
                     isinstance(td_error, float)
-                    for td_error in state_id_0_action_1["td_error"]
-                ]
-            )
-        )
-
-        state_id_1_action_0 = self.training_history_database.get_td_errors(
-            state_id=1, action=0
-        )
-        self.assertEqual(list(state_id_1_action_0["batch_idx"]), [0, 1, 2, 3, 4])
-        self.assertTrue(
-            all(
-                [
-                    isinstance(td_error, float)
-                    for td_error in state_id_1_action_0["td_error"]
+                    for td_error in td_errors["td_error"]
                 ]
             )
         )

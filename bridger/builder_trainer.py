@@ -658,6 +658,7 @@ class BridgeBuilderModel(pl.LightningModule):
             # Sample all possible actions over the state space.
             actions = range(self.env.nA)
 
+            # TODO(Issue#154): Combine cache entries to make a single batched call to get_td_error before logging.
             for frequent_state in frequent_states:
                 for cache_action in actions:
                     (
