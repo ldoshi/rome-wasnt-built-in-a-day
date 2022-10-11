@@ -7,14 +7,10 @@ import numpy as np
 import os
 import shutil
 from parameterized import parameterized
-from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.callbacks import EarlyStopping
-from typing import Optional, List
 
 import torch
-
-from typing import List, Optional
 
 from bridger import builder
 from bridger import builder_trainer
@@ -201,19 +197,23 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                     object_log_manager=object_log_manager, debug=True, batch_size=2
                 )
             )
+
+        td_errors = [
+            -0.8774998784065247,
+            -0.9989010691642761,
+            -1.9467530250549316,
+            -0.8378710746765137,
+            -0.9129469394683838,
+            -1.8107686042785645,
+        ]
+
         expected_entries = [
             log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=0, state_id=0, action=1, td_error=-0.998901
-            ),
-            log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=0, state_id=0, action=2, td_error=-1.946753
-            ),
-            log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=1, state_id=0, action=1, td_error=-0.912947
-            ),
-            log_entry.TrainingHistoryTDErrorLogEntry(
-                batch_idx=1, state_id=0, action=1, td_error=-0.912947
-            ),
+                batch_idx=batch_idx, state_id=state_id, action=action, td_error=td_error
+            )
+            for (batch_idx, state_id, action), td_error in zip(
+                itertools.product([0, 1], [0], [0, 1, 2]), td_errors
+            )
         ]
 
         logged_entries = list(

@@ -1,7 +1,6 @@
 """Definitions of log entries stored to ObjectLogManager."""
 
 import dataclasses
-import numpy as np
 import torch
 from typing import Any, List, Set
 

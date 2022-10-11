@@ -267,6 +267,9 @@ class BridgeBuilderModel(pl.LightningModule):
             force_standard_config=self.hparams.env_force_standard_config,
             seed=torch.rand(1).item(),
         )
+        self._state_action_cache = StateActionCache(
+            env=self._validation_env, make_hashable_fn=hash_utils.hash_tensor
+        )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
             capacity=self.hparams.capacity,
@@ -585,7 +588,6 @@ class BridgeBuilderModel(pl.LightningModule):
             rewards: The reward gained through the transition.
             success: Whether the transition marked the end of the episode.
         """
-
         row_idx = torch.arange(actions.shape[0])
         qvals = self.Q(states)[row_idx, actions]
         with torch.no_grad():
@@ -650,24 +652,46 @@ class BridgeBuilderModel(pl.LightningModule):
                 ),
             )
 
-            for state, action, td_error in zip(
-                states, actions.tolist(), td_errors.tolist()
-            ):
-                self._object_log_manager.log(
-                    log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
-                    log_entry.TrainingHistoryTDErrorLogEntry(
-                        batch_idx=batch_idx,
-                        state_id=self._state_logger.get_logged_object_id(state),
-                        action=action,
-                        td_error=td_error,
-                    ),
-                )
+            frequent_states: list[torch.Tensor] = self._state_visit_logger.get_top_n(
+                _FREQUENTLY_VISITED_STATE_COUNT
+            )
+            # Sample all possible actions over the state space.
+            actions = range(self.env.nA)
+
+            # TODO(Issue#154): Combine cache entries to make a single batched call to get_td_error before logging.
+            for frequent_state in frequent_states:
+                for cache_action in actions:
+                    (
+                        state,
+                        action,
+                        next_state,
+                        reward,
+                        environment_completion_status,
+                    ) = self._state_action_cache.cache_get(
+                        frequent_state.numpy(), cache_action
+                    )
+
+                    self._object_log_manager.log(
+                        log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
+                        log_entry.TrainingHistoryTDErrorLogEntry(
+                            batch_idx=batch_idx,
+                            state_id=self._state_logger.get_logged_object_id(
+                                torch.tensor(state)
+                            ),
+                            action=action,
+                            td_error=self.get_td_error(
+                                states=torch.tensor([state]),
+                                actions=torch.tensor([action]),
+                                next_states=torch.tensor([next_state]),
+                                rewards=torch.tensor([reward]),
+                                success=torch.tensor([environment_completion_status]),
+                            ).item(),
+                        ),
+                    )
 
         if self.hparams.debug_action_inversion_checker:
             action_inversion_reports = self._action_inversion_checker.check(
-                policy=self._validation_policy
-            )
-
+                policy=self._validation_policy)
             self.log("action_inversion_incident_rate", len(action_inversion_reports))
 
             for report in action_inversion_reports:
