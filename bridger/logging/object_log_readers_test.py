@@ -109,11 +109,11 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         """Ensure that for all batches, certain states will log td errors for all actions to verify the shape of the response."""
 
         self.assertEqual(len(self.training_history_database.get_td_errors(5, 5)), 0)
-
-        state_ids = list(range(10))
+        state_ids = list(range(3))
         actions = [0, 1, 2]
         for (state_id, action) in itertools.product(state_ids, actions):
             td_errors = self.training_history_database.get_td_errors(state_id=state_id, action=action)
+            self.assertEqual(len(td_errors), 5)
             self.assertTrue(
             all(
                 [

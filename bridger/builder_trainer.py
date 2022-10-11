@@ -268,7 +268,7 @@ class BridgeBuilderModel(pl.LightningModule):
             seed=torch.rand(1).item(),
         )
         self._state_action_cache = StateActionCache(
-            env=self._validation_env, make_hashable_fn=str
+            env=self._validation_env, make_hashable_fn=hash_utils.hash_tensor
         )
 
         self.replay_buffer = replay_buffer.ReplayBuffer(
