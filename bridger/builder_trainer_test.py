@@ -194,7 +194,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=max_steps).fit(
                 test_utils.get_model(
-                    object_log_manager=object_log_manager, debug_td_error=True, debug=True, batch_size=2
+                    object_log_manager=object_log_manager, debug=True, batch_size=2
                 )
             )
 
