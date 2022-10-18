@@ -652,24 +652,25 @@ class BridgeBuilderModel(pl.LightningModule):
                 ),
             )
 
-            frequent_states: list[torch.Tensor] = self._state_visit_logger.get_top_n(
-                _FREQUENTLY_VISITED_STATE_COUNT
-            )
-            # Sample all possible actions over the state space.
-            actions = range(self.env.nA)
+            if self.hparams.debug_td_error:
+                frequent_states: list[torch.Tensor] = self._state_visit_logger.get_top_n(
+                    _FREQUENTLY_VISITED_STATE_COUNT
+                )
+                # Sample all possible actions over the state space.
+                actions = range(self.env.nA)
 
-            # TODO(Issue#154): Combine cache entries to make a single batched call to get_td_error before logging.
-            for frequent_state in frequent_states:
-                for cache_action in actions:
-                    (
-                        state,
-                        action,
-                        next_state,
-                        reward,
-                        environment_completion_status,
-                    ) = self._state_action_cache.cache_get(
-                        frequent_state.numpy(), cache_action
-                    )
+                # TODO(Issue#154): Combine cache entries to make a single batched call to get_td_error before logging.
+                for frequent_state in frequent_states:
+                    for cache_action in actions:
+                        (
+                            state,
+                            action,
+                            next_state,
+                            reward,
+                            environment_completion_status,
+                        ) = self._state_action_cache.cache_get(
+                            frequent_state.numpy(), cache_action
+                        )
 
                     self._object_log_manager.log(
                         log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
