@@ -653,6 +653,7 @@ class BridgeBuilderModel(pl.LightningModule):
             )
 
             if self.hparams.debug_td_error:
+                # Log richer representation of td error for testing.
                 frequent_states: list[torch.Tensor] = self._state_visit_logger.get_top_n(
                     _FREQUENTLY_VISITED_STATE_COUNT
                 )
@@ -672,21 +673,35 @@ class BridgeBuilderModel(pl.LightningModule):
                             frequent_state.numpy(), cache_action
                         )
 
+                        self._object_log_manager.log(
+                            log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
+                            log_entry.TrainingHistoryTDErrorLogEntry(
+                                batch_idx=batch_idx,
+                                state_id=self._state_logger.get_logged_object_id(
+                                    torch.tensor(state)
+                                ),
+                                action=action,
+                                td_error=self.get_td_error(
+                                    states=torch.tensor([state]),
+                                    actions=torch.tensor([action]),
+                                    next_states=torch.tensor([next_state]),
+                                    rewards=torch.tensor([reward]),
+                                    success=torch.tensor([environment_completion_status]),
+                                ).item(),
+                            ),
+                        )
+            else:
+                # Revert to logging td error log entries the original way.
+                for state, action, td_error in zip(
+                states, actions.tolist(), td_errors.tolist()
+            ):
                     self._object_log_manager.log(
                         log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
                         log_entry.TrainingHistoryTDErrorLogEntry(
                             batch_idx=batch_idx,
-                            state_id=self._state_logger.get_logged_object_id(
-                                torch.tensor(state)
-                            ),
+                            state_id=self._state_logger.get_logged_object_id(state),
                             action=action,
-                            td_error=self.get_td_error(
-                                states=torch.tensor([state]),
-                                actions=torch.tensor([action]),
-                                next_states=torch.tensor([next_state]),
-                                rewards=torch.tensor([reward]),
-                                success=torch.tensor([environment_completion_status]),
-                            ).item(),
+                            td_error=td_error,
                         ),
                     )
 

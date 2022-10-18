@@ -194,7 +194,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=max_steps).fit(
                 test_utils.get_model(
-                    object_log_manager=object_log_manager, debug=True, batch_size=2
+                    object_log_manager=object_log_manager, debug=True, debug_td_error=True, batch_size=2
                 )
             )
 
@@ -223,7 +223,6 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 )
             )
         )
-
         self._verify_log_entries(expected_entries, logged_entries)
 
     def test_training_history_q_value_logging_exact(self):
@@ -325,7 +324,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             test_utils.get_trainer(max_steps=max_steps).fit(
                 test_utils.get_model(
                     object_log_manager=object_log_manager,
-                    debug_td_error=True,
+                    debug=True,
                     max_episode_length=2,
                     initial_memories_count=1,
                 )
