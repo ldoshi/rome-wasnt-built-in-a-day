@@ -112,11 +112,15 @@ class TrainingHistoryDatabase:
             max(self._q_values["action"].max(), self._td_errors["action"].max()) + 1
         )
 
-    def get_states_by_visit_count(self, n: Optional[int] = None) -> pd.DataFrame:
+    def get_states_by_visit_count(self, n: Optional[int] = None, start_batch_index: Optional[int] = None, end_batch_index: Optional[int] = None) -> pd.DataFrame:
         """Retrieves the top-n states by visit count.
 
         Args:
           n: The number of states to return.
+          start_batch_index: The first batch index (inclusive) to
+            consider when computing the states by visit count.
+          end_batch_index: The last batch index (inclusive) to
+            consider when computing the states by visit count.
 
         Returns:
           The top-n states sorted descending by visit count. The
@@ -125,8 +129,14 @@ class TrainingHistoryDatabase:
           visit_count.
 
         """
+        visits = self._visits
+        if start_batch_index is not None:
+            visits = visits[(visits['batch_idx'] >= start_batch_index)]
+        if end_batch_index is not None:
+            visits = visits[(visits['batch_idx'] <= end_batch_index)]
+
         return (
-            self._visits.groupby(["object"], sort=False)["batch_idx"]
+            visits.groupby(["object"], sort=False)["batch_idx"]
             .count()
             .reset_index(name="visit_count")
             .sort_values(["visit_count"], ascending=False)

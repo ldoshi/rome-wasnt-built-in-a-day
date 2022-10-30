@@ -105,6 +105,27 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
                 visited_states["visit_count"].iloc[i], expected_visit_count
             )
 
+    @parameterized.expand(
+        [
+            (
+                "start filter",
+                2, None, [0,1]
+            ),
+            (
+                "end filter",
+                None, 3, [0,1, 2]
+            ),
+            (
+                "both filters",
+                2, 3, [0]
+            ),
+        ]
+    )
+    def test_get_states_by_visit_count_with_batch_index_filters(self, name, start_batch_index, end_batch_index, expected_state_ids):
+        visited_states = self.training_history_database.get_states_by_visit_count(start_batch_index=start_batch_index, end_batch_index=end_batch_index)
+
+        self.assertEqual(list(visited_states['state_id']), expected_state_ids)
+
     def test_get_td_errors(self):
         """Ensure that for all batches, certain states will log td errors for all actions to verify the shape of the response."""
 
