@@ -40,7 +40,7 @@ def _read_object_log(dirname: str, log_filename: str):
 
 
 def _get_values_by_state_and_action(
-    df: pd.DataFrame, state_id: int, action: int, second_column: str
+        df: pd.DataFrame, state_id: int, action: int, start_batch_index: Optional[int], end_batch_index: Optional[int], second_column: str
 ) -> pd.DataFrame:
     """Retrieves batch_idx and second_column from df.
 
@@ -48,6 +48,10 @@ def _get_values_by_state_and_action(
       df: The dataframe from which to select rows.
       state_id: The state id for which to retrieve rows.
       action: The action for which to retrieve rows.
+      start_batch_index: The first batch index (inclusive) to
+        consider when filtering df.
+      end_batch_index: The last batch index (inclusive) to
+        consider when filtering df.
       second_column: The name of the second column to retrieve from df.
 
     Returns:
@@ -55,7 +59,13 @@ def _get_values_by_state_and_action(
         filtered for rows that contain state_id and action as values
         in the corresponding columns.
     """
-    return df[(df["state_id"] == state_id) & (df["action"] == action)][
+    df_filtered = df
+    if start_batch_index is not None:
+        df_filtered = df_filtered[(df_filtered['batch_idx'] >= start_batch_index)]
+    if end_batch_index is not None:
+        df_filtered = df_filtered[(df_filtered['batch_idx'] <= end_batch_index)]
+    
+    return df_filtered[(df_filtered["state_id"] == state_id) & (df_filtered["action"] == action)][
         ["batch_idx", second_column]
     ]
 
@@ -146,13 +156,17 @@ class TrainingHistoryDatabase:
             .rename(columns={"object": "state", "id": "state_id"})
         )
 
-    def get_td_errors(self, state_id: int, action: int) -> pd.DataFrame:
+    def get_td_errors(self, state_id: int, action: int, start_batch_index: Optional[int] = None, end_batch_index: Optional[int] = None) -> pd.DataFrame:
 
         """Retrieves td_error values for the requested state and action.
 
         Args:
           state_id: The state id for which to retrieve td errors.
           action: The action for which to retrieve td errors.
+          start_batch_index: The first batch index (inclusive) to
+            consider when filtering the data.
+          end_batch_index: The last batch index (inclusive) to
+            consider when filtering the data.
 
         Returns:
           A dataframe with two columns, batch_idx and td_error,
@@ -160,16 +174,19 @@ class TrainingHistoryDatabase:
             in the corresponding columns.
         """
         return _get_values_by_state_and_action(
-            self._td_errors, state_id, action, "td_error"
-        )
+            df=self._td_errors, state_id=state_id, action=action, start_batch_index=start_batch_index, end_batch_index=end_batch_index, second_column="td_error"        )
 
-    def get_q_values(self, state_id: int, action: int) -> pd.DataFrame:
+    def get_q_values(self, state_id: int, action: int, start_batch_index: Optional[int] = None, end_batch_index: Optional[int] = None) -> pd.DataFrame:
 
         """Retrieves q values for the requested state and action.
 
         Args:
           state_id: The state id for which to retrieve q values.
           action: The action for which to retrieve q values.
+          start_batch_index: The first batch index (inclusive) to
+            consider when filtering the data.
+          end_batch_index: The last batch index (inclusive) to
+            consider when filtering the data.
 
         Returns:
           A dataframe with two columns, batch_idx and q_values,
@@ -177,22 +194,24 @@ class TrainingHistoryDatabase:
             in the corresponding columns.
         """
         return _get_values_by_state_and_action(
-            self._q_values, state_id, action, "q_value"
+            df=         self._q_values, state_id=state_id,action= action,start_batch_index=start_batch_index,end_batch_index=end_batch_index,second_column= "q_value"
         )
 
-    def get_q_target_values(self, state_id: int, action: int) -> pd.DataFrame:
+    def get_q_target_values(self, state_id: int, action: int, start_batch_index: Optional[int] = None, end_batch_index: Optional[int] = None) -> pd.DataFrame:
 
         """Retrieves q target values for the requested state and action.
 
         Args:
           state_id: The state id for which to retrieve q target values.
           action: The action for which to retrieve q target values.
+          start_batch_index: The first batch index (inclusive) to
+            consider when filtered the data.
+          end_batch_index: The last batch index (inclusive) to
+            consider when filtering the data.
 
         Returns:
           A dataframe with two columns, batch_idx and q_target_values,
             filtered for rows that contain state_id and action as values
             in the corresponding columns.
         """
-        return _get_values_by_state_and_action(
-            self._q_values, state_id, action, "q_target_value"
-        )
+        return _get_values_by_state_and_action(df=            self._q_values, state_id=state_id, action=action, start_batch_index=start_batch_index,end_batch_index=end_batch_index,second_column= "q_target_value"        )

@@ -122,6 +122,7 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         ]
     )
     def test_get_states_by_visit_count_with_batch_index_filters(self, name, start_batch_index, end_batch_index, expected_state_ids):
+        """Verifies batch filter indices prune states considered."""
         visited_states = self.training_history_database.get_states_by_visit_count(start_batch_index=start_batch_index, end_batch_index=end_batch_index)
 
         self.assertEqual(list(visited_states['state_id']), expected_state_ids)
@@ -141,6 +142,37 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
                     isinstance(td_error, float)
                     for td_error in td_errors["td_error"]
                 ]
+            )
+        )
+
+    @parameterized.expand(
+        [
+            (
+                "start filter",
+                2, None, 3
+            ),
+            (
+                "end filter",
+                None, 3, 4
+            ),
+            (
+                "both filters",
+                2, 3, 2
+            ),
+        ]
+    )
+    def test_get_td_errors_with_batch_index_filters(self,name, start_batch_index, end_batch_index, expected_entry_count):
+        """Verifies batch filter indices prune states considered."""
+
+        self.assertEqual(len(self.training_history_database.get_td_errors(5, 5)), 0)
+        td_errors = self.training_history_database.get_td_errors(state_id=0, action=0, start_batch_index=start_batch_index, end_batch_index=end_batch_index)
+        self.assertEqual(len(td_errors), expected_entry_count)
+        self.assertTrue(
+            all(
+            [
+                isinstance(td_error, float)
+                for td_error in td_errors["td_error"]
+            ]
             )
         )
 
