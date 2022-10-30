@@ -1,0 +1,49 @@
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+<script src= {{ url_for('static',filename='js/common.js') }}></script>
+<script src= {{ url_for('static',filename='js/training_history.js') }}></script>
+
+<link rel= "stylesheet" type= "text/css" href= {{ url_for('static',filename='css/common.css') }}>
+<link rel= "stylesheet" type= "text/css" href= {{ url_for('static',filename='css/training_history.css') }}>
+
+
+<html>
+  <head>
+    <title>Sibyl: Training History</title>
+  </head>
+  <body>
+
+    <div id="welcome">Training History Viewer</div>
+
+    <div id="controls">
+      <div class="control">
+	<button class="control-label" onclick="update_plots()">
+	  Update Plots
+	</button>
+      </div>
+      <div class="control">
+	<div class="control-label">Start Batch Index</div>
+	<input class="control-input" size="2">
+      </div>
+      <div class="control">
+	<div class="control-label">End Batch Index</div>
+	<input class="control-input" size="2">
+      </div>
+      <div class="control">
+	<div class="control-label">Max Points Per Plot</div>
+	<input class="control-input" size="2">
+      </div>
+    </div>
+
+    <div id="plots-holder"></div>
+
+
+    <script>
+      $( document ).ready(function() {
+	  update_plots();
+      });
+    </script>
+
+  </body>
+</html>

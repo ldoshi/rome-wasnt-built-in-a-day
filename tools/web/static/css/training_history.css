@@ -1,0 +1,23 @@
+#data-filter {
+
+}
+
+.state-plot-holder {
+    width: 100px;
+    float: left;
+}
+
+.state-plot-info {
+    clear: both;
+    float: left;
+}
+
+.state-plot-state {
+    clear: both;
+    float: left;
+}
+
+.state-plot-state-canvas {
+    float: left;
+    width: 200px;
+}

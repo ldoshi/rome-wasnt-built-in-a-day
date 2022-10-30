@@ -1,0 +1,49 @@
+body {
+    background-color: black;
+    color: white;
+}
+
+#welcome {
+    padding: 10px;
+    font-size: 24px;
+    float: left;
+}
+
+#navigation-links {
+    float: right;
+}
+
+#controls {
+    clear: both;
+    border: solid white 2px;
+    overflow: hidden;
+}
+
+.control {
+    float: left;
+    padding: 10px;
+}
+
+.control-label {
+    float: left;
+    font-size: 14px;
+    padding: 10px;
+}
+.control-input {
+    float: left;
+    padding: 10px;
+}
+
+#plots-holder {
+
+}
+
+.plots-row {
+    clear: both;
+}
+
+.plot-holder {
+    float: left;
+}
+
+
