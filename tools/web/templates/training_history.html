@@ -1,6 +1,10 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
+<script>
+  var _ROOT_URL = '{{ request.url_root }}';
+</script>
+
 <script src= {{ url_for('static',filename='js/common.js') }}></script>
 <script src= {{ url_for('static',filename='js/training_history.js') }}></script>
 
@@ -24,15 +28,15 @@
       </div>
       <div class="control">
 	<div class="control-label">Start Batch Index</div>
-	<input class="control-input" size="2">
+	<input id="start-batch-index" class="control-input" size="2">
       </div>
       <div class="control">
 	<div class="control-label">End Batch Index</div>
-	<input class="control-input" size="2">
+	<input id="end-batch-index" class="control-input" size="2">
       </div>
       <div class="control">
 	<div class="control-label">Max Points Per Plot</div>
-	<input class="control-input" size="2">
+	<input id="max-points-per-plot" class="control-input" size="2">
       </div>
     </div>
 

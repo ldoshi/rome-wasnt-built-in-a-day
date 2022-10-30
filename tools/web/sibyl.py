@@ -14,6 +14,19 @@ def index():
 
     return 'Web App with Python Flask! ' + str(_OBJECT_LOG_CACHE.get(object_log_cache.STATES_BY_STATE_ID_KEY).keys()) + ' ' + str(_OBJECT_LOG_CACHE.key_hit_counts) + ' ' + str(_OBJECT_LOG_CACHE.key_miss_counts)
 
+@app.route("/training_history_plot_data", methods=["GET"])
+def training_history_plot_data():
+    start_batch_index = flask.request.args.get("start_batch_index")
+    end_batch_index = flask.request.args.get("end_batch_index")
+    max_points_per_plot = flask.request.args.get("max_points_per_plot")
+
+    print('start ' , start_batch_index)
+    print('end ' , end_batch_index)
+    print('max ' , max_points_per_plot)
+    
+    return {'hi' : 1}
+
+
 @app.route('/training_history')
 def training_history():
 

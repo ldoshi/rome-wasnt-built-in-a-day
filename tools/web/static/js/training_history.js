@@ -2,12 +2,21 @@
 function update_plots() {
 
     // get data.
+    let start_batch_index = $("#start-batch-index").val();
+    let end_batch_index = $("#end-batch-index").val();
+    let max_points_per_plot = $("#max-points-per-plot").val();
+
+    $.get(`${_ROOT_URL}training_history_plot_data`, { "start_batch_index": start_batch_index, "end_batch_index" : end_batch_index, "max_points_per_plot" : max_points_per_plot}, function(data, response) {
+	alert(data);
+    });    
+    
+    
     // render it.
 
-    create_plot_div_structure(3);
-    render_state_plot(0, null);
-    render_state_plot(1, null);
-    render_state_plot(2, null);
+//    create_plot_div_structure(3);
+  //  render_state_plot(0, null);
+  //  render_state_plot(1, null);
+   // render_state_plot(2, null);
 }
 
 function create_plot_div_structure(state_count) {
