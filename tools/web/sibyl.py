@@ -1,39 +1,70 @@
 import argparse
 import flask
+import time
+
+from typing import Optional
 
 import object_log_cache
+import plot_utils
 
 app = flask.Flask(__name__)
 
 _OBJECT_LOG_CACHE = None
 
-# Visualize data
+def _get_int_or_none(name: str) -> Optional[int]:
+    value = flask.request.args.get(name)
+    return int(value) if value else None
 
 @app.route('/')
 def index():
-
-    return 'Web App with Python Flask! ' + str(_OBJECT_LOG_CACHE.get(object_log_cache.STATES_BY_STATE_ID_KEY).keys()) + ' ' + str(_OBJECT_LOG_CACHE.key_hit_counts) + ' ' + str(_OBJECT_LOG_CACHE.key_miss_counts)
+    return 'Web App with Python Flask!'
 
 @app.route("/training_history_plot_data", methods=["GET"])
 def training_history_plot_data():
-    start_batch_index = flask.request.args.get("start_batch_index")
-    end_batch_index = flask.request.args.get("end_batch_index")
-    max_points_per_plot = flask.request.args.get("max_points_per_plot")
+    start = int(time.time() * 1e3)
+    start_batch_index = _get_int_or_none("start_batch_index")
+    end_batch_index = _get_int_or_none("end_batch_index")
+    max_points_per_series = _get_int_or_none("max_points_per_series")
+    number_of_states = _get_int_or_none("number_of_states")
 
-    print('start ' , start_batch_index)
-    print('end ' , end_batch_index)
-    print('max ' , max_points_per_plot)
+    states_by_state_id = _OBJECT_LOG_CACHE.get(object_log_cache.STATES_BY_STATE_ID_KEY)
+    training_history_database = _OBJECT_LOG_CACHE.get(object_log_cache.TRAINING_HISTORY_DATABASE_KEY)
+
+    states = training_history_database.get_states_by_visit_count(n=number_of_states, start_batch_index=start_batch_index, end_batch_index=end_batch_index)
+    plot_data = []
+
+    min_batch_index = start_batch_index
+    max_batch_index = end_batch_index
+
     
-    return {'hi' : 1}
+    for index, row in states.iterrows():
+        state_plot_data = {'visit_count' : row['visit_count'], 'state' : states_by_state_id[row['state_id']].tolist()}
+
+        # make this generic arocc q and q target.
+        td_errors = {}
+        series_data = []
+        series_labels = []
+        for action in range(training_history_database.actions_n):
+            df = training_history_database.get_td_errors(state_id=row['state_id'], action=action, start_batch_index=start_batch_index, end_batch_index=end_batch_index)
+            df = plot_utils.downsample(df=df, n=max_points_per_series)
+            series_data.append([{"x" : df_row["batch_idx"], "y" : df_row["td_error"]}        for df_index, df_row in df.iterrows()])
+            series_labels.append(str(action))
+            min_batch_index = min(min_batch_index, df['batch_idx'].min()) if min_batch_index is not None else df['batch_idx'].min()
+            max_batch_index = max(max_batch_index, df['batch_idx'].max()) if max_batch_index is not None else df['batch_idx'].max()
+                
+        state_plot_data['td_error'] = {
+            'series_data' : series_data,
+            'series_labels' : series_labels
+        }
+        plot_data.append(state_plot_data)    
+
+    end = int(time.time() * 1e3)
+    print(f"Sibly training_history_plot_data took {end-start} ms.")
+    return {'plot_data' : plot_data, 'labels' : list(range(min_batch_index, max_batch_index + 1))}
 
 
 @app.route('/training_history')
-def training_history():
-
-    states_by_state_id = _OBJECT_LOG_CACHE.get(object_log_cache.STATES_BY_STATE_ID_KEY)
-    a = next(iter(states_by_state_id))
-    print(states_by_state_id[a].tolist())
-    
+def training_history():    
     return flask.render_template('training_history.html')
     
 

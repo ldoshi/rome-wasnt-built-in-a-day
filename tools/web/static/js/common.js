@@ -7,10 +7,11 @@ let _COLOR_MAP = {
     2: "#550000",
 }
 
+let _BLOCK_BORDER_WIDTH = 1;
+
 function render_array_2d(data, canvas_id) {
-    console.log(canvas_id);
     let canvas = $(`#${canvas_id}`)[0]
-    let width = canvas.width; 
+    let width = canvas.width;
     let block_size = width/data[0].length;
     height = block_size * data.length;
     canvas.height = block_size * data.length;
@@ -25,9 +26,7 @@ function render_array_2d(data, canvas_id) {
     for (let y = 0; y < data.length; y++) {
 	for (let x = 0; x < data[y].length; x++) {
 	    ctx.fillStyle = _COLOR_MAP[data[y][x]];
-	    // Fill such that a 1px white border is left around each
-	    // block.
-	    ctx.fillRect(x * block_size + 1, y * block_size + 1, block_size - 2, block_size - 2);
+	    ctx.fillRect(x * block_size + _BLOCK_BORDER_WIDTH, y * block_size + _BLOCK_BORDER_WIDTH, block_size - 2 * _BLOCK_BORDER_WIDTH, block_size - 2 * _BLOCK_BORDER_WIDTH);
 	}
     }
 }

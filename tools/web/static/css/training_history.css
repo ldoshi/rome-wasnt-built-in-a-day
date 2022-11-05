@@ -2,14 +2,23 @@
 
 }
 
-.state-plot-holder {
-    width: 100px;
+.training-plot-holder {
     float: left;
+    width: 30%;
+}
+
+.state-plot-holder {
+    float: left;
+    width: 10%;
 }
 
 .state-plot-info {
     clear: both;
     float: left;
+    width: 100%;
+    font-weight: bold;
+    font-size: 20px;
+    text-align: center;
 }
 
 .state-plot-state {
@@ -17,7 +26,7 @@
     float: left;
 }
 
-.state-plot-state-canvas {
+.plot-canvas {
     float: left;
-    width: 200px;
+    width: 100%;
 }

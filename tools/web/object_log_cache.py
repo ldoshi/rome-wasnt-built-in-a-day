@@ -8,6 +8,7 @@ any race conditions to get/load data.
 
 import collections
 import os
+import time
 import torch
 
 from typing import Any, Callable, Dict, List
@@ -107,7 +108,10 @@ class ObjectLogCache:
         if key not in self._cache:
             self.key_miss_counts[key] += 1
             try:
+                start = int(time.time() * 1e3)
                 self._cache[key] = self._loaders[key](self._log_dir)
+                end = int(time.time() * 1e3)
+                print(f"ObjectLogCache loading {key} took {end-start} ms.")
             except FileNotFoundError:
                 return None
         else:
