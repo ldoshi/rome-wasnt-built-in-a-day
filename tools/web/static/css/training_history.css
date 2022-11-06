@@ -2,12 +2,12 @@
 
 }
 
-.training-plot-holder {
+.plot-holder-metric {
     float: left;
     width: 30%;
 }
 
-.state-plot-holder {
+.plot-holder-state {
     float: left;
     width: 10%;
 }

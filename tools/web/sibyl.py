@@ -1,5 +1,6 @@
 import argparse
 import flask
+import pandas
 import time
 
 from typing import Optional
@@ -36,26 +37,29 @@ def training_history_plot_data():
     min_batch_index = start_batch_index
     max_batch_index = end_batch_index
 
-    
+    metrics_and_data_fns = [("td_error", training_history_database.get_td_errors),
+                            ("q_value" , training_history_database.get_q_values),
+                            ("q_target_value" , training_history_database.get_q_target_values)]
     for index, row in states.iterrows():
-        state_plot_data = {'visit_count' : row['visit_count'], 'state' : states_by_state_id[row['state_id']].tolist()}
+        state_plot_data = {'visit_count' : row['visit_count'], 'state' : states_by_state_id[row['state_id']].tolist(), 'metrics' : []}
 
-        # make this generic arocc q and q target.
-        td_errors = {}
-        series_data = []
-        series_labels = []
-        for action in range(training_history_database.actions_n):
-            df = training_history_database.get_td_errors(state_id=row['state_id'], action=action, start_batch_index=start_batch_index, end_batch_index=end_batch_index)
-            df = plot_utils.downsample(df=df, n=max_points_per_series)
-            series_data.append([{"x" : df_row["batch_idx"], "y" : df_row["td_error"]}        for df_index, df_row in df.iterrows()])
-            series_labels.append(str(action))
-            min_batch_index = min(min_batch_index, df['batch_idx'].min()) if min_batch_index is not None else df['batch_idx'].min()
-            max_batch_index = max(max_batch_index, df['batch_idx'].max()) if max_batch_index is not None else df['batch_idx'].max()
-                
-        state_plot_data['td_error'] = {
-            'series_data' : series_data,
-            'series_labels' : series_labels
-        }
+        for metric, data_fn in metrics_and_data_fns:
+            series_data = []
+            series_labels = []
+            for action in range(training_history_database.actions_n):
+                df = data_fn(state_id=row['state_id'], action=action, start_batch_index=start_batch_index, end_batch_index=end_batch_index)
+                df = plot_utils.downsample(df=df, n=max_points_per_series)
+                series_data.append([{"x" : df_row["batch_idx"], "y" : df_row[metric]}        for df_index, df_row in df.iterrows()])
+                series_labels.append(str(action))
+                min_batch_index = min(min_batch_index, df['batch_idx'].min()) if min_batch_index is not None else df['batch_idx'].min()
+                max_batch_index = max(max_batch_index, df['batch_idx'].max()) if max_batch_index is not None else df['batch_idx'].max()
+
+            state_plot_data['metrics'].append({
+                'metric' : metric,
+                'series_data' : series_data,
+                'series_labels' : series_labels
+            })
+            
         plot_data.append(state_plot_data)    
 
     end = int(time.time() * 1e3)

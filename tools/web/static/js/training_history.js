@@ -6,6 +6,10 @@ let _CHART_OPTIONS_TEMPLATE = {
     }
 };
 
+// TODO(lyric):
+// * restack and resize)
+// * y-axis policies)
+
 //    chart_options['scales']['y']['max'] = 100;
 //    chart_options['scales']['y']['title'] = {display: true, text: 'Percent of Day'}
 
@@ -19,7 +23,7 @@ let _COLORS = [
     'rgba(255, 0, 255, 1)',
     ]
 
-let _DATASET_TEMPLATE = {
+ let _DATASET_TEMPLATE = {
     borderWidth: 1,
     radius: 1,
     hoverRadius: 2,
@@ -38,39 +42,45 @@ function update_plots() {
 
     $.get(`${_ROOT_URL}training_history_plot_data`, { "start_batch_index": start_batch_index, "end_batch_index" : end_batch_index, "max_points_per_series" : max_points_per_series, "number_of_states" : number_of_states}, function(data, response) {
 	let plot_data = data['plot_data'];
-	create_plot_div_structure(plot_data.length);
-	for (let i = 0; i < plot_data.length; i++) {
-	    let row_data = plot_data[i];
-	    render_state_plot(i, row_data);
-	    render_training_plot("td-error", i, data['labels'], row_data['td_error']['series_data'], row_data['td_error']['series_labels']);
+	if (plot_data.length == 0) {
+	    return;
 	}
 
-	
+	create_plot_div_structure(plot_data.length, plot_data[0]['metrics'].length);
+
+	for (let state_index = 0; state_index < plot_data.length; state_index++) {
+	    let row_data = plot_data[state_index];
+	    render_state_plot(state_index, row_data);
+	    for (let metric_index = 0; metric_index < row_data['metrics'].length; metric_index++) {
+		let metric_entry = row_data['metrics'][metric_index];
+		render_training_plot(metric_entry['metric'], state_index, metric_index, data['labels'], metric_entry['series_data'], metric_entry['series_labels']);
+	    }
+	}
     });    
 }
 
-function create_plot_div_structure(state_count) {
+function create_plot_div_structure(state_count, metric_count) {
     // Creates the plot-related div structure for all the rows of
     // data.
 
     let plot_divs = "";
     for (let i = 0; i < state_count; i++) {
 	plot_divs += `<div class="plots-row plots-row-background-${i % 2}">`;
-	plot_divs += `<div id="state-plot-holder-${i}" class="state-plot-holder"></div>`;
-	plot_divs += `<div id="td-error-plot-holder-${i}" class="training-plot-holder"></div>`;
-	plot_divs += `<div id="q-plot-holder-${i}" class="training-plot-holder"></div>`;
-	plot_divs += `<div id="q-target-plot-holder-${i}" class="training-plot-holder"></div>`;	
+	plot_divs += `<div id="plot-holder-${i}-state" class="plot-holder-state"></div>`;
+	for (let j = 0; j < metric_count; j++) {
+	    plot_divs += `<div id="plot-holder-${i}-metric-${j}" class="plot-holder-metric"></div>`;
+	}
 	plot_divs += '</div>';
     }
     $("#plots-holder").html(plot_divs)
 }
 
-function render_training_plot(training_identifier, state_index, labels, series_data, series_labels) {
+function render_training_plot(metric, state_index, metric_index, labels, series_data, series_labels) {
     // Add things like title, axis control. min and max. fix axis label colors. legend formatting.
     // Plot zoom or enlarge panel ideas. how about a button to make charts full width and wrap/stack!.
-    let canvas_id = `${training_identifier}-plot-canvas-${state_index}`;
+    let canvas_id = `plot-canvas-${state_index}-metric-${metric_index}`;
     training_plot_html = `<canvas id="${canvas_id}" class="plot-canvas"></canvas>`;
-    $(`#${training_identifier}-plot-holder-${state_index}`).html(training_plot_html);
+    $(`#plot-holder-${state_index}-metric-${metric_index}`).html(training_plot_html);
     
     let datasets = []
     for (let i = 0; i < series_data.length; i++) {
@@ -99,7 +109,7 @@ function render_state_plot(state_index, data) {
     let canvas_id = `state-plot-state-canvas-${state_index}`
     let state_plot_html = `<div class="state-plot-info">Visits: ${data['visit_count']}</div>`;
     state_plot_html += `<div id="state-plot-state-${state_index}" class="state-plot-state"><canvas id="${canvas_id}" class="plot-canvas"></canvas></div>`;
-    $(`#state-plot-holder-${state_index}`).html(state_plot_html);
+    $(`#plot-holder-${state_index}-state`).html(state_plot_html);
 
     render_array_2d(data['state'], canvas_id);
 }
