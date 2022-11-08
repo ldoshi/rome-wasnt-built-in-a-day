@@ -28,6 +28,7 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
             test_utils.get_trainer(max_steps=5).fit(
                 test_utils.get_model(
                     object_log_manager=object_log_manager,
+                    debug_td_error=True,
                     debug=True,
                     max_episode_length=2,
                     initial_memories_count=9,
