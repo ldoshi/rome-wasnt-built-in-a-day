@@ -35,6 +35,7 @@ def get_model(
     object_log_manager: object_logging.ObjectLogManager,
     debug: bool = False,
     debug_action_inversion_checker: bool = False,
+    debug_td_error: bool = False,
     env_width=3,
     max_episode_length=1,
     batch_size=5,
@@ -52,6 +53,7 @@ def get_model(
         initial_memories_count=initial_memories_count,
         debug=debug,
         debug_action_inversion_checker=debug_action_inversion_checker,
+        debug_td_error=debug_td_error,
     )
 
 
