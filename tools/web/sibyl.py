@@ -1,6 +1,5 @@
 import argparse
 import flask
-import pandas
 import time
 
 from typing import Optional
@@ -16,12 +15,11 @@ def _get_int_or_none(name: str) -> Optional[int]:
     value = flask.request.args.get(name)
     return int(value) if value else None
 
-@app.route('/')
-def index():
-    return 'Web App with Python Flask!'
-
 @app.route("/training_history_plot_data", methods=["GET"])
 def training_history_plot_data():
+    """Provides plot data on states and metrics based on filters.
+
+    This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
     start_batch_index = _get_int_or_none("start_batch_index")
     end_batch_index = _get_int_or_none("end_batch_index")
