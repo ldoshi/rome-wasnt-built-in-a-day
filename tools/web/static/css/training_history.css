@@ -1,7 +1,3 @@
-#data-filter {
-
-}
-
 .plot-holder-metric {
     float: left;
 }
@@ -36,8 +32,4 @@
 .plot-canvas {
     float: left;
     width: 100%;
-}
-
-.zoom-button {
-
 }

@@ -1,5 +1,5 @@
-// TODO(lyric): Add optional arguments for additional things to draw
-// like for action inversion analysis.
+// TODO(lyric): Add optional arguments for additional elements to
+// draw, such as for action inversion analysis visualizations.
 
 let _COLOR_MAP = {
     0: "#FFFFFF",
@@ -14,7 +14,7 @@ function render_array_2d(data, canvas_id) {
     let width = canvas.width;
     let block_size = width/data[0].length;
     height = block_size * data.length;
-    canvas.height = block_size * data.length;
+    canvas.height = height;
 
     let ctx = canvas.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); 

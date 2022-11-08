@@ -22,7 +22,6 @@ let _CHART_OPTIONS_TEMPLATE = {
                     size: 12,
 		}
 	    },
-	    min: 0,
         },
     },
     plugins: {
@@ -44,14 +43,7 @@ let _CHART_OPTIONS_TEMPLATE = {
 
 };
 
-// TODO(lyric):
-// * restack and resize)
-// * y-axis policies)
-
-//    chart_options['scales']['y']['max'] = 100;
-//    chart_options['scales']['y']['title'] = {display: true, text: 'Percent of Day'}
-
-// Add color list.
+// TODO(lyric): Create a better color list.
 let _COLORS = [
     'rgba(255, 0, 0, 1)',
     'rgba(0, 255, 0, 1)',
@@ -59,20 +51,22 @@ let _COLORS = [
     'rgba(255, 255, 0, 1)',
     'rgba(0, 255, 255, 1)',
     'rgba(255, 0, 255, 1)',
-    ]
+    'rgba(127, 0, 0, 1)',
+    'rgba(0, 127, 0, 1)',
+    'rgba(0, 0, 127, 1)',
+    'rgba(127, 127, 0, 1)',
+    'rgba(0, 127, 127, 1)',
+    'rgba(127, 0, 127, 1)',
+]
 
- let _DATASET_TEMPLATE = {
+let _DATASET_TEMPLATE = {
     borderWidth: 1,
     radius: 1,
     hoverRadius: 2,
     hoverBorderWidth: 2
 };
 
-
-// Set default values?
 function update_plots() {
-
-    // get data.
     let start_batch_index = $("#start-batch-index").val();
     let end_batch_index = $("#end-batch-index").val();
     let max_points_per_series = $("#max-points-per-series").val();
@@ -114,8 +108,6 @@ function create_plot_div_structure(state_count, metric_count) {
 }
 
 function render_training_plot(metric, state_index, metric_index, labels, series_data, series_labels) {
-    // Add things like title, axis control. min and max. fix axis label colors. legend formatting.
-    // Plot zoom or enlarge panel ideas. how about a button to make charts full width and wrap/stack!.
     let canvas_id = `plot-canvas-${state_index}-metric-${metric_index}`;
     training_plot_html = `<canvas id="${canvas_id}" class="plot-canvas"></canvas>`;
     $(`#plot-holder-${state_index}-metric-${metric_index}`).html(training_plot_html);
@@ -144,7 +136,6 @@ function render_training_plot(metric, state_index, metric_index, labels, series_
 }
 
 function render_state_plot(state_index, data) {
-    // Set the info and canvas html structure.
     let canvas_id = `state-plot-state-canvas-${state_index}`
     let state_plot_html = `<div class="state-plot-info">Visits: ${data['visit_count']}</div>`;
     state_plot_html += `<div id="state-plot-state-${state_index}" class="state-plot-state"><canvas id="${canvas_id}" class="plot-canvas"></canvas></div>`;
