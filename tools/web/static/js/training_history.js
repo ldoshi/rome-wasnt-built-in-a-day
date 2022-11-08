@@ -1,9 +1,28 @@
 let _CHART_OPTIONS_TEMPLATE = {
     scales: {
+	x: {
+	    title: {
+		display: true,
+		color: "#FFFFFF",
+		font: {
+                    size: 12,
+		}
+            }
+	},
         y: {
 	    min: 0,
         },
-    }
+    },
+    plugins: {
+	title: {
+	    color: "#FFFFFF",
+	    display: true,
+	    font: {
+                size: 16,
+	    }
+	},
+    },
+
 };
 
 // TODO(lyric):
@@ -82,7 +101,7 @@ function render_training_plot(metric, state_index, metric_index, labels, series_
     training_plot_html = `<canvas id="${canvas_id}" class="plot-canvas"></canvas>`;
     $(`#plot-holder-${state_index}-metric-${metric_index}`).html(training_plot_html);
     
-    let datasets = []
+    let datasets = [];
     for (let i = 0; i < series_data.length; i++) {
 	let dataset = structuredClone(_DATASET_TEMPLATE);
 	dataset['data'] = series_data[i];
@@ -93,7 +112,8 @@ function render_training_plot(metric, state_index, metric_index, labels, series_
     }
     
     chart_options = structuredClone(_CHART_OPTIONS_TEMPLATE);
-
+    chart_options['plugins']['title']['text'] = metric;
+    chart_options['scales']['x']['title']['text'] = 'Batch Index';
     new Chart($(`#${canvas_id}`), {
 	type: 'line',
 	data: {
