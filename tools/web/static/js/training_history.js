@@ -7,9 +7,21 @@ let _CHART_OPTIONS_TEMPLATE = {
 		font: {
                     size: 12,
 		}
-            }
+            },
+	    ticks: {
+		color: "#FFFFFF",
+		font: {
+                    size: 12,
+		}
+	    }
 	},
         y: {
+	    ticks: {
+		color: "#FFFFFF",
+		font: {
+                    size: 12,
+		}
+	    },
 	    min: 0,
         },
     },
@@ -19,6 +31,13 @@ let _CHART_OPTIONS_TEMPLATE = {
 	    display: true,
 	    font: {
                 size: 16,
+	    }
+	},
+	legend: {
+	    align: 'end',
+	    labels: {
+		boxWidth: 8,
+		color: "#FFFFFF",
 	    }
 	},
     },
@@ -87,7 +106,7 @@ function create_plot_div_structure(state_count, metric_count) {
 	plot_divs += `<div class="plots-row plots-row-background-${i % 2}">`;
 	plot_divs += `<div id="plot-holder-${i}-state" class="plot-holder-state"></div>`;
 	for (let j = 0; j < metric_count; j++) {
-	    plot_divs += `<div id="plot-holder-${i}-metric-${j}" class="plot-holder-metric"></div>`;
+	    plot_divs += `<div id="plot-holder-${i}-metric-${j}" class="plot-holder-metric plot-holder-metric-default-width"></div>`;
 	}
 	plot_divs += '</div>';
     }
@@ -134,4 +153,24 @@ function render_state_plot(state_index, data) {
     render_array_2d(data['state'], canvas_id);
 }
 
+function zoom_in_charts() {
+    $("#zoom-button-full").addClass("button-selected");
+    $("#zoom-button-full").removeClass("button-unselected");
+    
+    $("#zoom-button-default").addClass("button-unselected");
+    $("#zoom-button-default").removeClass("button-selected");
 
+    $(".plot-holder-metric").addClass("plot-holder-metric-full-width");
+    $(".plot-holder-metric").removeClass("plot-holder-metric-default-width");
+}
+
+function zoom_default_charts() {
+    $("#zoom-button-default").addClass("button-selected");
+    $("#zoom-button-default").removeClass("button-unselected");
+
+    $("#zoom-button-full").addClass("button-unselected");
+    $("#zoom-button-full").removeClass("button-selected");
+
+    $(".plot-holder-metric").addClass("plot-holder-metric-default-width");
+    $(".plot-holder-metric").removeClass("plot-holder-metric-full-width");
+}

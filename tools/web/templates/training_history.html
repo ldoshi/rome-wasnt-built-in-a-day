@@ -20,7 +20,7 @@
 
     <div id="welcome">Training History Viewer</div>
 
-    <div id="controls">
+    <div class="interactive-tools">
       <div class="control">
 	<button class="control-label" onclick="update_plots()">
 	  Update Plots
@@ -44,6 +44,15 @@
       </div>
     </div>
 
+
+    <div class="interactive-tools">
+      <div class="control">
+	<div class="control-label">Plot Zoom</div>
+	<button id="zoom-button-default" class="zoom-button control-label button-selected" onclick="zoom_default_charts()">Default</button>
+	<button id="zoom-button-full" class="zoom-button control-label button-unselected" onclick="zoom_in_charts()">Full Width</button>
+      </div>
+    </div>
+    
     <div id="plots-holder"></div>
 
 

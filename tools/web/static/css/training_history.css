@@ -4,7 +4,14 @@
 
 .plot-holder-metric {
     float: left;
+}
+
+.plot-holder-metric-default-width {
     width: 30%;
+}
+
+.plot-holder-metric-full-width {
+    width: 100%;
 }
 
 .plot-holder-state {
@@ -29,4 +36,8 @@
 .plot-canvas {
     float: left;
     width: 100%;
+}
+
+.zoom-button {
+
 }
