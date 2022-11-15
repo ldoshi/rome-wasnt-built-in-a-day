@@ -102,6 +102,7 @@ def training_history_plot_data():
     }
 
 
+@app.route("/")
 @app.route("/training_history")
 def training_history():
     return flask.render_template("training_history.html")
