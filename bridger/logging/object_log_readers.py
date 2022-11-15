@@ -261,3 +261,5 @@ class TrainingHistoryDatabase:
             end_batch_index=end_batch_index,
             second_column="q_target_value",
         )
+
+class ActionInversionDatabase:
