@@ -28,7 +28,6 @@ def training_history_plot_data():
     max_points_per_series = _get_int_or_none("max_points_per_series")
     number_of_states = _get_int_or_none("number_of_states")
 
-    states_by_state_id = _OBJECT_LOG_CACHE.get(object_log_cache.STATES_BY_STATE_ID_KEY)
     training_history_database = _OBJECT_LOG_CACHE.get(
         object_log_cache.TRAINING_HISTORY_DATABASE_KEY
     )
@@ -51,7 +50,7 @@ def training_history_plot_data():
     for index, row in states.iterrows():
         state_plot_data = {
             "visit_count": row["visit_count"],
-            "state": states_by_state_id[row["state_id"]].tolist(),
+            "state": row["state"].tolist(),
             "metrics": [],
         }
 
