@@ -17,43 +17,31 @@ class ObjectLogCacheTest(unittest.TestCase):
     """Verifies cache loading behavior."""
 
     def tearDown(self):
-        # TODO: Make a more coherent plan for writing test output to a temp dir
-        #       and retaining it on failure
+        # TODO: Make a more coherent plan for writing test output to a
+        # temp dir and retaining it on failure.
         shutil.rmtree("lightning_logs", ignore_errors=True)
         shutil.rmtree(_OBJECT_LOGGING_DIR, ignore_errors=True)
 
     def test_get_file_does_not_exist(self):
         cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
 
-        self.assertIsNone(
-            cache.get(object_log_cache.ACTION_INVERSION_REPORTS_BY_BATCH_ID_KEY)
-        )
+        self.assertIsNone(cache.get(object_log_cache.ACTION_INVERSION_DATABASE_KEY))
         self.assertEqual(
-            cache.key_miss_counts[
-                object_log_cache.ACTION_INVERSION_REPORTS_BY_BATCH_ID_KEY
-            ],
+            cache.key_miss_counts[object_log_cache.ACTION_INVERSION_DATABASE_KEY],
             1,
         )
         self.assertEqual(
-            cache.key_hit_counts[
-                object_log_cache.ACTION_INVERSION_REPORTS_BY_BATCH_ID_KEY
-            ],
+            cache.key_hit_counts[object_log_cache.ACTION_INVERSION_DATABASE_KEY],
             0,
         )
 
-        self.assertIsNone(
-            cache.get(object_log_cache.ACTION_INVERSION_REPORTS_BY_BATCH_ID_KEY)
-        )
+        self.assertIsNone(cache.get(object_log_cache.ACTION_INVERSION_DATABASE_KEY))
         self.assertEqual(
-            cache.key_miss_counts[
-                object_log_cache.ACTION_INVERSION_REPORTS_BY_BATCH_ID_KEY
-            ],
+            cache.key_miss_counts[object_log_cache.ACTION_INVERSION_DATABASE_KEY],
             2,
         )
         self.assertEqual(
-            cache.key_hit_counts[
-                object_log_cache.ACTION_INVERSION_REPORTS_BY_BATCH_ID_KEY
-            ],
+            cache.key_hit_counts[object_log_cache.ACTION_INVERSION_DATABASE_KEY],
             0,
         )
 
@@ -81,20 +69,20 @@ class ObjectLogCacheTest(unittest.TestCase):
 
         cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
 
-        self.assertIsNotNone(cache.get(object_log_cache.STATES_BY_STATE_ID_KEY))
+        self.assertIsNotNone(cache.get(object_log_cache.TRAINING_HISTORY_DATABASE_KEY))
         self.assertEqual(
-            cache.key_miss_counts[object_log_cache.STATES_BY_STATE_ID_KEY], 1
+            cache.key_miss_counts[object_log_cache.TRAINING_HISTORY_DATABASE_KEY], 1
         )
         self.assertEqual(
-            cache.key_hit_counts[object_log_cache.STATES_BY_STATE_ID_KEY], 0
+            cache.key_hit_counts[object_log_cache.TRAINING_HISTORY_DATABASE_KEY], 0
         )
 
-        self.assertIsNotNone(cache.get(object_log_cache.STATES_BY_STATE_ID_KEY))
+        self.assertIsNotNone(cache.get(object_log_cache.TRAINING_HISTORY_DATABASE_KEY))
         self.assertEqual(
-            cache.key_miss_counts[object_log_cache.STATES_BY_STATE_ID_KEY], 1
+            cache.key_miss_counts[object_log_cache.TRAINING_HISTORY_DATABASE_KEY], 1
         )
         self.assertEqual(
-            cache.key_hit_counts[object_log_cache.STATES_BY_STATE_ID_KEY], 1
+            cache.key_hit_counts[object_log_cache.TRAINING_HISTORY_DATABASE_KEY], 1
         )
 
     def test_loaders_smoke_test(self):
@@ -116,13 +104,10 @@ class ObjectLogCacheTest(unittest.TestCase):
 
         cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
 
-        states = cache.get(object_log_cache.STATES_BY_STATE_ID_KEY)
-        self.assertEqual(len(states), 2)
-
-        action_inversion_reports = cache.get(
-            object_log_cache.ACTION_INVERSION_REPORTS_BY_BATCH_ID_KEY
+        action_inversion_database = cache.get(
+            object_log_cache.ACTION_INVERSION_DATABASE_KEY
         )
-        self.assertEqual(len(action_inversion_reports), 1)
+        self.assertEqual(len(action_inversion_database.get_incidence_rate()), 2)
 
         training_history_database = cache.get(
             object_log_cache.TRAINING_HISTORY_DATABASE_KEY

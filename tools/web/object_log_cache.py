@@ -16,31 +16,14 @@ from typing import Any, Callable, Dict, List
 from bridger.logging import log_entry
 from bridger.logging import object_log_readers
 
-STATES_BY_STATE_ID_KEY = "states_by_state_id"
-ACTION_INVERSION_REPORTS_BY_BATCH_ID_KEY = "action_inversion_reports_by_batch_id"
+ACTION_INVERSION_DATABASE_KEY = "action_inversion_database_key"
 TRAINING_HISTORY_DATABASE_KEY = "training_history_database_key"
 
 
-def _load_action_inversion_reports_by_batch_id(
+def _load_action_inversion_database(
     log_dir: str,
-) -> Dict[int, List[log_entry.ActionInversionReportEntry]]:
-    reports = collections.defaultdict(list)
-
-    log_path = os.path.join(log_dir, log_entry.ACTION_INVERSION_REPORT_ENTRY)
-    for entry in object_log_readers.read_object_log(log_path):
-        reports[entry.batch_idx].append(entry)
-
-    return reports
-
-
-def _load_states_by_state_id(log_dir: str) -> Dict[int, torch.Tensor]:
-    states = {}
-
-    log_path = os.path.join(log_dir, log_entry.STATE_NORMALIZED_LOG_ENTRY)
-    for entry in object_log_readers.read_object_log(log_path):
-        states[entry.id] = entry.object
-
-    return states
+) -> object_log_readers.ActionInversionDatabase:
+    return object_log_readers.ActionInversionDatabase(dirname=log_dir)
 
 
 def _load_training_history_database(
@@ -50,8 +33,7 @@ def _load_training_history_database(
 
 
 _LOADERS = {
-    STATES_BY_STATE_ID_KEY: _load_states_by_state_id,
-    ACTION_INVERSION_REPORTS_BY_BATCH_ID_KEY: _load_action_inversion_reports_by_batch_id,
+    ACTION_INVERSION_DATABASE_KEY: _load_action_inversion_database,
     TRAINING_HISTORY_DATABASE_KEY: _load_training_history_database,
 }
 
