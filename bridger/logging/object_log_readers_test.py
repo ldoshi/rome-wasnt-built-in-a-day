@@ -295,9 +295,9 @@ class TestActionInversionDatabase(unittest.TestCase):
             ("filter end", None, 9, expected[:1]),
             ("filter start end", 7, 9, []),
         ]
-        for name, start_batch_idx, end_batch_idx, expected_divergences in test_cases:
+        for name, start_batch_index, end_batch_index, expected_divergences in test_cases:
             divergences = self._action_inversion_database.get_divergences(
-                start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
+                start_batch_index=start_batch_index, end_batch_index=end_batch_index
             )
             self.assertEqual(divergences, expected_divergences)
 
@@ -315,8 +315,8 @@ class TestActionInversionDatabase(unittest.TestCase):
         ]
         for (
             name,
-            start_batch_idx,
-            end_batch_idx,
+            start_batch_index,
+            end_batch_index,
             expected_batch_idxs,
             expected_incidence_rate,
         ) in test_cases:
@@ -324,7 +324,7 @@ class TestActionInversionDatabase(unittest.TestCase):
                 batch_idxs,
                 incidence_rate,
             ) = self._action_inversion_database.get_incidence_rate(
-                start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
+                start_batch_index=start_batch_index, end_batch_index=end_batch_index
             )
             self.assertEqual(batch_idxs, expected_batch_idxs)
             self.assertEqual(incidence_rate, expected_incidence_rate)

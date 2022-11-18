@@ -100,11 +100,52 @@ def training_history_plot_data():
         "labels": list(range(min_batch_index, max_batch_index + 1)),
     }
 
+@app.route("/action_inversion_plot_data", methods=["GET"])
+def action_inversion_plot_data():
+    """Provides summary plot data based on filters.
+
+    This endpoint is intended to respond to an AJAX call."""
+    start = int(time.time() * 1e3)
+    start_batch_index = _get_int_or_none("start_batch_index")
+    end_batch_index = _get_int_or_none("end_batch_index")
+
+    action_inversion_database = _OBJECT_LOG_CACHE.get(
+        object_log_cache.ACTION_INVERSION_DATABASE_KEY
+    )
+
+    series_data = []
+    series_labels = []
+    incidence_rate_batch_idxs, incidence_rate_report_counts = action_inversion_database.get_incidence_rate(start_batch_index=start_batch_index, end_batch_index=end_batch_index)
+    series_data.append([{"x": batch_idx, "y": report_count} for batch_idx, report_count in zip(incidence_rate_batch_idxs, incidence_rate_report_counts)])
+    series_labels.append("Action Inversion Reports")
+
+    min_batch_index = incidence_rate_batch_idxs[0] if incidence_rate_batch_idxs else 0
+    max_batch_index = incidence_rate_batch_idxs[-1] if incidence_rate_batch_idxs else 0
+
+    divergences = action_inversion_database.get_divergences(start_batch_index=start_batch_index, end_batch_index=end_batch_index)
+    series_data.append([{"x": divergence.batch_idx, "y" : divergence.divergence_magnitude}   for divergence in divergences])
+    series_labels.append("Divergence Magnitude")
+    if divergences:
+        min_batch_index = min(min_batch_index, divergences[0].batch_idx)
+        max_batch_index = max(max_batch_index, divergences[-1].batch_idx)
+
+    end = int(time.time() * 1e3)
+    print(f"Sibly action_inversion_plot_data took {end-start} ms.")
+    return {
+        "title": "Action Inversion Reports and Divergence Magnitudes",
+        "series_data": series_data,
+        "series_labels": series_labels,
+        "labels" : list(range(min_batch_index, max_batch_index + 1)),
+    }
 
 @app.route("/")
 @app.route("/training_history")
 def training_history():
     return flask.render_template("training_history.html")
+
+@app.route("/action_inversion")
+def action_inversion():
+    return flask.render_template("action_inversion.html")
 
 
 if __name__ == "__main__":

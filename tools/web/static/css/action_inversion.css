@@ -1,0 +1,28 @@
+#plot-holder {
+    float: left;
+    width: 100%;
+}
+
+.plot-holder-state {
+    float: left;
+    width: 10%;
+}
+
+.state-plot-info {
+    clear: both;
+    float: left;
+    width: 100%;
+    font-weight: bold;
+    font-size: 20px;
+    text-align: center;
+}
+
+.state-plot-state {
+    clear: both;
+    float: left;
+}
+
+.plot-canvas {
+    float: left;
+    width: 100%;
+}
