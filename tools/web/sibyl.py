@@ -4,8 +4,8 @@ import time
 
 from typing import Optional
 
-import object_log_cache
-import plot_utils
+from tools.web import object_log_cache
+from tools.web import plot_utils
 
 app = flask.Flask(__name__)
 
@@ -94,7 +94,7 @@ def training_history_plot_data():
         plot_data.append(state_plot_data)
 
     end = int(time.time() * 1e3)
-    print(f"Sibly training_history_plot_data took {end-start} ms.")
+    print(f"Sibyl training_history_plot_data took {end-start} ms.")
     return {
         "plot_data": plot_data,
         "labels": list(range(min_batch_index, max_batch_index + 1)),
@@ -117,4 +117,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     _OBJECT_LOG_CACHE = object_log_cache.ObjectLogCache(log_dir=args.log_dir)
 
-    app.run(host="0.0.0.0")
+    app.run(host="0.0.0.0", port=5001)
