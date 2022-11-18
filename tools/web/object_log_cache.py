@@ -94,7 +94,7 @@ class ObjectLogCache:
 
         Returns:
           Logged data loaded into a data structure corresponding to
-          the key. See loader defintions. None if backing files do not
+          the key. See loader definitions. None if backing files do not
           exist at the provided location.
 
         Raises:
@@ -106,10 +106,7 @@ class ObjectLogCache:
 
         if key not in self._cache:
             self.key_miss_counts[key] += 1
-            try:
-                self._cache[key] = self._loaders[key](self._log_dir)
-            except FileNotFoundError:
-                return None
+            self._cache[key] = self._loaders[key](self._log_dir)
         else:
             self.key_hit_counts[key] += 1
 
