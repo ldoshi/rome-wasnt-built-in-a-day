@@ -99,6 +99,8 @@ class ObjectLogCache:
 
         Raises:
           ValueError on unsupported key.
+          FileNotFoundError if key does not correspond to a backing
+            data file.
 
         """
         if key not in self._loaders:
