@@ -25,7 +25,13 @@ class ObjectLogCacheTest(unittest.TestCase):
     def test_get_file_does_not_exist(self):
         cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
 
-        self.assertIsNone(cache.get(object_log_cache.ACTION_INVERSION_DATABASE_KEY))
+        self.assertRaisesRegex(
+            FileNotFoundError,
+            "action_inversion_report",
+            cache.get,
+            key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
+        )
+
         self.assertEqual(
             cache.key_miss_counts[object_log_cache.ACTION_INVERSION_DATABASE_KEY],
             1,
@@ -35,7 +41,13 @@ class ObjectLogCacheTest(unittest.TestCase):
             0,
         )
 
-        self.assertIsNone(cache.get(object_log_cache.ACTION_INVERSION_DATABASE_KEY))
+        self.assertRaisesRegex(
+            FileNotFoundError,
+            "action_inversion_report",
+            cache.get,
+            key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
+        )
+
         self.assertEqual(
             cache.key_miss_counts[object_log_cache.ACTION_INVERSION_DATABASE_KEY],
             2,

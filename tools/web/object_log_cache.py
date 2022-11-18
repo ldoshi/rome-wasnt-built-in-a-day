@@ -77,11 +77,13 @@ class ObjectLogCache:
 
         Returns:
           Logged data loaded into a data structure corresponding to
-          the key. See loader defintions. None if backing files do not
+          the key. See loader definitions. None if backing files do not
           exist at the provided location.
 
         Raises:
           ValueError on unsupported key.
+          FileNotFoundError if key does not correspond to a backing
+            data file.
 
         """
         if key not in self._loaders:
@@ -89,13 +91,10 @@ class ObjectLogCache:
 
         if key not in self._cache:
             self.key_miss_counts[key] += 1
-            try:
-                start = int(time.time() * 1e3)
-                self._cache[key] = self._loaders[key](self._log_dir)
-                end = int(time.time() * 1e3)
-                print(f"ObjectLogCache loading {key} took {end-start} ms.")
-            except FileNotFoundError:
-                return None
+            start = int(time.time() * 1e3)
+            self._cache[key] = self._loaders[key](self._log_dir)
+            end = int(time.time() * 1e3)
+            print(f"ObjectLogCache loading {key} took {end-start} ms.")
         else:
             self.key_hit_counts[key] += 1
 
