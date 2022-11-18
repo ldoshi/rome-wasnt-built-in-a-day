@@ -106,6 +106,23 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
                 visited_states["visit_count"].iloc[i], expected_visit_count
             )
 
+    @parameterized.expand(
+        [
+            ("start filter", 2, None, [0, 1]),
+            ("end filter", None, 3, [0, 1, 2]),
+            ("both filters", 2, 3, [0]),
+        ]
+    )
+    def test_get_states_by_visit_count_with_batch_index_filters(
+        self, name, start_batch_index, end_batch_index, expected_state_ids
+    ):
+        """Verifies batch filter indices prune states considered."""
+        visited_states = self.training_history_database.get_states_by_visit_count(
+            start_batch_index=start_batch_index, end_batch_index=end_batch_index
+        )
+
+        self.assertEqual(list(visited_states["state_id"]), expected_state_ids)
+
     def test_get_td_errors(self):
         """Ensure that for all batches, certain states will log td errors for all actions to verify the shape of the response."""
 
@@ -113,16 +130,13 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         state_ids = list(range(3))
         actions = [0, 1, 2]
         for (state_id, action) in itertools.product(state_ids, actions):
-            td_errors = self.training_history_database.get_td_errors(state_id=state_id, action=action)
+            td_errors = self.training_history_database.get_td_errors(
+                state_id=state_id, action=action
+            )
             self.assertEqual(len(td_errors), 5)
             self.assertTrue(
-            all(
-                [
-                    isinstance(td_error, float)
-                    for td_error in td_errors["td_error"]
-                ]
+                all([isinstance(td_error, float) for td_error in td_errors["td_error"]])
             )
-        )
 
     def test_get_q_values_and_q_target_values(self):
         """Spot check a few state/action pairs to verify the shape of the response."""
@@ -156,6 +170,41 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
             self.assertNotEqual(
                 list(q_values["q_value"]), list(q_target_values["q_target_value"])
             )
+
+    @parameterized.expand(
+        [
+            ("start filter", "get_td_errors", "td_error", 2, None, 3),
+            ("end filter", "get_td_errors", "td_error", None, 3, 4),
+            ("both filters", "get_td_errors", "td_error", 2, 3, 2),
+            ("start filter", "get_q_values", "q_value", 2, None, 3),
+            ("end filter", "get_q_values", "q_value", None, 3, 4),
+            ("both filters", "get_q_values", "q_value", 2, 3, 2),
+            ("start filter", "get_q_target_values", "q_target_value", 2, None, 3),
+            ("end filter", "get_q_target_values", "q_target_value", None, 3, 4),
+            ("both filters", "get_q_target_values", "q_target_value", 2, 3, 2),
+        ]
+    )
+    def test_getters_with_batch_index_filters(
+        self,
+        name,
+        getter_fn_name,
+        value_key,
+        start_batch_index,
+        end_batch_index,
+        expected_entry_count,
+    ):
+        """Verifies batch filter indices prune entries considered."""
+
+        getter_fn = getattr(self.training_history_database, getter_fn_name)
+
+        values = getter_fn(
+            state_id=0,
+            action=0,
+            start_batch_index=start_batch_index,
+            end_batch_index=end_batch_index,
+        )
+        self.assertEqual(len(values), expected_entry_count)
+        self.assertTrue(all([isinstance(value, float) for value in values[value_key]]))
 
 
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
