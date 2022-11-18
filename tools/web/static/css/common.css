@@ -1,0 +1,63 @@
+body {
+    background-color: black;
+    color: white;
+}
+
+#welcome {
+    padding: 10px;
+    font-size: 28px;
+    font-weight: bold;
+    float: left;
+}
+
+#navigation-links {
+    float: right;
+}
+
+.interactive-tools {
+    clear: both;
+    border: solid white 2px;
+    overflow: hidden;
+}
+
+.control {
+    float: left;
+    padding: 10px;
+}
+
+.control-label {
+    float: left;
+    font-size: 18px;
+    padding: 10px;
+}
+.control-input {
+    float: left;
+    padding: 10px;
+}
+
+#plots-holder {
+
+}
+
+.plots-row {
+    clear: both;
+    padding: 20px;
+    overflow:auto; 
+}
+
+.plots-row-background-0 {
+    background-color: black;
+}
+
+.plots-row-background-1 {
+    background-color: #222222;
+}
+
+.button-selected {
+    background-color: darkgray;
+}
+
+.button-unselected {
+    background-color: lightgray;
+}
+
