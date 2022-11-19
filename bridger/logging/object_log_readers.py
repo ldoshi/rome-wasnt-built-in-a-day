@@ -402,3 +402,23 @@ class ActionInversionDatabase:
             incidence_rate.append(len(reports))
 
         return batch_idxs, incidence_rate
+
+    def get_reports(
+        self, batch_idx: int
+    ) -> List[Tuple[log_entry.ActionInversionReportEntry, torch.Tensor]]:
+        """Returns action inversion reports paired with their corresponding states.
+
+        Args:
+          batch_idx: The index for which to return reports.
+
+        Returns:
+          A list containing pairs of the action inversion report and
+          the corresponding full state.
+        """
+        if batch_idx not in self._reports:
+            return []
+
+        return [
+            (report, self._states[report.state_id])
+            for report in self._reports[batch_idx]
+        ]

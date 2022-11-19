@@ -329,6 +329,19 @@ class TestActionInversionDatabase(unittest.TestCase):
             self.assertEqual(batch_idxs, expected_batch_idxs)
             self.assertEqual(incidence_rate, expected_incidence_rate)
 
+    def test_get_reports(self):
+        batch_idx = 7
+        reports = self._action_inversion_database.get_reports(batch_idx=batch_idx)
+        # Ensure the same state isn't being returned for all reports.
+        states = set()
+        self.assertEqual(len(reports), 2)
+        for report, state in reports:
+            self.assertEqual(report.batch_idx, batch_idx)
+            self.assertIsInstance(state, torch.Tensor)
+            state_as_string = str(state)
+            self.assertNotIn(state_as_string, states)
+            states.add(state_as_string)
+
 
 if __name__ == "__main__":
     unittest.main()
