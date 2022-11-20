@@ -1,3 +1,5 @@
+let _BATCH_REPORTS_PER_ROW = 6;
+
 let _CHART_OPTIONS_TEMPLATE = {
     scales: {
 	x: {
@@ -32,7 +34,7 @@ let _CHART_OPTIONS_TEMPLATE = {
         },
     },
     plugins: {
-	title: {
+title: {
 	    color: "#FFFFFF",
 	    display: true,
 	    font: {
@@ -63,8 +65,6 @@ let _COLORS_BORDER = [
 
 let _DATASET_TEMPLATE = {
     borderWidth: 1,
-    radius: 1,
-    hoverRadius: 2,
     hoverBorderWidth: 2
 };
 
@@ -79,23 +79,34 @@ function update_plots() {
 
 function update_batch_reports() {
     let batch_index = $("#view-batch-reports-batch-index").val();
-    alert(batch_index);
+    $.get(`${_ROOT_URL}action_inversion_batch_reports`, { "batch_index": batch_index}, function(data, response) {
+	create_batch_report_div_structure(data.length);
+	render_batch_reports(data);
+    });    
 }
 
-function create_plot_div_structure(state_count, metric_count) {
-    // Creates the plot-related div structure for all the rows of
-    // data.
-
-    let plot_divs = "";
-    for (let i = 0; i < state_count; i++) {
-	plot_divs += `<div class="plots-row plots-row-background-${i % 2}">`;
-	plot_divs += `<div id="plot-holder-${i}-state" class="plot-holder-state"></div>`;
-	for (let j = 0; j < metric_count; j++) {
-	    plot_divs += `<div id="plot-holder-${i}-metric-${j}" class="plot-holder-metric plot-holder-metric-default-width"></div>`;
+function create_batch_report_div_structure(count) {
+    let divs = "";
+    for (let i = 0; i < count; i++) {
+	if (i % _BATCH_REPORTS_PER_ROW == 0) {
+	    divs += '<div class="batch-reports-row">';
 	}
-	plot_divs += '</div>';
+
+	divs += `<div class="batch-report"><canvas id="batch-report-canvas-${i}" class="plot-canvas"></canvas></div>`
+	
+	if (i % _BATCH_REPORTS_PER_ROW == (_BATCH_REPORTS_PER_ROW - 1) || i == (count -1)) {
+	    divs += '</div>';
+	}
     }
-    $("#plots-holder").html(plot_divs)
+    $("#batch-report-holder").html(divs);
+}
+
+function render_batch_reports(data) {
+    for (let i = 0; i < data.length; i++) {
+	report = data[i]
+        let canvas_id = `batch-report-canvas-${i}`;
+	render_array_2d(report['state'], canvas_id, report['preferred_actions'], [report['policy_action']]);
+    }
 }
 
 function render_action_inversion_plot(data) {
@@ -124,35 +135,4 @@ function render_action_inversion_plot(data) {
 	},
 	options: chart_options,
     });    
-}
-
-function render_state_plot(state_index, data) {
-    let canvas_id = `state-plot-state-canvas-${state_index}`
-    let state_plot_html = `<div class="state-plot-info">Visits: ${data['visit_count']}</div>`;
-    state_plot_html += `<div id="state-plot-state-${state_index}" class="state-plot-state"><canvas id="${canvas_id}" class="plot-canvas"></canvas></div>`;
-    $(`#plot-holder-${state_index}-state`).html(state_plot_html);
-
-    render_array_2d(data['state'], canvas_id);
-}
-
-function zoom_in_charts() {
-    $("#zoom-button-full").addClass("button-selected");
-    $("#zoom-button-full").removeClass("button-unselected");
-    
-    $("#zoom-button-default").addClass("button-unselected");
-    $("#zoom-button-default").removeClass("button-selected");
-
-    $(".plot-holder-metric").addClass("plot-holder-metric-full-width");
-    $(".plot-holder-metric").removeClass("plot-holder-metric-default-width");
-}
-
-function zoom_default_charts() {
-    $("#zoom-button-default").addClass("button-selected");
-    $("#zoom-button-default").removeClass("button-unselected");
-
-    $("#zoom-button-full").addClass("button-unselected");
-    $("#zoom-button-full").removeClass("button-selected");
-
-    $(".plot-holder-metric").addClass("plot-holder-metric-default-width");
-    $(".plot-holder-metric").removeClass("plot-holder-metric-full-width");
 }

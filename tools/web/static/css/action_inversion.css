@@ -3,23 +3,21 @@
     width: 100%;
 }
 
-.plot-holder-state {
+#batch-report-holder {
     float: left;
-    width: 10%;
+    width: 100%;
 }
 
-.state-plot-info {
+.batch-report {
+    float: left;
+    width: 14%;
+    padding: 1%;
+}
+
+.batch-reports-row {
     clear: both;
     float: left;
     width: 100%;
-    font-weight: bold;
-    font-size: 20px;
-    text-align: center;
-}
-
-.state-plot-state {
-    clear: both;
-    float: left;
 }
 
 .plot-canvas {
