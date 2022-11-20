@@ -113,12 +113,12 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
             ("both filters", 2, 3, [0]),
         ]
     )
-    def test_get_states_by_visit_count_with_batch_index_filters(
-        self, name, start_batch_index, end_batch_index, expected_state_ids
+    def test_get_states_by_visit_count_with_batch_idx_filters(
+        self, name, start_batch_idx, end_batch_idx, expected_state_ids
     ):
         """Verifies batch filter indices prune states considered."""
         visited_states = self.training_history_database.get_states_by_visit_count(
-            start_batch_index=start_batch_index, end_batch_index=end_batch_index
+            start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
         )
 
         self.assertEqual(list(visited_states["state_id"]), expected_state_ids)
@@ -184,13 +184,13 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
             ("both filters", "get_q_target_values", "q_target_value", 2, 3, 2),
         ]
     )
-    def test_getters_with_batch_index_filters(
+    def test_getters_with_batch_idx_filters(
         self,
         name,
         getter_fn_name,
         value_key,
-        start_batch_index,
-        end_batch_index,
+        start_batch_idx,
+        end_batch_idx,
         expected_entry_count,
     ):
         """Verifies batch filter indices prune entries considered."""
@@ -200,8 +200,8 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         values = getter_fn(
             state_id=0,
             action=0,
-            start_batch_index=start_batch_index,
-            end_batch_index=end_batch_index,
+            start_batch_idx=start_batch_idx,
+            end_batch_idx=end_batch_idx,
         )
         self.assertEqual(len(values), expected_entry_count)
         self.assertTrue(all([isinstance(value, float) for value in values[value_key]]))
@@ -295,9 +295,9 @@ class TestActionInversionDatabase(unittest.TestCase):
             ("filter end", None, 9, expected[:1]),
             ("filter start end", 7, 9, []),
         ]
-        for name, start_batch_index, end_batch_index, expected_divergences in test_cases:
+        for name, start_batch_idx, end_batch_idx, expected_divergences in test_cases:
             divergences = self._action_inversion_database.get_divergences(
-                start_batch_index=start_batch_index, end_batch_index=end_batch_index
+                start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
             )
             self.assertEqual(divergences, expected_divergences)
 
@@ -315,8 +315,8 @@ class TestActionInversionDatabase(unittest.TestCase):
         ]
         for (
             name,
-            start_batch_index,
-            end_batch_index,
+            start_batch_idx,
+            end_batch_idx,
             expected_batch_idxs,
             expected_incidence_rate,
         ) in test_cases:
@@ -324,7 +324,7 @@ class TestActionInversionDatabase(unittest.TestCase):
                 batch_idxs,
                 incidence_rate,
             ) = self._action_inversion_database.get_incidence_rate(
-                start_batch_index=start_batch_index, end_batch_index=end_batch_index
+                start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
             )
             self.assertEqual(batch_idxs, expected_batch_idxs)
             self.assertEqual(incidence_rate, expected_incidence_rate)

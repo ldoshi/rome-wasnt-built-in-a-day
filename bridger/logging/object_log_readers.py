@@ -44,8 +44,8 @@ def _get_values_by_state_and_action(
     df: pd.DataFrame,
     state_id: int,
     action: int,
-    start_batch_index: Optional[int],
-    end_batch_index: Optional[int],
+    start_batch_idx: Optional[int],
+    end_batch_idx: Optional[int],
     second_column: str,
 ) -> pd.DataFrame:
     """Retrieves batch_idx and second_column from df.
@@ -54,22 +54,23 @@ def _get_values_by_state_and_action(
       df: The dataframe from which to select rows.
       state_id: The state id for which to retrieve rows.
       action: The action for which to retrieve rows.
-      start_batch_index: The first batch index (inclusive) to
-        consider when filtering df.
-      end_batch_index: The last batch index (inclusive) to
-        consider when filtering df.
+      start_batch_idx: The first batch index (inclusive) to consider
+        when filtering df.
+      end_batch_idx: The last batch index (inclusive) to consider when
+        filtering df.
       second_column: The name of the second column to retrieve from df.
 
     Returns:
       A dataframe with two columns, batch_idx and second_column,
         filtered for rows that contain state_id and action as values
         in the corresponding columns.
+
     """
     df_filtered = df
-    if start_batch_index is not None:
-        df_filtered = df_filtered[(df_filtered["batch_idx"] >= start_batch_index)]
-    if end_batch_index is not None:
-        df_filtered = df_filtered[(df_filtered["batch_idx"] <= end_batch_index)]
+    if start_batch_idx is not None:
+        df_filtered = df_filtered[(df_filtered["batch_idx"] >= start_batch_idx)]
+    if end_batch_idx is not None:
+        df_filtered = df_filtered[(df_filtered["batch_idx"] <= end_batch_idx)]
 
     return df_filtered[
         (df_filtered["state_id"] == state_id) & (df_filtered["action"] == action)
@@ -131,17 +132,17 @@ class TrainingHistoryDatabase:
     def get_states_by_visit_count(
         self,
         n: Optional[int] = None,
-        start_batch_index: Optional[int] = None,
-        end_batch_index: Optional[int] = None,
+        start_batch_idx: Optional[int] = None,
+        end_batch_idx: Optional[int] = None,
     ) -> pd.DataFrame:
         """Retrieves the top-n states by visit count.
 
         Args:
           n: The number of states to return.
-          start_batch_index: The first batch index (inclusive) to
-            consider when computing the states by visit count.
-          end_batch_index: The last batch index (inclusive) to
-            consider when computing the states by visit count.
+          start_batch_idx: The first batch index (inclusive) to consider
+            when computing the states by visit count.
+          end_batch_idx: The last batch index (inclusive) to consider
+            when computing the states by visit count.
 
         Returns:
           The top-n states sorted descending by visit count. The
@@ -151,10 +152,10 @@ class TrainingHistoryDatabase:
 
         """
         visits = self._visits
-        if start_batch_index is not None:
-            visits = visits[(visits["batch_idx"] >= start_batch_index)]
-        if end_batch_index is not None:
-            visits = visits[(visits["batch_idx"] <= end_batch_index)]
+        if start_batch_idx is not None:
+            visits = visits[(visits["batch_idx"] >= start_batch_idx)]
+        if end_batch_idx is not None:
+            visits = visits[(visits["batch_idx"] <= end_batch_idx)]
 
         return (
             visits.groupby(["object"], sort=False)["batch_idx"]
@@ -171,8 +172,8 @@ class TrainingHistoryDatabase:
         self,
         state_id: int,
         action: int,
-        start_batch_index: Optional[int] = None,
-        end_batch_index: Optional[int] = None,
+        start_batch_idx: Optional[int] = None,
+        end_batch_idx: Optional[int] = None,
     ) -> pd.DataFrame:
 
         """Retrieves td_error values for the requested state and action.
@@ -180,10 +181,10 @@ class TrainingHistoryDatabase:
         Args:
           state_id: The state id for which to retrieve td errors.
           action: The action for which to retrieve td errors.
-          start_batch_index: The first batch index (inclusive) to
-            consider when filtering the data.
-          end_batch_index: The last batch index (inclusive) to
-            consider when filtering the data.
+          start_batch_idx: The first batch index (inclusive) to consider
+            when filtering the data.
+          end_batch_idx: The last batch index (inclusive) to consider
+            when filtering the data.
 
         Returns:
           A dataframe with two columns, batch_idx and td_error,
@@ -194,8 +195,8 @@ class TrainingHistoryDatabase:
             df=self._td_errors,
             state_id=state_id,
             action=action,
-            start_batch_index=start_batch_index,
-            end_batch_index=end_batch_index,
+            start_batch_idx=start_batch_idx,
+            end_batch_idx=end_batch_idx,
             second_column="td_error",
         )
 
@@ -203,8 +204,8 @@ class TrainingHistoryDatabase:
         self,
         state_id: int,
         action: int,
-        start_batch_index: Optional[int] = None,
-        end_batch_index: Optional[int] = None,
+        start_batch_idx: Optional[int] = None,
+        end_batch_idx: Optional[int] = None,
     ) -> pd.DataFrame:
 
         """Retrieves q values for the requested state and action.
@@ -212,10 +213,10 @@ class TrainingHistoryDatabase:
         Args:
           state_id: The state id for which to retrieve q values.
           action: The action for which to retrieve q values.
-          start_batch_index: The first batch index (inclusive) to
-            consider when filtering the data.
-          end_batch_index: The last batch index (inclusive) to
-            consider when filtering the data.
+          start_batch_idx: The first batch index (inclusive) to consider
+            when filtering the data.
+          end_batch_idx: The last batch index (inclusive) to consider
+            when filtering the data.
 
         Returns:
           A dataframe with two columns, batch_idx and q_values,
@@ -226,8 +227,8 @@ class TrainingHistoryDatabase:
             df=self._q_values,
             state_id=state_id,
             action=action,
-            start_batch_index=start_batch_index,
-            end_batch_index=end_batch_index,
+            start_batch_idx=start_batch_idx,
+            end_batch_idx=end_batch_idx,
             second_column="q_value",
         )
 
@@ -235,8 +236,8 @@ class TrainingHistoryDatabase:
         self,
         state_id: int,
         action: int,
-        start_batch_index: Optional[int] = None,
-        end_batch_index: Optional[int] = None,
+        start_batch_idx: Optional[int] = None,
+        end_batch_idx: Optional[int] = None,
     ) -> pd.DataFrame:
 
         """Retrieves q target values for the requested state and action.
@@ -244,10 +245,10 @@ class TrainingHistoryDatabase:
         Args:
           state_id: The state id for which to retrieve q target values.
           action: The action for which to retrieve q target values.
-          start_batch_index: The first batch index (inclusive) to
-            consider when filtered the data.
-          end_batch_index: The last batch index (inclusive) to
-            consider when filtering the data.
+          start_batch_idx: The first batch index (inclusive) to consider
+            when filtered the data.
+          end_batch_idx: The last batch index (inclusive) to consider
+            when filtering the data.
 
         Returns:
           A dataframe with two columns, batch_idx and q_target_values,
@@ -258,8 +259,8 @@ class TrainingHistoryDatabase:
             df=self._q_values,
             state_id=state_id,
             action=action,
-            start_batch_index=start_batch_index,
-            end_batch_index=end_batch_index,
+            start_batch_idx=start_batch_idx,
+            end_batch_idx=end_batch_idx,
             second_column="q_target_value",
         )
 
@@ -342,47 +343,47 @@ class ActionInversionDatabase:
         return divergences
 
     def get_divergences(
-        self, start_batch_index: Optional[int] = None, end_batch_index: Optional[int] = None
+        self, start_batch_idx: Optional[int] = None, end_batch_idx: Optional[int] = None
     ) -> List[DivergenceEntry]:
         """Returns divergences occurring within the provided range.
 
         Args:
-          start_batch_index: The first batch index to consider when
+          start_batch_idx: The first batch index to consider when
             searching for divergences. Defaults to first batch.
-          end_batch_index: The final batch index to consider when
+          end_batch_idx: The final batch index to consider when
             searching for divergences. The end point is
             inclusive. Defaults to final batch.
 
         Returns:
           A list of DivergenceEntry to summarize all the divergences
-          between start_batch_index and end_batch_index.
+          between start_batch_idx and end_batch_idx.
 
         """
         start = 0
-        if start_batch_index is not None:
+        if start_batch_idx is not None:
             for i, entry in enumerate(self._divergences):
-                if start_batch_index <= entry.batch_idx:
+                if start_batch_idx <= entry.batch_idx:
                     break
                 start = i + 1
 
         end = len(self._divergences)
-        if end_batch_index is not None:
+        if end_batch_idx is not None:
             for i in range(len(self._divergences) - 1, -1, -1):
-                if self._divergences[i].batch_idx <= end_batch_index:
+                if self._divergences[i].batch_idx <= end_batch_idx:
                     break
                 end = i
 
         return self._divergences[start:end]
 
     def get_incidence_rate(
-        self, start_batch_index: Optional[int] = None, end_batch_index: Optional[int] = None
+        self, start_batch_idx: Optional[int] = None, end_batch_idx: Optional[int] = None
     ) -> Tuple[List[int], List[int]]:
         """Returns the action inversion incident rate per batch.
 
         Args:
-          start_batch_index: The first batch index to consider when
+          start_batch_idx: The first batch index to consider when
             searching for divergences. Defaults to first batch.
-          end_batch_index: The final batch index to consider when
+          end_batch_idx: The final batch index to consider when
             searching for divergences. The end point is
             inclusive. Defaults to final batch.
 
@@ -393,9 +394,9 @@ class ActionInversionDatabase:
         batch_idxs = []
         incidence_rate = []
         for (batch_idx, reports) in self._reports.items():
-            if start_batch_index is not None and batch_idx < start_batch_index:
+            if start_batch_idx is not None and batch_idx < start_batch_idx:
                 continue
-            if end_batch_index is not None and batch_idx > end_batch_index:
+            if end_batch_idx is not None and batch_idx > end_batch_idx:
                 break
 
             batch_idxs.append(batch_idx)
