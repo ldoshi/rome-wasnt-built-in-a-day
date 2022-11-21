@@ -67,12 +67,12 @@ let _DATASET_TEMPLATE = {
 };
 
 function update_plots() {
-    let start_batch_index = $("#start-batch-index").val();
-    let end_batch_index = $("#end-batch-index").val();
+    let start_batch_idx = $("#start-batch-idx").val();
+    let end_batch_idx = $("#end-batch-idx").val();
     let max_points_per_series = $("#max-points-per-series").val();
     let number_of_states = $("#number-of-states").val();
 
-    $.get(`${_ROOT_URL}training_history_plot_data`, { "start_batch_index": start_batch_index, "end_batch_index" : end_batch_index, "max_points_per_series" : max_points_per_series, "number_of_states" : number_of_states}, function(data, response) {
+    $.get(`${_ROOT_URL}training_history_plot_data`, { "start_batch_idx": start_batch_idx, "end_batch_idx" : end_batch_idx, "max_points_per_series" : max_points_per_series, "number_of_states" : number_of_states}, function(data, response) {
 	let plot_data = data['plot_data'];
 	if (plot_data.length == 0) {
 	    return;
