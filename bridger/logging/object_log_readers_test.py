@@ -251,5 +251,97 @@ class TestReadObjectLog(unittest.TestCase):
         self.assertEqual(expected_entries, logged_entries)
 
 
+class TestActionInversionDatabase(unittest.TestCase):
+    def setUp(self):
+        test_utils.create_temp_dir()
+        with object_logging.ObjectLogManager(
+            dirname=test_utils.object_logging_dir()
+        ) as object_log_manager:
+            test_utils.get_trainer(max_steps=12).fit(
+                test_utils.get_model(
+                    object_log_manager=object_log_manager,
+                    env_width=4,
+                    debug_action_inversion_checker=True,
+                )
+            )
+
+        self._action_inversion_database = object_log_readers.ActionInversionDatabase(
+            dirname=test_utils.object_logging_dir()
+        )
+
+    def tearDown(self):
+        test_utils.delete_temp_dir()
+
+    def test_get_divergences(self):
+        # Iterates through various start and end combinations without
+        # re-running the expensive setUp each time.
+        expected = [
+            object_log_readers.DivergenceEntry(
+                batch_idx=6, convergence_run_length=5, divergence_magnitude=2
+            ),
+            object_log_readers.DivergenceEntry(
+                batch_idx=10, convergence_run_length=2, divergence_magnitude=1
+            ),
+        ]
+
+        test_cases = [
+            ("all", None, None, expected),
+            ("all start midrun", 5, None, expected),
+            ("all start endpoint", 6, None, expected),
+            ("all end endpoint", None, 10, expected),
+            ("all end midrun", None, 11, expected),
+            ("all start end", 6, 10, expected),
+            ("filter start", 7, None, expected[1:]),
+            ("filter end", None, 9, expected[:1]),
+            ("filter start end", 7, 9, []),
+        ]
+        for name, start_batch_idx, end_batch_idx, expected_divergences in test_cases:
+            divergences = self._action_inversion_database.get_divergences(
+                start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
+            )
+            self.assertEqual(divergences, expected_divergences)
+
+    def test_get_incidence_rate(self):
+        # Iterates through various start and end combinations without
+        # re-running the expensive setUp each time.
+        test_cases = [
+            ("all", None, None, [6, 7, 10, 11], [2, 2, 1, 1]),
+            ("all start only", 6, None, [6, 7, 10, 11], [2, 2, 1, 1]),
+            ("all end only", None, 11, [6, 7, 10, 11], [2, 2, 1, 1]),
+            ("all start end", 6, 11, [6, 7, 10, 11], [2, 2, 1, 1]),
+            ("filter start", 7, None, [7, 10, 11], [2, 1, 1]),
+            ("filter end", None, 10, [6, 7, 10], [2, 2, 1]),
+            ("filter start end", 7, 9, [7], [2]),
+        ]
+        for (
+            name,
+            start_batch_idx,
+            end_batch_idx,
+            expected_batch_idxs,
+            expected_incidence_rate,
+        ) in test_cases:
+            (
+                batch_idxs,
+                incidence_rate,
+            ) = self._action_inversion_database.get_incidence_rate(
+                start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
+            )
+            self.assertEqual(batch_idxs, expected_batch_idxs)
+            self.assertEqual(incidence_rate, expected_incidence_rate)
+
+    def test_get_reports(self):
+        batch_idx = 7
+        reports = self._action_inversion_database.get_reports(batch_idx=batch_idx)
+        # Ensure the same state isn't being returned for all reports.
+        states = set()
+        self.assertEqual(len(reports), 2)
+        for report, state in reports:
+            self.assertEqual(report.batch_idx, batch_idx)
+            self.assertIsInstance(state, torch.Tensor)
+            state_as_string = str(state)
+            self.assertNotIn(state_as_string, states)
+            states.add(state_as_string)
+
+
 if __name__ == "__main__":
     unittest.main()

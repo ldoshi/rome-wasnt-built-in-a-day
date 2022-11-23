@@ -7,6 +7,7 @@ top of logged data.
 """
 import collections
 import copy
+import dataclasses
 import numpy as np
 import os
 import pathlib
@@ -16,7 +17,7 @@ import shutil
 import torch
 
 from collections.abc import Hashable
-from typing import Optional
+from typing import List, Optional, Tuple
 
 from bridger.logging import log_entry
 
@@ -261,3 +262,163 @@ class TrainingHistoryDatabase:
             end_batch_index=end_batch_index,
             second_column="q_target_value",
         )
+
+
+@dataclasses.dataclass
+class DivergenceEntry:
+    """Describes an incidence of divergence.
+
+    Attributes:
+      batch_idx: The batch_idx where the divergence occurs.
+      convergence_run_length: The number of batches with 0 action
+        inversion reports before this diversion occurred.
+      divergence_magnitude: The number of action inversion reports
+        logged in the moment of divergence.
+
+    """
+
+    batch_idx: int
+    convergence_run_length: int
+    divergence_magnitude: int
+
+
+class ActionInversionDatabase:
+    """Provides aggregate query access over logged action inversions.
+
+    The ActionInversionDatabase combines the following log entries:
+    * log_entry.ACTION_INVERSION_REPORT_ENTRY
+    * log_entry.STATE_NORMALIZED_LOG_ENTRY
+
+    """
+
+    def __init__(self, dirname: str):
+        """Loads in action inversion data into data structures for querying.
+
+        Args:
+          dirname: The directory containing the action inversion log files.
+        """
+        self._reports = collections.defaultdict(list)
+        for entry in _read_object_log(dirname, log_entry.ACTION_INVERSION_REPORT_ENTRY):
+            self._reports[entry.batch_idx].append(entry)
+
+        self._states = {}
+        for entry in _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY):
+            self._states[entry.id] = entry.object
+
+        self._divergences = self._summarize_divergences()
+
+    def _summarize_divergences(self) -> List[DivergenceEntry]:
+        """Summarizes incidents of divergence.
+
+        A divergence is defined as an incident of logging at least one
+        action inversion report following a period of one or more
+        batches during which 0 action inversion reports logged.
+
+        This function assumes ActionInversionReportEntry's are
+        iterated in the same order in which they were logged, i.e. in
+        increasing order of batch_idx.
+
+        Returns:
+          A list of DivergenceEntry to summarize all the divergences.
+
+        """
+        # TODO(lyric): Consider a more efficient data structure if
+        # we're still using this tool with much larger log files.
+        divergences = []
+        last_batch_with_reports = 0
+        for (batch_idx, reports) in self._reports.items():
+            if len(reports):
+                convergence_run_length = batch_idx - last_batch_with_reports - 1
+                if convergence_run_length:
+                    divergences.append(
+                        DivergenceEntry(
+                            batch_idx=batch_idx,
+                            convergence_run_length=convergence_run_length,
+                            divergence_magnitude=len(reports),
+                        )
+                    )
+                last_batch_with_reports = batch_idx
+
+        return divergences
+
+    def get_divergences(
+        self, start_batch_idx: Optional[int] = None, end_batch_idx: Optional[int] = None
+    ) -> List[DivergenceEntry]:
+        """Returns divergences occurring within the provided range.
+
+        Args:
+          start_batch_idx: The first batch index to consider when
+            searching for divergences. Defaults to first batch.
+          end_batch_idx: The final batch index to consider when
+            searching for divergences. The end point is
+            inclusive. Defaults to final batch.
+
+        Returns:
+          A list of DivergenceEntry to summarize all the divergences
+          between start_batch_idx and end_batch_idx.
+
+        """
+        start = 0
+        if start_batch_idx is not None:
+            for i, entry in enumerate(self._divergences):
+                if start_batch_idx <= entry.batch_idx:
+                    break
+                start = i + 1
+
+        end = len(self._divergences)
+        if end_batch_idx is not None:
+            for i in range(len(self._divergences) - 1, -1, -1):
+                if self._divergences[i].batch_idx <= end_batch_idx:
+                    break
+                end = i
+
+        return self._divergences[start:end]
+
+    def get_incidence_rate(
+        self, start_batch_idx: Optional[int] = None, end_batch_idx: Optional[int] = None
+    ) -> Tuple[List[int], List[int]]:
+        """Returns the action inversion incident rate per batch.
+
+        Args:
+          start_batch_idx: The first batch index to consider when
+            searching for divergences. Defaults to first batch.
+          end_batch_idx: The final batch index to consider when
+            searching for divergences. The end point is
+            inclusive. Defaults to final batch.
+
+        Returns:
+          A pair of parallel lists containing the batch_idx values and the
+          corresponding action inversion incident rate.
+        """
+        batch_idxs = []
+        incidence_rate = []
+        for (batch_idx, reports) in self._reports.items():
+            if start_batch_idx is not None and batch_idx < start_batch_idx:
+                continue
+            if end_batch_idx is not None and batch_idx > end_batch_idx:
+                break
+
+            batch_idxs.append(batch_idx)
+            incidence_rate.append(len(reports))
+
+        return batch_idxs, incidence_rate
+
+    def get_reports(
+        self, batch_idx: int
+    ) -> List[Tuple[log_entry.ActionInversionReportEntry, torch.Tensor]]:
+        """Returns action inversion reports paired with their corresponding states.
+
+        Args:
+          batch_idx: The index for which to return reports.
+
+        Returns:
+          A list containing pairs of the action inversion report and
+          the corresponding full state.
+        """
+        if batch_idx not in self._reports:
+            return []
+
+        return [
+            (report, self._states[report.state_id])
+            for report in self._reports[batch_idx]
+        ]
