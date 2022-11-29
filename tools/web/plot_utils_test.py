@@ -32,6 +32,11 @@ class TestPlotUtils(unittest.TestCase):
         sampled_df = plot_utils.downsample(df, n)
         self.assertTrue(sampled_df.equals(df.iloc[expected_indices]))
 
+    def test_downsample_empty_df(self):
+        df = pd.DataFrame([])
+        sampled_df = plot_utils.downsample(df, n=1)
+        self.assertTrue(sampled_df.empty)
+
 
 if __name__ == "__main__":
     unittest.main()

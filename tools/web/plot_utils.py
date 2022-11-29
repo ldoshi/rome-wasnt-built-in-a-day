@@ -18,4 +18,6 @@ def downsample(df: pd.DataFrame, n: int) -> pd.DataFrame:
     Returns:
       A dataframe with at most n elements.
     """
+    if df.empty:
+        return df
     return df.take(np.unique(np.round(np.linspace(0, len(df) - 1, n)).astype(int)))
