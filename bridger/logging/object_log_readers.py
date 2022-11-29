@@ -343,47 +343,47 @@ class ActionInversionDatabase:
         return divergences
 
     def get_divergences(
-        self, start_batch_idx: Optional[int] = None, end_batch_idx: Optional[int] = None
+        self, start_batch_index: Optional[int] = None, end_batch_index: Optional[int] = None
     ) -> List[DivergenceEntry]:
         """Returns divergences occurring within the provided range.
 
         Args:
-          start_batch_idx: The first batch index to consider when
+          start_batch_index: The first batch index to consider when
             searching for divergences. Defaults to first batch.
-          end_batch_idx: The final batch index to consider when
+          end_batch_index: The final batch index to consider when
             searching for divergences. The end point is
             inclusive. Defaults to final batch.
 
         Returns:
           A list of DivergenceEntry to summarize all the divergences
-          between start_batch_idx and end_batch_idx.
+          between start_batch_index and end_batch_index.
 
         """
         start = 0
-        if start_batch_idx is not None:
+        if start_batch_index is not None:
             for i, entry in enumerate(self._divergences):
-                if start_batch_idx <= entry.batch_idx:
+                if start_batch_index <= entry.batch_idx:
                     break
                 start = i + 1
 
         end = len(self._divergences)
-        if end_batch_idx is not None:
+        if end_batch_index is not None:
             for i in range(len(self._divergences) - 1, -1, -1):
-                if self._divergences[i].batch_idx <= end_batch_idx:
+                if self._divergences[i].batch_idx <= end_batch_index:
                     break
                 end = i
 
         return self._divergences[start:end]
 
     def get_incidence_rate(
-        self, start_batch_idx: Optional[int] = None, end_batch_idx: Optional[int] = None
+        self, start_batch_index: Optional[int] = None, end_batch_index: Optional[int] = None
     ) -> Tuple[List[int], List[int]]:
         """Returns the action inversion incident rate per batch.
 
         Args:
-          start_batch_idx: The first batch index to consider when
+          start_batch_index: The first batch index to consider when
             searching for divergences. Defaults to first batch.
-          end_batch_idx: The final batch index to consider when
+          end_batch_index: The final batch index to consider when
             searching for divergences. The end point is
             inclusive. Defaults to final batch.
 
@@ -394,9 +394,9 @@ class ActionInversionDatabase:
         batch_idxs = []
         incidence_rate = []
         for (batch_idx, reports) in self._reports.items():
-            if start_batch_idx is not None and batch_idx < start_batch_idx:
+            if start_batch_index is not None and batch_idx < start_batch_index:
                 continue
-            if end_batch_idx is not None and batch_idx > end_batch_idx:
+            if end_batch_index is not None and batch_idx > end_batch_index:
                 break
 
             batch_idxs.append(batch_idx)
