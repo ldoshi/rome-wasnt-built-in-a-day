@@ -1,0 +1,62 @@
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+<script>
+  var _ROOT_URL = '{{ request.url_root }}';
+</script>
+
+<script src= {{ url_for('static',filename='js/common.js') }}></script>
+<script src= {{ url_for('static',filename='js/action_inversion.js') }}></script>
+
+<link rel= "stylesheet" type= "text/css" href= {{ url_for('static',filename='css/common.css') }}>
+<link rel= "stylesheet" type= "text/css" href= {{ url_for('static',filename='css/action_inversion.css') }}>
+
+
+<html>
+  <head>
+    <title>Sibyl: Action Inversion Analysis</title>
+  </head>
+  <body>
+
+    <div id="welcome">Action Inversion Analysis</div>
+
+    <div class="interactive-tools">
+      <div class="control">
+	<button class="control-label" onclick="update_plots()">
+	  Update Plots
+	</button>
+      </div>
+      <div class="control">
+	<div class="control-label">Start Batch Index</div>
+	<input id="start-batch-index" class="control-input" size="2" value="-1">
+      </div>
+      <div class="control">
+	<div class="control-label">End Batch Index</div>
+	<input id="end-batch-index" class="control-input" size="2">
+      </div>
+    </div>
+    
+    <div id="plot-holder"></div>
+
+    <div class="interactive-tools">
+      <div class="control">
+	<button class="control-label" onclick="update_batch_reports()">
+	  View Batch Reports
+	</button>
+      </div>
+      <div class="control">
+	<div class="control-label">Batch Index</div>
+	<input id="view-batch-reports-batch-index" class="control-input" size="2" value="">
+      </div>
+    </div>
+
+    <div id="batch-report-holder"></div>
+    
+    <script>
+      $( document ).ready(function() {
+	  update_plots();
+      });
+    </script>
+
+  </body>
+</html>

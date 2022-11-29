@@ -1,0 +1,26 @@
+#plot-holder {
+    float: left;
+    width: 100%;
+}
+
+#batch-report-holder {
+    float: left;
+    width: 100%;
+}
+
+.batch-report {
+    float: left;
+    width: 14%;
+    padding: 1%;
+}
+
+.batch-reports-row {
+    clear: both;
+    float: left;
+    width: 100%;
+}
+
+.plot-canvas {
+    float: left;
+    width: 100%;
+}
