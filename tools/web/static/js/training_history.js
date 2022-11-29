@@ -40,7 +40,16 @@ let _CHART_OPTIONS_TEMPLATE = {
 	    }
 	},
     },
-
+    elements: {
+	point: {
+	    pointStyle: 'cross',
+	    radius: 1,
+	    hoverRadius: 10,
+	},
+	line: {
+	    borderWidth: 1,
+	}
+    },
 };
 
 // TODO(lyric): Create a better color list.
@@ -58,13 +67,6 @@ let _COLORS = [
     'rgba(0, 127, 127, 1)',
     'rgba(127, 0, 127, 1)',
 ]
-
-let _DATASET_TEMPLATE = {
-    borderWidth: 1,
-    radius: 1,
-    hoverRadius: 2,
-    hoverBorderWidth: 2
-};
 
 function update_plots() {
     let start_batch_idx = $("#start-batch-idx").val();
@@ -114,7 +116,7 @@ function render_training_plot(metric, state_index, metric_index, labels, series_
     
     let datasets = [];
     for (let i = 0; i < series_data.length; i++) {
-	let dataset = structuredClone(_DATASET_TEMPLATE);
+	let dataset = {};
 	dataset['data'] = series_data[i];
 	dataset['label'] = series_labels[i];
 	dataset['borderColor'] = _COLORS[i];
