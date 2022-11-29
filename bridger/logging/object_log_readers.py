@@ -389,7 +389,7 @@ class ActionInversionDatabase:
 
         Returns:
           A pair of parallel lists containing the batch_idx values and the
-          corresponding action inversion incdient rate.
+          corresponding action inversion incident rate.
         """
         batch_idxs = []
         incidence_rate = []
