@@ -630,7 +630,7 @@ class BridgeBuilderModel(pl.LightningModule):
             rewards_copy = copy.deepcopy(rewards)
             success_copy = copy.deepcopy(success)
             weights_copy = copy.deepcopy(weights)
-            replay_buffer_state_indices = [(state, count) for state, count in copy.deepcopy(self.replay_buffer.state_histogram).items()]
+            replay_buffer_state_indices_copy = sorted([(state, count) for state, count in copy.deepcopy(self.replay_buffer.state_histogram).items()])
 
 
             self._object_log_manager.log(
@@ -651,7 +651,7 @@ class BridgeBuilderModel(pl.LightningModule):
                     successes=success_copy,
                     weights=weights_copy,
                     loss=loss,
-                    replay_buffer_state_indices=replay_buffer_state_indices
+                    replay_buffer_state_indices=replay_buffer_state_indices_copy
                 ),
             )
 

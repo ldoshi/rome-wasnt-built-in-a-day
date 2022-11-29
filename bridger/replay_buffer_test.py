@@ -7,10 +7,10 @@ from parameterized import parameterized
 from itertools import islice
 
 from bridger.replay_buffer import SumTree, ReplayBuffer
-from bridger.logging import object_logging
+from bridger.logging import object_logging, object_log_readers
+from bridger.logging.log_entry import TRAINING_BATCH_LOG_ENTRY
 from bridger import test_utils
 from bridger.test_utils import _OBJECT_LOGGING_DIR
-from bridger.logging import object_log_readers
 
 class TestSumTree(unittest.TestCase):
     def setUp(self):
@@ -447,7 +447,7 @@ class TestReplayBuffer(unittest.TestCase):
                     initial_memories_count=1,
                 ))
 
-        training_batch_log_entries = list(object_log_readers.read_object_log(os.path.join(_OBJECT_LOGGING_DIR, "training_batch")))
+        training_batch_log_entries = list(object_log_readers.read_object_log(os.path.join(_OBJECT_LOGGING_DIR, TRAINING_BATCH_LOG_ENTRY)))
 
         self.assertEqual(training_batch_log_entries[0].replay_buffer_state_indices, [(0, 1)])
         self.assertEqual(training_batch_log_entries[1].replay_buffer_state_indices, [(0, 2)])

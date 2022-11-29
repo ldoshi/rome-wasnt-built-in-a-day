@@ -227,7 +227,7 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
         self.beta = beta
         self.batch_size = batch_size
         # A counter of the id counts currently in the buffer.
-        self.state_histogram: Counter[int, int] = Counter()
+        self.state_histogram: Counter[int] = Counter()
 
     @property
     def beta(self):

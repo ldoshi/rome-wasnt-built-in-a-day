@@ -173,6 +173,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 successes=torch.tensor([False, False, False, False, False]),
                 weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
                 loss=torch.tensor(1.5562, dtype=torch.float64, requires_grad=True),
+                replay_buffer_state_indices=[(0,1000)]
             )
         ]
 
@@ -182,6 +183,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             )
         )
 
+        print(logged_entries)
         self._verify_log_entries(expected_entries, logged_entries)
 
     # TODO(Issue#116): Create a better method for creating golden values/files.
