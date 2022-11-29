@@ -4,7 +4,7 @@ import torch
 from bisect import bisect_right
 from itertools import chain, starmap
 from functools import partial
-
+from collections import Counter
 
 class SumTree:
     """A binary tree in which leaf node must contain a nonnegative value and
@@ -211,17 +211,23 @@ class SumTree:
 # more natural by splitting into separate but interdependent (custom) Sampler
 # and Dataset classes
 class ReplayBuffer(torch.utils.data.IterableDataset):
-    def __init__(self, capacity, alpha=0.5, beta=0.5, batch_size=100):
+    """
+    Attributes: 
+        state_histogram: A dictionary mapping the number of state ids in the replay buffer to their counts.
+    """
+    def __init__(self, capacity: int, alpha: float=0.5, beta: float=0.5, batch_size: int=100):
         self._capacity = capacity
         self._alpha = alpha
         self._content = []
         self._index = 0
         self._tree = SumTree(capacity)
-        # epsilon is added to |td_errr| to ensure all priorities are non-zero.
+        # epsilon is added to |td_err| to ensure all priorities are non-zero.
         self._epsilon = 1e-10
 
         self.beta = beta
         self.batch_size = batch_size
+        # A counter of the id counts currently in the buffer.
+        self.state_histogram: Counter[int, int] = Counter()
 
     @property
     def beta(self):
@@ -248,20 +254,24 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
             prob_min = min(probability for index, probability in samples)
             for index, probability in samples:
                 weight = pow(prob_min / probability, self.beta)
-                yield (index, *self._content[index], weight)
+                # Currently we reserve the last value for the id of the state for logging purposes. If we add more values, consider adding a dataclass object when logging.
+                yield (index, *self._content[index][:-1], weight)
 
-    def add_new_experience(self, start_state, action, end_state, reward, success):
-        experience = [start_state, action, end_state, reward, success]
+    def add_new_experience(self, start_state, action, end_state, reward, success, state_id: int):
+        experience = [start_state, action, end_state, reward, success, state_id]
         if len(self._content) == self._capacity:
+            # Remove the previous state id from the Counter when overwriting
+            self.state_histogram[self._content[self._index][-1]] -= 1
             self._content[self._index] = experience
         else:
             self._content.append(experience)
 
+        self.state_histogram[state_id] += 1
         self._tree.set_value(self._index, self._tree.max_value)
         self._index = (self._index + 1) % self._capacity
 
     def update_priorities(self, indices, td_errors):
-        # If update_priorities is never called, this calls implements uniform
+        # If update_priorities is never called, this call implements uniform
         # sampling of the Experience Replay Buffer.
         indices, td_errors = [
             (L if isinstance(L, list) else L.tolist()) for L in [indices, td_errors]

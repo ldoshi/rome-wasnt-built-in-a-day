@@ -540,7 +540,7 @@ class BridgeBuilderModel(pl.LightningModule):
         next_state, reward, done, _ = self.env.step(action)
         self.state = next_state
         result = (state, action, next_state, reward, done)
-        self.replay_buffer.add_new_experience(*result)
+        self.replay_buffer.add_new_experience(*result, self._state_logger.get_logged_object_id(torch.Tensor([state])))
 
         if self.hparams.env_display:
             self.env.render()
@@ -630,6 +630,8 @@ class BridgeBuilderModel(pl.LightningModule):
             rewards_copy = copy.deepcopy(rewards)
             success_copy = copy.deepcopy(success)
             weights_copy = copy.deepcopy(weights)
+            replay_buffer_state_indices = [(state, count) for state, count in copy.deepcopy(self.replay_buffer.state_histogram).items()]
+
 
             self._object_log_manager.log(
                 log_entry.TRAINING_BATCH_LOG_ENTRY,
@@ -649,6 +651,7 @@ class BridgeBuilderModel(pl.LightningModule):
                     successes=success_copy,
                     weights=weights_copy,
                     loss=loss,
+                    replay_buffer_state_indices=replay_buffer_state_indices
                 ),
             )
 
