@@ -69,17 +69,17 @@ let _DATASET_TEMPLATE = {
 };
 
 function update_plots() {
-    let start_batch_index = $("#start-batch-index").val();
-    let end_batch_index = $("#end-batch-index").val();
+    let start_batch_idx = $("#start-batch-idx").val();
+    let end_batch_idx = $("#end-batch-idx").val();
 
-    $.get(`${_ROOT_URL}action_inversion_plot_data`, { "start_batch_index": start_batch_index, "end_batch_index" : end_batch_index}, function(data, response) {
+    $.get(`${_ROOT_URL}action_inversion_plot_data`, { "start_batch_idx": start_batch_idx, "end_batch_idx" : end_batch_idx}, function(data, response) {
 	render_action_inversion_plot(data);
     });    
 }
 
 function update_batch_reports() {
-    let batch_index = $("#view-batch-reports-batch-index").val();
-    $.get(`${_ROOT_URL}action_inversion_batch_reports`, { "batch_index": batch_index}, function(data, response) {
+    let batch_idx = $("#view-batch-reports-batch-idx").val();
+    $.get(`${_ROOT_URL}action_inversion_batch_reports`, { "batch_idx": batch_idx}, function(data, response) {
 	create_batch_report_div_structure(data.length);
 	render_batch_reports(data);
     });    

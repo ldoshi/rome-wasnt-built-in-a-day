@@ -26,8 +26,8 @@ def training_history_plot_data():
 
     This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
-    start_batch_index = _get_int_or_none("start_batch_index")
-    end_batch_index = _get_int_or_none("end_batch_index")
+    start_batch_idx = _get_int_or_none("start_batch_idx")
+    end_batch_idx = _get_int_or_none("end_batch_idx")
     max_points_per_series = _get_int_or_none("max_points_per_series")
     number_of_states = _get_int_or_none("number_of_states")
 
@@ -37,13 +37,13 @@ def training_history_plot_data():
 
     states = training_history_database.get_states_by_visit_count(
         n=number_of_states,
-        start_batch_index=start_batch_index,
-        end_batch_index=end_batch_index,
+        start_batch_idx=start_batch_idx,
+        end_batch_idx=end_batch_idx,
     )
     plot_data = []
 
-    min_batch_index = start_batch_index
-    max_batch_index = end_batch_index
+    min_batch_idx = start_batch_idx
+    max_batch_idx = end_batch_idx
 
     metrics_and_data_fns = [
         ("td_error", "TD Error", training_history_database.get_td_errors),
@@ -64,8 +64,8 @@ def training_history_plot_data():
                 df = data_fn(
                     state_id=row["state_id"],
                     action=action,
-                    start_batch_index=start_batch_index,
-                    end_batch_index=end_batch_index,
+                    start_batch_idx=start_batch_idx,
+                    end_batch_idx=end_batch_idx,
                 )
                 df = plot_utils.downsample(df=df, n=max_points_per_series)
                 series_data.append(
@@ -75,14 +75,14 @@ def training_history_plot_data():
                     ]
                 )
                 series_labels.append(str(action))
-                min_batch_index = (
-                    min(min_batch_index, df["batch_idx"].min())
-                    if min_batch_index is not None
+                min_batch_idx = (
+                    min(min_batch_idx, df["batch_idx"].min())
+                    if min_batch_idx is not None
                     else df["batch_idx"].min()
                 )
-                max_batch_index = (
-                    max(max_batch_index, df["batch_idx"].max())
-                    if max_batch_index is not None
+                max_batch_idx = (
+                    max(max_batch_idx, df["batch_idx"].max())
+                    if max_batch_idx is not None
                     else df["batch_idx"].max()
                 )
 
@@ -100,7 +100,7 @@ def training_history_plot_data():
     print(f"Sibyl training_history_plot_data took {end-start} ms.")
     return {
         "plot_data": plot_data,
-        "labels": list(range(min_batch_index, max_batch_index + 1)),
+        "labels": list(range(min_batch_idx, max_batch_idx + 1)),
     }
 
 
@@ -110,8 +110,8 @@ def action_inversion_plot_data():
 
     This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
-    start_batch_index = _get_int_or_none("start_batch_index")
-    end_batch_index = _get_int_or_none("end_batch_index")
+    start_batch_idx = _get_int_or_none("start_batch_idx")
+    end_batch_idx = _get_int_or_none("end_batch_idx")
 
     action_inversion_database = _OBJECT_LOG_CACHE.get(
         object_log_cache.ACTION_INVERSION_DATABASE_KEY
@@ -123,7 +123,7 @@ def action_inversion_plot_data():
         incidence_rate_batch_idxs,
         incidence_rate_report_counts,
     ) = action_inversion_database.get_incidence_rate(
-        start_batch_index=start_batch_index, end_batch_index=end_batch_index
+        start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
     )
     series_data.append(
         [
@@ -135,11 +135,11 @@ def action_inversion_plot_data():
     )
     series_labels.append("Action Inversion Reports")
 
-    min_batch_index = incidence_rate_batch_idxs[0] if incidence_rate_batch_idxs else 0
-    max_batch_index = incidence_rate_batch_idxs[-1] if incidence_rate_batch_idxs else 0
+    min_batch_idx = incidence_rate_batch_idxs[0] if incidence_rate_batch_idxs else 0
+    max_batch_idx = incidence_rate_batch_idxs[-1] if incidence_rate_batch_idxs else 0
 
     divergences = action_inversion_database.get_divergences(
-        start_batch_index=start_batch_index, end_batch_index=end_batch_index
+        start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
     )
     series_data.append(
         [
@@ -149,8 +149,8 @@ def action_inversion_plot_data():
     )
     series_labels.append("Divergence Magnitude")
     if divergences:
-        min_batch_index = min(min_batch_index, divergences[0].batch_idx)
-        max_batch_index = max(max_batch_index, divergences[-1].batch_idx)
+        min_batch_idx = min(min_batch_idx, divergences[0].batch_idx)
+        max_batch_idx = max(max_batch_idx, divergences[-1].batch_idx)
 
     end = int(time.time() * 1e3)
     print(f"Sibly action_inversion_plot_data took {end-start} ms.")
@@ -158,7 +158,7 @@ def action_inversion_plot_data():
         "title": "Action Inversion Reports and Divergence Magnitudes",
         "series_data": series_data,
         "series_labels": series_labels,
-        "labels": list(range(min_batch_index, max_batch_index + 1)),
+        "labels": list(range(min_batch_idx, max_batch_idx + 1)),
     }
 
 
@@ -168,7 +168,7 @@ def action_inversion_batch_reports():
 
     This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
-    batch_idx = _get_int_or_none("batch_index")
+    batch_idx = _get_int_or_none("batch_idx")
     if batch_idx is None:
         return []
 

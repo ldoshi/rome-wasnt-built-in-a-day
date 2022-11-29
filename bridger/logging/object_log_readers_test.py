@@ -113,12 +113,12 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
             ("both filters", 2, 3, [0]),
         ]
     )
-    def test_get_states_by_visit_count_with_batch_index_filters(
-        self, name, start_batch_index, end_batch_index, expected_state_ids
+    def test_get_states_by_visit_count_with_batch_idx_filters(
+        self, name, start_batch_idx, end_batch_idx, expected_state_ids
     ):
         """Verifies batch filter indices prune states considered."""
         visited_states = self.training_history_database.get_states_by_visit_count(
-            start_batch_index=start_batch_index, end_batch_index=end_batch_index
+            start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
         )
 
         self.assertEqual(list(visited_states["state_id"]), expected_state_ids)
@@ -184,13 +184,13 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
             ("both filters", "get_q_target_values", "q_target_value", 2, 3, 2),
         ]
     )
-    def test_getters_with_batch_index_filters(
+    def test_getters_with_batch_idx_filters(
         self,
         name,
         getter_fn_name,
         value_key,
-        start_batch_index,
-        end_batch_index,
+        start_batch_idx,
+        end_batch_idx,
         expected_entry_count,
     ):
         """Verifies batch filter indices prune entries considered."""
@@ -200,8 +200,8 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         values = getter_fn(
             state_id=0,
             action=0,
-            start_batch_index=start_batch_index,
-            end_batch_index=end_batch_index,
+            start_batch_idx=start_batch_idx,
+            end_batch_idx=end_batch_idx,
         )
         self.assertEqual(len(values), expected_entry_count)
         self.assertTrue(all([isinstance(value, float) for value in values[value_key]]))
