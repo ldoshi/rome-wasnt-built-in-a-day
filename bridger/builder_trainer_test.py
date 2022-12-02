@@ -404,7 +404,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         expected_entries = [
             log_entry.ActionInversionReportEntry(
-                batch_idx=3, state_id=1, preferred_actions={2}, policy_action=0
+                batch_idx=3, state_id=0, preferred_actions={2}, policy_action=0
             )
         ]
 

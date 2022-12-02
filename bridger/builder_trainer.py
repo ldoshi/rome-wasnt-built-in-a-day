@@ -276,6 +276,7 @@ class BridgeBuilderModel(pl.LightningModule):
             alpha=self.hparams.alpha,
             beta=self.hparams.beta_training_start,
             batch_size=self.hparams.batch_size,
+            logger=self._state_logger if self.hparams.debug else None
         )
 
         self.Q = qfunctions.CNNQ(*self.env.shape, self.env.nA)
@@ -540,7 +541,7 @@ class BridgeBuilderModel(pl.LightningModule):
         next_state, reward, done, _ = self.env.step(action)
         self.state = next_state
         result = (state, action, next_state, reward, done)
-        self.replay_buffer.add_new_experience(*result, self._state_logger.get_logged_object_id(torch.Tensor([state])))
+        self.replay_buffer.add_new_experience(*result)
 
         if self.hparams.env_display:
             self.env.render()
