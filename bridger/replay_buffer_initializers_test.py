@@ -50,7 +50,15 @@ class ReplayBufferInitializersTest(unittest.TestCase):
         for experience, expected_action in zip(self._replay_buffer, range(_ENV_WIDTH)):
             np.testing.assert_array_equal(experience[0], reset_state)
             self.assertEqual(experience[1], expected_action)
-            
+
+    def test_standard_configuration_bridge_states(self):
+        replay_buffer_initializers.initialize_replay_buffer(strategy=replay_buffer_initializers.STRATEGY_STANDARD_CONFIGURATION_BRIDGE_STATES, env=self._env, add_new_experience=self.add_new_experience)
+        self.assertEqual(len(self._replay_buffer), _ENV_WIDTH * ((int((_ENV_WIDTH -2) / 2) + 1) ** 2 - 1))
+        count_dones = 0
+        for experience in self._replay_buffer:
+            if experience[4]:
+                count_dones += 1
+        self.assertEqual(count_dones, 2)
             
         
 
