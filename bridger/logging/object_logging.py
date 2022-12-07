@@ -158,7 +158,6 @@ class LoggerAndNormalizer:
         # TODO(lyric): Consider adding an init arg as to whether the
         # object should be copied or not. Per PR#104, the copy will be
         # required for data coming from training batches.
-        print(object)
         self._object_log_manager.log(
             self._log_filename,
             log_entry.NormalizedLogEntry(id=object_id, object=object_copy),

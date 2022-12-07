@@ -139,19 +139,28 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                         self.assertTrue(
                             torch.allclose(
                                 expected_entry_value, logged_entry_value, atol=1e-4
-                            ), msg=f"Field {field}: expected: {expected_entry_value}, logged: {logged_entry_value}."
+                            ),
+                            msg=f"Field {field}: expected: {expected_entry_value}, logged: {logged_entry_value}.",
                         )
                     else:
                         self.assertTrue(
-                            torch.equal(expected_entry_value, logged_entry_value),msg=f"Field {field}: expected: {expected_entry_value}, logged: {logged_entry_value}."
+                            torch.equal(expected_entry_value, logged_entry_value),
+                            msg=f"Field {field}: expected: {expected_entry_value}, logged: {logged_entry_value}.",
                         )
                 elif isinstance(expected_entry_value, float):
                     self.assertAlmostEqual(
-                        expected_entry_value, logged_entry_value, delta=_DELTA,msg=f"Field {field}: expected: {expected_entry_value}, logged: {logged_entry_value}."
+                        expected_entry_value,
+                        logged_entry_value,
+                        delta=_DELTA,
+                        msg=f"Field {field}: expected: {expected_entry_value}, logged: {logged_entry_value}.",
                     )
                     continue
                 else:
-                    self.assertEqual(expected_entry_value, logged_entry_value, msg=f"Field {field}: expected: {expected_entry_value}, logged: {logged_entry_value}.")
+                    self.assertEqual(
+                        expected_entry_value,
+                        logged_entry_value,
+                        msg=f"Field {field}: expected: {expected_entry_value}, logged: {logged_entry_value}.",
+                    )
 
     def test_training_batch_logging(self):
         """Verifies that training batches are logged in debug mode."""
@@ -173,7 +182,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 successes=torch.tensor([False, False, False, False, False]),
                 weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
                 loss=torch.tensor(1.5562, dtype=torch.float64, requires_grad=True),
-                replay_buffer_state_indices=[(0,1000)]
+                replay_buffer_state_indices=[],
             )
         ]
 
