@@ -12,6 +12,7 @@ from bridger.logging.log_entry import TRAINING_BATCH_LOG_ENTRY
 from bridger import test_utils
 from bridger.test_utils import _OBJECT_LOGGING_DIR
 
+
 class TestSumTree(unittest.TestCase):
     def setUp(self):
         self._delta = 1e-6
@@ -218,7 +219,7 @@ class TestReplayBuffer(unittest.TestCase):
         replay_buffer = ReplayBuffer(self._capacity, alpha)
 
         for i in range(self._capacity):
-            replay_buffer.add_new_experience(i, i, i, i, i, i)
+            replay_buffer.add_new_experience(i, i, i, i, i)
             (
                 indices,
                 states,
@@ -247,7 +248,7 @@ class TestReplayBuffer(unittest.TestCase):
         replay_buffer = ReplayBuffer(self._capacity, alpha)
 
         for i in range(7):
-            replay_buffer.add_new_experience(i, i, i, i, i, i)
+            replay_buffer.add_new_experience(i, i, i, i, i)
 
         return replay_buffer
 
@@ -337,7 +338,7 @@ class TestReplayBuffer(unittest.TestCase):
         # exceptions_map. The new sample also has 4 units of weight,
         # giving the tree a total of 14. We extract 7 samples this
         # time to ensure a similar output as the previous case.
-        replay_buffer.add_new_experience(7, 7, 7, 7, 7, 7)
+        replay_buffer.add_new_experience(7, 7, 7, 7, 7)
         indices, _, _, _, _, _, weights = _sample_replay_buffer(
             replay_buffer, 7, self._beta
         )
@@ -430,30 +431,45 @@ class TestReplayBuffer(unittest.TestCase):
 
         np.testing.assert_array_equal(weights, weights_negative)
 
-
     def test_state_histogram_updates(self):
         """
         Checks that the state histogram updates in the replay buffer.
         """
-        max_steps=5
+        max_steps = 5
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
-            test_utils.get_trainer(max_steps=max_steps).fit(test_utils.get_model(
+            test_utils.get_trainer(max_steps=max_steps).fit(
+                test_utils.get_model(
                     object_log_manager=object_log_manager,
                     debug=True,
                     env_width=4,
                     max_episode_length=10,
                     initial_memories_count=1,
-                ))
+                )
+            )
 
-        training_batch_log_entries = list(object_log_readers.read_object_log(os.path.join(_OBJECT_LOGGING_DIR, TRAINING_BATCH_LOG_ENTRY)))
+        training_batch_log_entries = list(
+            object_log_readers.read_object_log(
+                os.path.join(_OBJECT_LOGGING_DIR, TRAINING_BATCH_LOG_ENTRY)
+            )
+        )
 
-        self.assertEqual(training_batch_log_entries[0].replay_buffer_state_indices, [(0, 1)])
-        self.assertEqual(training_batch_log_entries[1].replay_buffer_state_indices, [(0, 2)])
-        self.assertEqual(training_batch_log_entries[2].replay_buffer_state_indices, [(0, 3)])
-        self.assertEqual(training_batch_log_entries[3].replay_buffer_state_indices, [(0, 4)])
-        self.assertEqual(training_batch_log_entries[4].replay_buffer_state_indices, [(0, 4), (2, 1)])
+        self.assertEqual(
+            training_batch_log_entries[0].replay_buffer_state_indices, [(0, 1)]
+        )
+        self.assertEqual(
+            training_batch_log_entries[1].replay_buffer_state_indices, [(0, 2)]
+        )
+        self.assertEqual(
+            training_batch_log_entries[2].replay_buffer_state_indices, [(0, 3)]
+        )
+        self.assertEqual(
+            training_batch_log_entries[3].replay_buffer_state_indices, [(0, 4)]
+        )
+        self.assertEqual(
+            training_batch_log_entries[4].replay_buffer_state_indices, [(0, 4), (2, 1)]
+        )
 
 
 if __name__ == "__main__":

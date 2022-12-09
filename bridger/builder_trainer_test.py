@@ -182,7 +182,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 successes=torch.tensor([False, False, False, False, False]),
                 weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
                 loss=torch.tensor(1.5562, dtype=torch.float64, requires_grad=True),
-                replay_buffer_state_indices=[],
+                replay_buffer_state_indices=[(0, 1000)],
             )
         ]
 

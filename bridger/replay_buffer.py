@@ -270,7 +270,13 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
                 yield (index, *self._content[index][:-1], weight)
 
     def add_new_experience(
-        self, start_state, action, end_state, reward, success, state_id
+        self,
+        start_state,
+        action,
+        end_state,
+        reward,
+        success,
+        state_id: Optional[int] = None,
     ):
         if isinstance(self.state_histogram, Counter):
             assert isinstance(
@@ -284,14 +290,14 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
         experience = [start_state, action, end_state, reward, success, state_id]
 
         if len(self._content) == self._capacity:
-            if self.state_histogram:
+            if isinstance(self.state_histogram, Counter):
                 # Remove the previous state id from the Counter when overwriting
                 self.state_histogram[self._content[self._index][-1]] -= 1
             self._content[self._index] = experience
         else:
             self._content.append(experience)
 
-        if self.state_histogram:
+        if isinstance(self.state_histogram, Counter):
             self.state_histogram[state_id] += 1
         self._tree.set_value(self._index, self._tree.max_value)
         self._index = (self._index + 1) % self._capacity
