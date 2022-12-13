@@ -431,7 +431,7 @@ class TestReplayBuffer(unittest.TestCase):
 
         np.testing.assert_array_equal(weights, weights_negative)
 
-    def test_state_histogram_updates(self):
+    def test_replay_buffer_state_counts(self):
         """
         Checks that the state histogram updates in the replay buffer.
         """
@@ -456,19 +456,19 @@ class TestReplayBuffer(unittest.TestCase):
         )
 
         self.assertEqual(
-            training_batch_log_entries[0].replay_buffer_state_indices, [(0, 1)]
+            training_batch_log_entries[0].replay_buffer_state_counts, [(0, 1)]
         )
         self.assertEqual(
-            training_batch_log_entries[1].replay_buffer_state_indices, [(0, 2)]
+            training_batch_log_entries[1].replay_buffer_state_counts, [(0, 2)]
         )
         self.assertEqual(
-            training_batch_log_entries[2].replay_buffer_state_indices, [(0, 3)]
+            training_batch_log_entries[2].replay_buffer_state_counts, [(0, 3)]
         )
         self.assertEqual(
-            training_batch_log_entries[3].replay_buffer_state_indices, [(0, 4)]
+            training_batch_log_entries[3].replay_buffer_state_counts, [(0, 4)]
         )
         self.assertEqual(
-            training_batch_log_entries[4].replay_buffer_state_indices, [(0, 4), (2, 1)]
+            training_batch_log_entries[4].replay_buffer_state_counts, [(0, 4), (1, 1)]
         )
 
 

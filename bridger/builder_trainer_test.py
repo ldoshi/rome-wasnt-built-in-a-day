@@ -175,14 +175,14 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             log_entry.TrainingBatchLogEntry(
                 batch_idx=0,
                 indices=torch.tensor([156, 256, 589, 716, 819]),
-                state_ids=[1, 1, 1, 1, 1],
+                state_ids=[0, 0, 0, 0, 0],
                 actions=torch.tensor([1, 2, 1, 1, 1]),
-                next_state_ids=[2, 1, 2, 2, 2],
+                next_state_ids=[1, 0, 1, 1, 1],
                 rewards=torch.tensor([-1, -2, -1, -1, -1]),
                 successes=torch.tensor([False, False, False, False, False]),
                 weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
                 loss=torch.tensor(1.5562, dtype=torch.float64, requires_grad=True),
-                replay_buffer_state_indices=[(0, 1000)],
+                replay_buffer_state_counts=[(0, 1000)],
             )
         ]
 
@@ -225,7 +225,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 batch_idx=batch_idx, state_id=state_id, action=action, td_error=td_error
             )
             for (batch_idx, state_id, action), td_error in zip(
-                itertools.product([0, 1], [1], [0, 1, 2]), td_errors
+                itertools.product([0, 1], [0], [0, 1, 2]), td_errors
             )
         ]
 
@@ -255,21 +255,21 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         expected_entries = [
             log_entry.TrainingHistoryQValueLogEntry(
                 batch_idx=0,
-                state_id=1,
+                state_id=0,
                 action=0,
                 q_value=-0.131546,
                 q_target_value=-0.091432,
             ),
             log_entry.TrainingHistoryQValueLogEntry(
                 batch_idx=0,
-                state_id=1,
+                state_id=0,
                 action=1,
                 q_value=-0.057093,
                 q_target_value=0.028855,
             ),
             log_entry.TrainingHistoryQValueLogEntry(
                 batch_idx=0,
-                state_id=1,
+                state_id=0,
                 action=2,
                 q_value=-0.160665,
                 q_target_value=-0.025203,
@@ -322,7 +322,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             expected_batch_idx,
             expected_state_id,
             expected_action,
-        ) in zip(logged_entries, itertools.product([0, 1], [1, 3, 5], [0, 1, 2])):
+        ) in zip(logged_entries, itertools.product([0, 1], [0, 1, 2], [0, 1, 2])):
             self.assertEqual(logged_entry.batch_idx, expected_batch_idx)
             self.assertEqual(logged_entry.state_id, expected_state_id)
             self.assertEqual(logged_entry.action, expected_action)
@@ -346,7 +346,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         expected_entries = [
             log_entry.OccurrenceLogEntry(batch_idx=batch_idx, object=state_id)
             for batch_idx, state_id in zip(
-                range(-1, max_steps), [1, 2, 1, 2, 1, 5, 1, 5, 1]
+                range(-1, max_steps), [0, 1, 0, 1, 0, 2, 0, 2, 0]
             )
         ]
 
