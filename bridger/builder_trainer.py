@@ -638,10 +638,8 @@ class BridgeBuilderModel(pl.LightningModule):
             weights_copy = copy.deepcopy(weights)
             replay_buffer_state_counts_copy = sorted(
                 [
-                    (state, count)
-                    for state, count in copy.deepcopy(
-                        self.replay_buffer.state_histogram
-                    ).items()
+                    (state_id, count)
+                    for state_id, count in self.replay_buffer.state_histogram.items()
                 ]
             )
 
