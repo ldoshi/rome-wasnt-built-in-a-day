@@ -654,9 +654,9 @@ class BridgeBuilderModel(pl.LightningModule):
 
             if self.hparams.debug_td_error:
                 # Log richer representation of td error for testing.
-                frequent_states: list[torch.Tensor] = self._state_visit_logger.get_top_n(
-                    _FREQUENTLY_VISITED_STATE_COUNT
-                )
+                frequent_states: list[
+                    torch.Tensor
+                ] = self._state_visit_logger.get_top_n(_FREQUENTLY_VISITED_STATE_COUNT)
                 # Sample all possible actions over the state space.
                 actions = range(self.env.nA)
 
@@ -686,15 +686,17 @@ class BridgeBuilderModel(pl.LightningModule):
                                     actions=torch.tensor([action]),
                                     next_states=torch.tensor([next_state]),
                                     rewards=torch.tensor([reward]),
-                                    success=torch.tensor([environment_completion_status]),
+                                    success=torch.tensor(
+                                        [environment_completion_status]
+                                    ),
                                 ).item(),
                             ),
                         )
             else:
                 # Revert to logging td error log entries the original way.
                 for state, action, td_error in zip(
-                states, actions.tolist(), td_errors.tolist()
-            ):
+                    states, actions.tolist(), td_errors.tolist()
+                ):
                     self._object_log_manager.log(
                         log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
                         log_entry.TrainingHistoryTDErrorLogEntry(
@@ -707,7 +709,8 @@ class BridgeBuilderModel(pl.LightningModule):
 
         if self.hparams.debug_action_inversion_checker:
             action_inversion_reports = self._action_inversion_checker.check(
-                policy=self._validation_policy)
+                policy=self._validation_policy
+            )
             self.log("action_inversion_incident_rate", len(action_inversion_reports))
 
             for report in action_inversion_reports:
