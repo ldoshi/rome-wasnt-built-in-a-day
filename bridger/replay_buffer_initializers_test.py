@@ -61,15 +61,43 @@ class ReplayBufferInitializersTest(unittest.TestCase):
         self.assertEqual(count_dones, 2)
             
         
-    def test_6_bricks(self):
-        replay_buffer_initializers.initialize_replay_buffer(strategy=replay_buffer_initializers.STRATEGY_6_BRICKS, replay_buffer_capacity=_REPLAY_BUFFER_CAPACITY, env=self._env, add_new_experience=self.add_new_experience)
-        self.assertEqual(len(self._replay_buffer), 45)
+    def test_2_bricks(self):
+        """Verifies the n-bricks strategy with 2 bricks.
+
+        We chose 2 so we can reason about all the experiences.
+        """
+        replay_buffer_initializers.initialize_replay_buffer(strategy=replay_buffer_initializers.STRATEGY_2_BRICKS, replay_buffer_capacity=_REPLAY_BUFFER_CAPACITY, env=self._env, add_new_experience=self.add_new_experience)
+        # The first brick produces one of 6 unique experiences:
+        # (initial state, <each action>). We now have 3 distinct
+        # starting points: (a) brick on the left, (b) brick on the
+        # right, and (c) what looks like the initial state. (a) and
+        # (b) will produce an additional 6 unique experiences
+        # each. (c) will not produce any unique experiences.
+        self.assertEqual(len(self._replay_buffer), 18)
         count_dones = 0
         for experience in self._replay_buffer:
             if experience[4]:
                 count_dones += 1
+        self.assertEqual(count_dones, 0)
+
+    def test_4_bricks(self):
+        """Verifies the n-bricks strategy with 4 bricks.
+
+        We chose 4 so we can reason about the number of dones.
+        """
+        replay_buffer_initializers.initialize_replay_buffer(strategy=replay_buffer_initializers.STRATEGY_4_BRICKS, replay_buffer_capacity=_REPLAY_BUFFER_CAPACITY, env=self._env, add_new_experience=self.add_new_experience)
+        # This number is empirically derived.
+        self.assertEqual(len(self._replay_buffer), 132)
+        count_dones = 0
+        for experience in self._replay_buffer:
+            if experience[4]:
+                count_dones += 1
+
+        # The 2 done scenarios occur when the last brick is placed
+        # with action 1 after {0, [4,3]} or action 3 after {[0,1],
+        # 4}. The actions in [] must happen in that order relative to
+        # other list members while {} means the order doesn't matter.
         self.assertEqual(count_dones, 2)
-            
         
 
 if __name__ == "__main__":
