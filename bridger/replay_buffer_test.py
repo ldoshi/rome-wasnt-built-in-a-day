@@ -7,10 +7,7 @@ from parameterized import parameterized
 from itertools import islice
 
 from bridger.replay_buffer import SumTree, ReplayBuffer
-from bridger.logging import object_logging, object_log_readers
-from bridger.logging.log_entry import TRAINING_BATCH_LOG_ENTRY
-from bridger import test_utils
-from bridger.test_utils import _OBJECT_LOGGING_DIR
+from collections import Counter
 
 
 class TestSumTree(unittest.TestCase):
@@ -431,45 +428,60 @@ class TestReplayBuffer(unittest.TestCase):
 
         np.testing.assert_array_equal(weights, weights_negative)
 
-    def test_replay_buffer_state_counts(self):
-        """
-        Checks that the state histogram updates in the replay buffer.
-        """
-        max_steps = 5
-        with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
-        ) as object_log_manager:
-            test_utils.get_trainer(max_steps=max_steps).fit(
-                test_utils.get_model(
-                    object_log_manager=object_log_manager,
-                    debug=True,
-                    env_width=4,
-                    max_episode_length=10,
-                    initial_memories_count=1,
-                )
-            )
-
-        training_batch_log_entries = list(
-            object_log_readers.read_object_log(
-                os.path.join(_OBJECT_LOGGING_DIR, TRAINING_BATCH_LOG_ENTRY)
-            )
+    def test_debug_replay_invalid_new_experiences(self):
+        standard_replay_buffer = ReplayBuffer(
+            capacity=3, alpha=1, beta=self._beta, batch_size=5, debug=False
+        )
+        debug_replay_buffer = ReplayBuffer(
+            capacity=3, alpha=1, beta=self._beta, batch_size=5, debug=True
         )
 
-        self.assertEqual(
-            training_batch_log_entries[0].replay_buffer_state_counts, [(0, 1)]
+        self.assertRaises(
+            AssertionError,
+            debug_replay_buffer.add_new_experience,
+            start_state=1,
+            action=1,
+            end_state=1,
+            reward=1,
+            success=1,
+            state_id=None,
         )
-        self.assertEqual(
-            training_batch_log_entries[1].replay_buffer_state_counts, [(0, 2)]
+
+        # Check that the replay buffer has not logged a state.
+        self.assertEqual(len(debug_replay_buffer.state_histogram), 0)
+
+        self.assertRaises(
+            AssertionError,
+            standard_replay_buffer.add_new_experience,
+            start_state=1,
+            action=1,
+            end_state=1,
+            reward=1,
+            success=1,
+            state_id=1,
         )
-        self.assertEqual(
-            training_batch_log_entries[2].replay_buffer_state_counts, [(0, 3)]
+
+        # Check that the replay buffer has not logged a state.
+        self.assertEqual(len(debug_replay_buffer.state_histogram), 0)
+
+    def test_debug_replay_overwrite_state_counts(self):
+        debug_replay_buffer = ReplayBuffer(
+            capacity=3, alpha=1, beta=self._beta, batch_size=5, debug=True
         )
-        self.assertEqual(
-            training_batch_log_entries[3].replay_buffer_state_counts, [(0, 4)]
-        )
-        self.assertEqual(
-            training_batch_log_entries[4].replay_buffer_state_counts, [(0, 4), (1, 1)]
-        )
+        expected = [
+            Counter({0: 1}),
+            Counter({0: 1, 1: 1}),
+            Counter({0: 1, 1: 1, 2: 1}),
+            Counter({0: 0, 1: 1, 2: 1, 3: 1}),
+            Counter({0: 0, 1: 0, 2: 1, 3: 1, 4: 1}),
+        ]
+
+        # Overwrite the state count of two states in the replay buffer.
+        for i, expected_state_count in zip(range(3 + 2), expected):
+            debug_replay_buffer.add_new_experience(
+                start_state=i, action=i, end_state=i, reward=i, success=i, state_id=i
+            )
+            self.assertEqual(debug_replay_buffer.state_histogram, expected_state_count)
 
 
 if __name__ == "__main__":

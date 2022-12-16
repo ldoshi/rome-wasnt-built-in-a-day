@@ -216,7 +216,8 @@ class SumTree:
 class ReplayBuffer(torch.utils.data.IterableDataset):
     """
     Attributes:
-        state_histogram: A dictionary mapping the number of state ids in the replay buffer to their counts.
+        state_histogram: A dictionary mapping the state ids in the replay
+          buffer to their counts.
     """
 
     def __init__(
@@ -234,7 +235,7 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
         self._tree = SumTree(capacity)
         # epsilon is added to |td_err| to ensure all priorities are non-zero.
         self._epsilon = 1e-10
-        # A counter of the id counts currently in the buffer. The state histogram is only initialized if the debug flag is passed.
+        # A counter of the state_id occurrences in the buffer.
         self.state_histogram: Optional[Counter[int]] = None
         if debug:
             self.state_histogram = Counter()
@@ -266,7 +267,7 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
             prob_min = min(probability for index, probability in samples)
             for index, probability in samples:
                 weight = pow(prob_min / probability, self.beta)
-                # Currently we reserve the last value for the id of the state for logging purposes. If we add more values, consider adding a dataclass object when logging.
+                # We reserve the last value in self._content for the state_id for debug logging purposes. If we add more values, consider adding a dataclass object when logging.
                 yield (index, *self._content[index][:-1], weight)
 
     def add_new_experience(
@@ -278,26 +279,28 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
         success,
         state_id: Optional[int] = None,
     ):
-        if isinstance(self.state_histogram, Counter):
-            assert isinstance(
-                state_id, int
-            ), "The state id should be passed if the histogram is not initialized."
+        if self.state_histogram is not None:
+            assert (
+                state_id is not None
+            ), "The state id must be passed if the replay buffer is initialized in debug mode."
         else:
             assert (
                 state_id is None
-            ), "The state id should not be passed if the histogram is not initialized."
+            ), "The state id should not be passed if the replay buffer is not initialized in debug mode"
         # The last element in the experience is reserved for an optional state id value.
         experience = [start_state, action, end_state, reward, success, state_id]
 
         if len(self._content) == self._capacity:
-            if isinstance(self.state_histogram, Counter):
-                # Remove the previous state id from the Counter when overwriting
+            if self.state_histogram is not None:
+                # Remove the previous state id from the Counter when
+                # overwriting. State ids that have been entirely removed from
+                # the replay buffer still retain a count of 0 in the Counter.
                 self.state_histogram[self._content[self._index][-1]] -= 1
             self._content[self._index] = experience
         else:
             self._content.append(experience)
 
-        if isinstance(self.state_histogram, Counter):
+        if self.state_histogram is not None:
             self.state_histogram[state_id] += 1
         self._tree.set_value(self._index, self._tree.max_value)
         self._index = (self._index + 1) % self._capacity
