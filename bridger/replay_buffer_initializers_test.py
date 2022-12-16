@@ -28,7 +28,7 @@ _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 _ENV_WIDTH = 6
 _OBJECT_LOGGING_DIR = "tmp_object_logging_dir"
 _DELTA = 1e-6
-
+_REPLAY_BUFFER_CAPACITY = 10000
 
 class ReplayBufferInitializersTest(unittest.TestCase):
 
@@ -43,7 +43,7 @@ class ReplayBufferInitializersTest(unittest.TestCase):
         self._replay_buffer.append([start_state, action, end_state, reward, success])
     
     def test_only_reset_state(self):
-        replay_buffer_initializers.initialize_replay_buffer(strategy=replay_buffer_initializers.STRATEGY_ONLY_RESET_STATE, env=self._env, add_new_experience=self.add_new_experience)
+        replay_buffer_initializers.initialize_replay_buffer(strategy=replay_buffer_initializers.STRATEGY_ONLY_RESET_STATE, replay_buffer_capacity=_REPLAY_BUFFER_CAPACITY, env=self._env, add_new_experience=self.add_new_experience)
 
         self.assertEqual(len(self._replay_buffer), _ENV_WIDTH)
         reset_state = self._env.reset()
@@ -52,8 +52,18 @@ class ReplayBufferInitializersTest(unittest.TestCase):
             self.assertEqual(experience[1], expected_action)
 
     def test_standard_configuration_bridge_states(self):
-        replay_buffer_initializers.initialize_replay_buffer(strategy=replay_buffer_initializers.STRATEGY_STANDARD_CONFIGURATION_BRIDGE_STATES, env=self._env, add_new_experience=self.add_new_experience)
+        replay_buffer_initializers.initialize_replay_buffer(strategy=replay_buffer_initializers.STRATEGY_STANDARD_CONFIGURATION_BRIDGE_STATES, replay_buffer_capacity=_REPLAY_BUFFER_CAPACITY, env=self._env, add_new_experience=self.add_new_experience)
         self.assertEqual(len(self._replay_buffer), _ENV_WIDTH * ((int((_ENV_WIDTH -2) / 2) + 1) ** 2 - 1))
+        count_dones = 0
+        for experience in self._replay_buffer:
+            if experience[4]:
+                count_dones += 1
+        self.assertEqual(count_dones, 2)
+            
+        
+    def test_6_bricks(self):
+        replay_buffer_initializers.initialize_replay_buffer(strategy=replay_buffer_initializers.STRATEGY_6_BRICKS, replay_buffer_capacity=_REPLAY_BUFFER_CAPACITY, env=self._env, add_new_experience=self.add_new_experience)
+        self.assertEqual(len(self._replay_buffer), 45)
         count_dones = 0
         for experience in self._replay_buffer:
             if experience[4]:
