@@ -295,6 +295,7 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
                 # Remove the previous state id from the Counter when
                 # overwriting. State ids that have been entirely removed from
                 # the replay buffer still retain a count of 0 in the Counter.
+                # TODO(Joseph): Consider removing state ids that are not in the replay buffer.
                 self.state_histogram[self._content[self._index][-1]] -= 1
             self._content[self._index] = experience
         else:
