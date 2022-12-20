@@ -43,7 +43,7 @@ def training_history_plot_data():
     plot_data = []
 
     min_batch_idx = start_batch_idx
-    max_batch_idx = end_batch_idx if end_batch_idx is not None else start_batch_idx
+    max_batch_idx = end_batch_idx
 
     metrics_and_data_fns = [
         ("td_error", "TD Error", training_history_database.get_td_errors),
@@ -82,8 +82,8 @@ def training_history_plot_data():
                 )
                 max_batch_idx = (
                     max(max_batch_idx, df["batch_idx"].max())
-                    if max_batch_idx is not None and not df.empty
-                    else max_batch_idx
+                    if max_batch_idx is not None
+                    else df["batch_idx"].max()
                 )
 
             state_plot_data["metrics"].append(
@@ -99,6 +99,7 @@ def training_history_plot_data():
     end = int(time.time() * 1e3)
     print(f"Sibyl training_history_plot_data took {end-start} ms.")
 
+    print('min ' , type(min_batch_idx), ' and ' , type(max_batch_idx))
     return {
         "plot_data": plot_data,
         "labels": list(range(min_batch_idx, max_batch_idx + 1)),
