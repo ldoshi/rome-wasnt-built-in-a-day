@@ -9,7 +9,8 @@ from bridger.builder_trainer import BridgeBuilderModel
 
 # Creates the smallest world where a bridge can be built. Cycles
 # through a series of actions to build simple episodes into the
-# training set. 
+# training set.
+
 
 def tiny_world():
 

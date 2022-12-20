@@ -66,6 +66,7 @@ class TrainingBatchLogEntry:
     successes: torch.Tensor
     weights: torch.Tensor
     loss: torch.Tensor
+    replay_buffer_state_counts: List[tuple[int, int]]
 
 
 @dataclasses.dataclass

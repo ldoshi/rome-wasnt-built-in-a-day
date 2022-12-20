@@ -295,7 +295,12 @@ class TestActionInversionDatabase(unittest.TestCase):
             ("filter end", None, 9, expected[:1]),
             ("filter start end", 7, 9, []),
         ]
-        for name, start_batch_index, end_batch_index, expected_divergences in test_cases:
+        for (
+            name,
+            start_batch_index,
+            end_batch_index,
+            expected_divergences,
+        ) in test_cases:
             divergences = self._action_inversion_database.get_divergences(
                 start_batch_index=start_batch_index, end_batch_index=end_batch_index
             )
