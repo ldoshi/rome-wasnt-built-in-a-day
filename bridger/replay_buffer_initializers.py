@@ -1,4 +1,10 @@
-# TODO(lyric): Fix imports.
+"""Tools to initialize the replay buffer before beginning training.
+
+When the --initialize_replay_buffer_strategy is set, one commone
+use-case is to set --inter-training-steps to 0 and test without
+generating any further experiences.
+
+"""
 
 import gym
 import functools
@@ -16,12 +22,46 @@ from bridger.logging import object_logging
 from bridger.logging import log_entry
 
 def _only_reset_state(        env: gym.Env) -> Generator[Tuple[Any, Any, Any, Any, Any], None, None]:
+    """Generates every (reset_state, action) pair.
+
+    This is primarily for debugging the full flow from logging to
+    Sibyl.
+
+    Args:
+      env: A gym for executing population strategies. The current
+        implementation assumes that reset() always returns the same
+        starting state.
+
+    Returns:
+      A generator that yields every experience created by following
+      this strategy.
+
+    """
+    
     for action in range(env.nA):
         state = env.reset()
         next_state, reward, done, _ = env.step(action)
         yield state, action, next_state, reward, done
 
 def _standard_configuration_bridge_states(env: gym.Env) -> Generator[Tuple[Any, Any, Any, Any, Any], None, None]:
+    """Generates experiences while building the optimal bridge.
+
+    This strategy assumes the current env standard config. Every
+    (state, action) for all action permutations that result in the
+    optimal bridge are enumerated.
+
+    Args:
+      env: A gym for executing population strategies. The current
+        implementation assumes that reset() always returns the same
+        starting state.
+
+    Returns:
+      A generator that yields every experience created by following
+      this strategy.
+
+    """
+
+    
     build_actions = builder_trainer.get_action_inversion_checker_actions_standard_configuration(env.nA)
     build_actions_substrings = [[ build_action[:i] for i in range(len(build_action)+1) ]   for build_action in build_actions ]
 
@@ -41,6 +81,22 @@ def _standard_configuration_bridge_states(env: gym.Env) -> Generator[Tuple[Any, 
 
             
 def _n_bricks(brick_count: int, env: gym.Env) -> Generator[Tuple[Any, Any, Any, Any, Any], None, None]:
+    """Generates distinct experiences from exhautively placing n bricks.
+
+    Enumerates every permutation of placing n bricks and removes
+    duplicate (state, action) pairs.
+
+    Args:
+      brick_count: The number of bricks to place.
+      env: A gym for executing population strategies. The current
+        implementation assumes that reset() always returns the same
+        starting state.
+
+    Returns:
+      A generator that yields every experience created by following
+      this strategy.
+    """
+    
     state_action_tuples = set()
     for episode_actions in itertools.product(range(env.nA) , repeat=brick_count):
         state = env.reset()
@@ -76,7 +132,26 @@ _STRATEGY_MAP = {
 }
     
 
-def initialize_replay_buffer(strategy: str, replay_buffer_capacity: int,         env: gym.Env, add_new_experience: Callable[[Any, Any, Any, Any, Any], None], state_visit_logger: Optional[object_logging.OccurrenceLogger] = None):
+def initialize_replay_buffer(strategy: str, replay_buffer_capacity: int,         env: gym.Env, add_new_experience: Callable[[Any, Any, Any, Any, Any], None], state_visit_logger: Optional[object_logging.OccurrenceLogger] = None) -> None:
+    """Initializes the replay buffer following the provided strategy.
+
+    Args:
+      strategy: The name of the strategy to follow.
+      replay_buffer_capacity: The capacity of the replay buffer being
+        populated.
+      env: A gym for executing population strategies. The current
+        implementation assumes that reset() always returns the same
+        starting state.
+      add_new_experience: The function to call in order to add an
+        additional experience to the replay buffer.
+      state_visit_logger: If provided, any states traversed by the
+        population policy are logged as visited.
+
+    Raises:
+      ValueError: If the strategy generates more experiences than the
+        capacity of the replay buffer.
+
+    """
 
     if strategy not in _STRATEGY_MAP:
         raise ValueError(f"Unrecognized replay buffer initialization strategy: {strategy}. Known values are: default, {', '.join(_STRATEGY_MAP.keys())}")
