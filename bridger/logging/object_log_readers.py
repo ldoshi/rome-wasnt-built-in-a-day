@@ -343,7 +343,9 @@ class ActionInversionDatabase:
         return divergences
 
     def get_divergences(
-        self, start_batch_index: Optional[int] = None, end_batch_index: Optional[int] = None
+        self,
+        start_batch_index: Optional[int] = None,
+        end_batch_index: Optional[int] = None,
     ) -> List[DivergenceEntry]:
         """Returns divergences occurring within the provided range.
 
@@ -376,7 +378,9 @@ class ActionInversionDatabase:
         return self._divergences[start:end]
 
     def get_incidence_rate(
-        self, start_batch_index: Optional[int] = None, end_batch_index: Optional[int] = None
+        self,
+        start_batch_index: Optional[int] = None,
+        end_batch_index: Optional[int] = None,
     ) -> Tuple[List[int], List[int]]:
         """Returns the action inversion incident rate per batch.
 

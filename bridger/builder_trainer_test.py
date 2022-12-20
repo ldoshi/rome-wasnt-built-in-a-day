@@ -20,10 +20,13 @@ from bridger import test_utils
 from bridger.logging import object_logging
 from bridger.logging import object_log_readers
 from bridger.logging import log_entry
+from bridger.logging.log_entry import TRAINING_BATCH_LOG_ENTRY
+from bridger import test_utils
+from bridger.test_utils import _OBJECT_LOGGING_DIR
+
 
 
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"
-_OBJECT_LOGGING_DIR = "tmp_object_logging_dir"
 _DELTA = 1e-6
 
 
@@ -139,19 +142,28 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                         self.assertTrue(
                             torch.allclose(
                                 expected_entry_value, logged_entry_value, atol=1e-4
-                            )
+                            ),
+                            msg=f"Field {field}: expected: {expected_entry_value}, logged: {logged_entry_value}.",
                         )
                     else:
                         self.assertTrue(
-                            torch.equal(expected_entry_value, logged_entry_value)
+                            torch.equal(expected_entry_value, logged_entry_value),
+                            msg=f"Field {field}: expected: {expected_entry_value}, logged: {logged_entry_value}.",
                         )
                 elif isinstance(expected_entry_value, float):
                     self.assertAlmostEqual(
-                        expected_entry_value, logged_entry_value, delta=_DELTA
+                        expected_entry_value,
+                        logged_entry_value,
+                        delta=_DELTA,
+                        msg=f"Field {field}: expected: {expected_entry_value}, logged: {logged_entry_value}.",
                     )
                     continue
                 else:
-                    self.assertEqual(expected_entry_value, logged_entry_value)
+                    self.assertEqual(
+                        expected_entry_value,
+                        logged_entry_value,
+                        msg=f"Field {field}: expected: {expected_entry_value}, logged: {logged_entry_value}.",
+                    )
 
     def test_training_batch_logging(self):
         """Verifies that training batches are logged in debug mode."""
@@ -173,6 +185,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 successes=torch.tensor([False, False, False, False, False]),
                 weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
                 loss=torch.tensor(1.5562, dtype=torch.float64, requires_grad=True),
+                replay_buffer_state_counts=[(0, 1000)],
             )
         ]
 
@@ -194,7 +207,10 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=max_steps).fit(
                 test_utils.get_model(
-                    object_log_manager=object_log_manager, debug=True, debug_td_error=True, batch_size=2
+                    object_log_manager=object_log_manager,
+                    debug=True,
+                    debug_td_error=True,
+                    batch_size=2,
                 )
             )
 
@@ -413,6 +429,37 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         )
 
         self._verify_log_entries(expected_entries, logged_entries)
+
+    def test_replay_buffer_state_counts(self):
+        """
+        Checks that the state histogram updates in the replay buffer.
+        """
+        max_steps = 5
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR
+        ) as object_log_manager:
+            test_utils.get_trainer(max_steps=max_steps).fit(
+                test_utils.get_model(
+                    object_log_manager=object_log_manager,
+                    debug=True,
+                    env_width=4,
+                    max_episode_length=10,
+                    initial_memories_count=1,
+                )
+            )
+
+        training_batch_log_entries = list(
+            object_log_readers.read_object_log(
+                os.path.join(_OBJECT_LOGGING_DIR, TRAINING_BATCH_LOG_ENTRY)
+            )
+        )
+
+        expected = [[(0, 1)], [(0, 2)], [(0, 3)], [(0, 4)], [(0, 4), (1, 1)]]
+
+        self.assertEqual(len(training_batch_log_entries), len(expected))
+
+        for log_entry, expected_counts in zip(training_batch_log_entries, expected):
+            self.assertEqual(log_entry.replay_buffer_state_counts, expected_counts)
 
 
 class StateActionCacheTest(unittest.TestCase):

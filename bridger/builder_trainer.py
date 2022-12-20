@@ -276,6 +276,7 @@ class BridgeBuilderModel(pl.LightningModule):
             alpha=self.hparams.alpha,
             beta=self.hparams.beta_training_start,
             batch_size=self.hparams.batch_size,
+            debug=self.hparams.debug,
         )
 
         self.Q = qfunctions.CNNQ(*self.env.shape, self.env.nA)
@@ -387,7 +388,7 @@ class BridgeBuilderModel(pl.LightningModule):
         """Makes memories according to the requested memory count or default number of steps."""
         memory_count = (
             requested_memory_count
-            if requested_memory_count  is not None
+            if requested_memory_count
             else self.hparams.inter_training_steps
         )
         with torch.no_grad():
@@ -543,7 +544,12 @@ class BridgeBuilderModel(pl.LightningModule):
         next_state, reward, done, _ = self.env.step(action)
         self.state = next_state
         result = (state, action, next_state, reward, done)
-        self.replay_buffer.add_new_experience(*result)
+        self.replay_buffer.add_new_experience(
+            *result,
+            self._state_logger.get_logged_object_id(torch.Tensor(state))
+            if self.hparams.debug
+            else None,
+        )
 
         if self.hparams.env_display:
             self.env.render()
@@ -633,6 +639,12 @@ class BridgeBuilderModel(pl.LightningModule):
             rewards_copy = copy.deepcopy(rewards)
             success_copy = copy.deepcopy(success)
             weights_copy = copy.deepcopy(weights)
+            replay_buffer_state_counts_copy = sorted(
+                [
+                    (state_id, count)
+                    for state_id, count in self.replay_buffer.state_histogram.items()
+                ]
+            )
 
             self._object_log_manager.log(
                 log_entry.TRAINING_BATCH_LOG_ENTRY,
@@ -652,14 +664,15 @@ class BridgeBuilderModel(pl.LightningModule):
                     successes=success_copy,
                     weights=weights_copy,
                     loss=loss,
+                    replay_buffer_state_counts=replay_buffer_state_counts_copy,
                 ),
             )
 
             if self.hparams.debug_td_error:
                 # Log richer representation of td error for testing.
-                frequent_states: list[torch.Tensor] = self._state_visit_logger.get_top_n(
-                    _FREQUENTLY_VISITED_STATE_COUNT
-                )
+                frequent_states: list[
+                    torch.Tensor
+                ] = self._state_visit_logger.get_top_n(_FREQUENTLY_VISITED_STATE_COUNT)
                 # Sample all possible actions over the state space.
                 actions = range(self.env.nA)
 
@@ -689,15 +702,17 @@ class BridgeBuilderModel(pl.LightningModule):
                                     actions=torch.tensor([action]),
                                     next_states=torch.tensor([next_state]),
                                     rewards=torch.tensor([reward]),
-                                    success=torch.tensor([environment_completion_status]),
+                                    success=torch.tensor(
+                                        [environment_completion_status]
+                                    ),
                                 ).item(),
                             ),
                         )
             else:
                 # Revert to logging td error log entries the original way.
                 for state, action, td_error in zip(
-                states, actions.tolist(), td_errors.tolist()
-            ):
+                    states, actions.tolist(), td_errors.tolist()
+                ):
                     self._object_log_manager.log(
                         log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
                         log_entry.TrainingHistoryTDErrorLogEntry(
@@ -710,7 +725,8 @@ class BridgeBuilderModel(pl.LightningModule):
 
         if self.hparams.debug_action_inversion_checker:
             action_inversion_reports = self._action_inversion_checker.check(
-                policy=self._validation_policy)
+                policy=self._validation_policy
+            )
             self.log("action_inversion_incident_rate", len(action_inversion_reports))
 
             for report in action_inversion_reports:

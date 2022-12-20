@@ -5,6 +5,9 @@ from bisect import bisect_right
 from itertools import chain, starmap
 from functools import partial
 
+from collections import Counter
+from typing import Optional
+
 
 class SumTree:
     """A binary tree in which leaf node must contain a nonnegative value and
@@ -211,15 +214,31 @@ class SumTree:
 # more natural by splitting into separate but interdependent (custom) Sampler
 # and Dataset classes
 class ReplayBuffer(torch.utils.data.IterableDataset):
-    def __init__(self, capacity, alpha=0.5, beta=0.5, batch_size=100):
+    """
+    Attributes:
+        state_histogram: A dictionary mapping the state ids in the replay
+          buffer to their counts.
+    """
+
+    def __init__(
+        self,
+        capacity: int,
+        alpha: float = 0.5,
+        beta: float = 0.5,
+        batch_size: int = 100,
+        debug: bool = False,
+    ):
         self._capacity = capacity
         self._alpha = alpha
         self._content = []
         self._index = 0
         self._tree = SumTree(capacity)
-        # epsilon is added to |td_errr| to ensure all priorities are non-zero.
+        # epsilon is added to |td_err| to ensure all priorities are non-zero.
         self._epsilon = 1e-10
-
+        # A counter of the state_id occurrences in the buffer.
+        self.state_histogram: Optional[Counter[int]] = None
+        if debug:
+            self.state_histogram = Counter()
         self.beta = beta
         self.batch_size = batch_size
 
@@ -248,20 +267,47 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
             prob_min = min(probability for index, probability in samples)
             for index, probability in samples:
                 weight = pow(prob_min / probability, self.beta)
-                yield (index, *self._content[index], weight)
+                # We reserve the last value in self._content for the state_id for debug logging purposes. If we add more values, consider adding a dataclass object when logging.
+                yield (index, *self._content[index][:-1], weight)
 
-    def add_new_experience(self, start_state, action, end_state, reward, success):
-        experience = [start_state, action, end_state, reward, success]
+    def add_new_experience(
+        self,
+        start_state,
+        action,
+        end_state,
+        reward,
+        success,
+        state_id: Optional[int] = None,
+    ):
+        if self.state_histogram is not None:
+            assert (
+                state_id is not None
+            ), "The state id must be passed if the replay buffer is initialized in debug mode."
+        else:
+            assert (
+                state_id is None
+            ), "The state id should not be passed if the replay buffer is not initialized in debug mode"
+        # The last element in the experience is reserved for an optional state id value.
+        experience = [start_state, action, end_state, reward, success, state_id]
+
         if len(self._content) == self._capacity:
+            if self.state_histogram is not None:
+                # Remove the previous state id from the Counter when
+                # overwriting. State ids that have been entirely removed from
+                # the replay buffer still retain a count of 0 in the Counter.
+                # TODO(Joseph): Consider removing state ids that are not in the replay buffer.
+                self.state_histogram[self._content[self._index][-1]] -= 1
             self._content[self._index] = experience
         else:
             self._content.append(experience)
 
+        if self.state_histogram is not None:
+            self.state_histogram[state_id] += 1
         self._tree.set_value(self._index, self._tree.max_value)
         self._index = (self._index + 1) % self._capacity
 
     def update_priorities(self, indices, td_errors):
-        # If update_priorities is never called, this calls implements uniform
+        # If update_priorities is never called, this call implements uniform
         # sampling of the Experience Replay Buffer.
         indices, td_errors = [
             (L if isinstance(L, list) else L.tolist()) for L in [indices, td_errors]
