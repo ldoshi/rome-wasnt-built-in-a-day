@@ -4,16 +4,44 @@ import unittest
 from typing import Any
 
 import numpy as np
-from bridger import builder_trainer
-from bridger import replay_buffer_initializers
+import pathlib
+import shutil
+import torch
+
+from bridger import (
+    builder_trainer,
+    hash_utils,
+    replay_buffer,
+    replay_buffer_initializers,
+)
+from bridger.logging import object_logging
 
 
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 _ENV_WIDTH = 6
 _REPLAY_BUFFER_CAPACITY = 10000
 
+_TMP_DIR = "tmp/nested_tmp"
+_LOG_FILENAME = "log_filename"
+
+
+def create_temp_dir():
+    path = pathlib.Path(_TMP_DIR)
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def delete_temp_dir():
+    path = pathlib.Path(_TMP_DIR)
+    shutil.rmtree(path.parts[0], ignore_errors=True)
+
 
 class ReplayBufferInitializersTest(unittest.TestCase):
+    def setUp(self):
+        create_temp_dir()
+
+    def tearDown(self):
+        delete_temp_dir()
+
     def setUp(self):
         self._replay_buffer = []
         self._env = builder_trainer.make_env(
@@ -21,9 +49,17 @@ class ReplayBufferInitializersTest(unittest.TestCase):
         )
 
     def add_new_experience(
-        self, start_state: Any, action: Any, end_state: Any, reward: Any, success: Any
+        self,
+        start_state: Any,
+        action: Any,
+        end_state: Any,
+        reward: Any,
+        success: Any,
+        state_id: int,
     ):
-        self._replay_buffer.append([start_state, action, end_state, reward, success])
+        self._replay_buffer.append(
+            [start_state, action, end_state, reward, success, state_id]
+        )
 
     def test_only_reset_state(self):
         replay_buffer_initializers.initialize_replay_buffer(
@@ -124,6 +160,83 @@ class ReplayBufferInitializersTest(unittest.TestCase):
             replay_buffer_capacity=2,
             env=self._env,
             add_new_experience=self.add_new_experience,
+        )
+
+    def test_real_replay_buffer(self):
+        buffer = replay_buffer.ReplayBuffer(
+            capacity=_REPLAY_BUFFER_CAPACITY,
+        )
+        replay_buffer_initializers.initialize_replay_buffer(
+            strategy=replay_buffer_initializers.STRATEGY_2_BRICKS,
+            replay_buffer_capacity=_REPLAY_BUFFER_CAPACITY,
+            env=self._env,
+            add_new_experience=buffer.add_new_experience,
+        )
+        self.assertIsNone(buffer.state_histogram)
+
+    def test_real_replay_buffer_extra_logger(self):
+        buffer = replay_buffer.ReplayBuffer(
+            capacity=_REPLAY_BUFFER_CAPACITY,
+        )
+
+        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+            state_logger = object_logging.LoggerAndNormalizer(
+                log_filename=_LOG_FILENAME,
+                object_log_manager=logger,
+                log_entry_object_class=torch.Tensor,
+                make_hashable_fn=hash_utils.hash_tensor,
+            )
+
+            self.assertRaisesRegex(
+                AssertionError,
+                "state id should not be passed if the replay buffer",
+                replay_buffer_initializers.initialize_replay_buffer,
+                strategy=replay_buffer_initializers.STRATEGY_2_BRICKS,
+                replay_buffer_capacity=_REPLAY_BUFFER_CAPACITY,
+                env=self._env,
+                add_new_experience=buffer.add_new_experience,
+                state_logger=state_logger,
+            )
+
+    def test_real_replay_buffer_debug(self):
+        buffer = replay_buffer.ReplayBuffer(
+            capacity=_REPLAY_BUFFER_CAPACITY,
+            debug=True,
+        )
+
+        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+            state_logger = object_logging.LoggerAndNormalizer(
+                log_filename=_LOG_FILENAME,
+                object_log_manager=logger,
+                log_entry_object_class=torch.Tensor,
+                make_hashable_fn=hash_utils.hash_tensor,
+            )
+
+            replay_buffer_initializers.initialize_replay_buffer(
+                strategy=replay_buffer_initializers.STRATEGY_2_BRICKS,
+                replay_buffer_capacity=_REPLAY_BUFFER_CAPACITY,
+                env=self._env,
+                add_new_experience=buffer.add_new_experience,
+                state_logger=state_logger,
+            )
+
+        # As mentioned in test_2_bricks, there are 3 distinct starting
+        # states.
+        self.assertEqual(len(buffer.state_histogram), 3)
+
+    def test_real_replay_buffer_debug_no_state_id(self):
+        buffer = replay_buffer.ReplayBuffer(
+            capacity=_REPLAY_BUFFER_CAPACITY,
+            debug=True,
+        )
+        self.assertRaisesRegex(
+            AssertionError,
+            "state id must be passed",
+            replay_buffer_initializers.initialize_replay_buffer,
+            strategy=replay_buffer_initializers.STRATEGY_2_BRICKS,
+            replay_buffer_capacity=_REPLAY_BUFFER_CAPACITY,
+            env=self._env,
+            add_new_experience=buffer.add_new_experience,
         )
 
 
