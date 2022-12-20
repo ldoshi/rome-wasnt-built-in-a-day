@@ -144,8 +144,9 @@ def initialize_replay_buffer(
     strategy: str,
     replay_buffer_capacity: int,
     env: gym.Env,
-    add_new_experience: Callable[[Any, Any, Any, Any, Any], None],
+    add_new_experience: Callable[[Any, Any, Any, Any, Any, Any], None],
     state_visit_logger: Optional[object_logging.OccurrenceLogger] = None,
+    state_logger: Optional[object_logging.LoggerAndNormalizer] = None,
 ) -> None:
     """Initializes the replay buffer following the provided strategy.
 
@@ -160,6 +161,10 @@ def initialize_replay_buffer(
         additional experience to the replay buffer.
       state_visit_logger: If provided, any states traversed by the
         population policy are logged as visited.
+      state_logger: If provided, provides access to state ids. This
+        must be provided to access state_ids, which in turn must be
+        passed to add_new_experience if the replay buffer is
+        initialzed in debug mode.
 
     Raises:
       ValueError: If the strategy generates more experiences than the
@@ -175,14 +180,20 @@ def initialize_replay_buffer(
 
     experience_count = 0
     for (state, action, next_state, reward, done) in _STRATEGY_MAP[strategy](env=env):
-        add_new_experience(state, action, next_state, reward, done)
-        experience_count += 1
 
         if state_visit_logger:
             state_visit_logger.log_occurrence(
                 batch_idx=_INITIALIZE_REPLAY_BUFFER_BATCH_IDX,
                 object=torch.from_numpy(state),
             )
+
+        state_id = (
+            state_logger.get_logged_object_id(torch.from_numpy(state))
+            if state_logger
+            else None
+        )
+        add_new_experience(state, action, next_state, reward, done, state_id)
+        experience_count += 1
 
         if experience_count > replay_buffer_capacity:
             raise ValueError(
