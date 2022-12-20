@@ -1,6 +1,6 @@
 """Tools to initialize the replay buffer before beginning training.
 
-When the --initialize_replay_buffer_strategy is set, one commone
+When the --initialize_replay_buffer_strategy is set, one common
 use-case is to set --inter-training-steps to 0 and test without
 generating any further experiences.
 
