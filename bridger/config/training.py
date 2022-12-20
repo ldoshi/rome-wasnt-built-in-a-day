@@ -57,11 +57,6 @@ hparam_dict[key] = {"type": str, "default": "object_logging"}
 help_str = "Path to folder in which all object logs will be saved"
 hparam_dict[key]["help"] = help_str
 
-key = "initialize_replay_buffer_strategy"
-hparam_dict[key] = {"type": str, "default": None}
-help_str = "The strategy used to set the contents of the replay buffer without using the policy before starting training. If not provided, the replay buffer is initialized following the epsilon-greedy policy for initial_memories_count steps."
-hparam_dict[key]["help"] = help_str
-
 key = "initial_memories_count"
 hparam_dict[key] = {"type": int, "default": hparam_dict["batch_size"]["default"] * 10}
 help_str = "The number of memories to initialize the replay buffer with before starting training"
