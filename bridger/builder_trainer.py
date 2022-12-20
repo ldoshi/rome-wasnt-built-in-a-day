@@ -388,7 +388,7 @@ class BridgeBuilderModel(pl.LightningModule):
         """Makes memories according to the requested memory count or default number of steps."""
         memory_count = (
             requested_memory_count
-            if requested_memory_count
+            if requested_memory_count is not None
             else self.hparams.inter_training_steps
         )
         with torch.no_grad():
