@@ -98,7 +98,6 @@ def training_history_plot_data():
 
     end = int(time.time() * 1e3)
     print(f"Sibyl training_history_plot_data took {end-start} ms.")
-
     return {
         "plot_data": plot_data,
         "labels": list(range(min_batch_idx, max_batch_idx + 1)),
