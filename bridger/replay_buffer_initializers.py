@@ -90,7 +90,7 @@ def _standard_configuration_bridge_states(
 def _n_bricks(
     brick_count: int, env: gym.Env
 ) -> Generator[Tuple[Any, Any, Any, Any, Any], None, None]:
-    """Generates distinct experiences from exhautively placing n bricks.
+    """Generates distinct experiences from exhaustively placing n bricks.
 
     Enumerates every permutation of placing n bricks and removes
     duplicate (state, action) pairs.
@@ -169,7 +169,7 @@ def initialize_replay_buffer(
     Raises:
       ValueError: If the strategy generates more experiences than the
         capacity of the replay buffer or if the strategy does not
-        correponding to a known implementation.
+        correspond to a known implementation.
 
     """
 

@@ -1,7 +1,7 @@
 """Tests replay buffer initializers."""
 import unittest
 
-from typing import Any
+from typing import Any, NamedTuple
 
 import numpy as np
 import pathlib
@@ -23,6 +23,15 @@ _REPLAY_BUFFER_CAPACITY = 10000
 
 _TMP_DIR = "tmp/nested_tmp"
 _LOG_FILENAME = "log_filename"
+
+
+class Experience(NamedTuple):
+    start_state: Any
+    action: Any
+    end_state: Any
+    reward: Any
+    success: Any
+    state_id: int
 
 
 def create_temp_dir():
@@ -58,7 +67,14 @@ class ReplayBufferInitializersTest(unittest.TestCase):
         state_id: int,
     ):
         self._replay_buffer.append(
-            [start_state, action, end_state, reward, success, state_id]
+            Experience(
+                start_state=start_state,
+                action=action,
+                end_state=end_state,
+                reward=reward,
+                success=success,
+                state_id=state_id,
+            )
         )
 
     def test_only_reset_state(self):
@@ -72,8 +88,8 @@ class ReplayBufferInitializersTest(unittest.TestCase):
         self.assertEqual(len(self._replay_buffer), _ENV_WIDTH)
         reset_state = self._env.reset()
         for experience, expected_action in zip(self._replay_buffer, range(_ENV_WIDTH)):
-            np.testing.assert_array_equal(experience[0], reset_state)
-            self.assertEqual(experience[1], expected_action)
+            np.testing.assert_array_equal(experience.start_state, reset_state)
+            self.assertEqual(experience.action, expected_action)
 
     def test_standard_configuration_bridge_states(self):
         replay_buffer_initializers.initialize_replay_buffer(
@@ -86,11 +102,11 @@ class ReplayBufferInitializersTest(unittest.TestCase):
             len(self._replay_buffer),
             _ENV_WIDTH * ((int((_ENV_WIDTH - 2) / 2) + 1) ** 2 - 1),
         )
-        count_dones = 0
+        count_successes = 0
         for experience in self._replay_buffer:
-            if experience[4]:
-                count_dones += 1
-        self.assertEqual(count_dones, 2)
+            if experience.success:
+                count_successes += 1
+        self.assertEqual(count_successes, 2)
 
     def test_2_bricks(self):
         """Verifies the n-bricks strategy with 2 bricks.
@@ -110,16 +126,16 @@ class ReplayBufferInitializersTest(unittest.TestCase):
         # (b) will produce an additional 6 unique experiences
         # each. (c) will not produce any unique experiences.
         self.assertEqual(len(self._replay_buffer), 18)
-        count_dones = 0
+        count_successes = 0
         for experience in self._replay_buffer:
-            if experience[4]:
-                count_dones += 1
-        self.assertEqual(count_dones, 0)
+            if experience.success:
+                count_successes += 1
+        self.assertEqual(count_successes, 0)
 
     def test_4_bricks(self):
         """Verifies the n-bricks strategy with 4 bricks.
 
-        We chose 4 so we can reason about the number of dones.
+        We chose 4 so we can reason about the number of successes.
         """
         replay_buffer_initializers.initialize_replay_buffer(
             strategy=replay_buffer_initializers.STRATEGY_4_BRICKS,
@@ -129,16 +145,16 @@ class ReplayBufferInitializersTest(unittest.TestCase):
         )
         # This number is empirically derived.
         self.assertEqual(len(self._replay_buffer), 132)
-        count_dones = 0
+        count_successes = 0
         for experience in self._replay_buffer:
-            if experience[4]:
-                count_dones += 1
+            if experience.success:
+                count_successes += 1
 
-        # The 2 done scenarios occur when the last brick is placed
+        # The 2 success scenarios occur when the last brick is placed
         # with action 1 after {0, [4,3]} or action 3 after {[0,1],
         # 4}. The actions in [] must happen in that order relative to
         # other list members while {} means the order doesn't matter.
-        self.assertEqual(count_dones, 2)
+        self.assertEqual(count_successes, 2)
 
     def test_capacity_too_small(self):
         self.assertRaisesRegex(
