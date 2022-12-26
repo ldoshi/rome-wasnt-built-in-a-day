@@ -62,11 +62,7 @@ def _standard_configuration_bridge_states(
 
     """
 
-    build_actions = (
-        builder_trainer.get_action_inversion_checker_actions_standard_configuration(
-            env.nA
-        )
-    )
+    build_actions = builder_trainer.get_actions_for_standard_configuration(env.nA)
     build_actions_substrings = [
         [build_action[:i] for i in range(len(build_action) + 1)]
         for build_action in build_actions

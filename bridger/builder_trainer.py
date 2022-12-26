@@ -75,15 +75,14 @@ def make_env(
     return env
 
 
-def get_action_inversion_checker_actions_standard_configuration(
+def get_actions_for_standard_configuration(
     env_width: int,
 ) -> List[List[int]]:
-    """Produces action inversion checker actions.
+    """Produces actions to build a bridge in the standard configuration.
 
-    The current ActionInversionChecker implementation presumes an
-    environment of even width where the bridge is built up from edge
-    to edge without intermediate supports. The actions are initialized
-    based on this presumption.
+    The implementation presumes an environment of even width where the
+    bridge is built up from edge to edge without intermediate
+    supports. The actions are initialized based on this presumption.
 
     Args:
       env_width: The width of the environment.
@@ -298,9 +297,7 @@ class BridgeBuilderModel(pl.LightningModule):
 
         self._action_inversion_checker = None
         if self.hparams.debug_action_inversion_checker:
-            actions = get_action_inversion_checker_actions_standard_configuration(
-                self.hparams.env_width
-            )
+            actions = get_actions_for_standard_configuration(self.hparams.env_width)
             self._action_inversion_checker = (
                 action_inversion_checker.ActionInversionChecker(
                     env=self._validation_env, actions=actions
