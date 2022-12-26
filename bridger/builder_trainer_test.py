@@ -25,7 +25,6 @@ from bridger import test_utils
 from bridger.test_utils import _OBJECT_LOGGING_DIR
 
 
-
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 _DELTA = 1e-6
 
@@ -377,24 +376,20 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 debug_action_inversion_checker=True,
             )
 
-    def test_get_action_inversion_checker_actions_standard_configuration_illegal_usage(
+    def test_get_actions_for_standard_configuration_illegal_usage(
         self,
     ):
         """Verifies checking illegal arguments when building the actions sequence."""
         self.assertRaisesRegex(
             ValueError,
             "must be even to use",
-            builder_trainer.get_action_inversion_checker_actions_standard_configuration,
+            builder_trainer.get_actions_for_standard_configuration,
             env_width=7,
         )
 
-    def test_get_action_inversion_checker_actions_standard_configuration(self):
+    def test_get_actions_for_standard_configuration(self):
         """Verifies building the actions sequence."""
-        actions = (
-            builder_trainer.get_action_inversion_checker_actions_standard_configuration(
-                env_width=8
-            )
-        )
+        actions = builder_trainer.get_actions_for_standard_configuration(env_width=8)
         expected = [[0, 1, 2], [6, 5, 4]]
         self.assertEqual(actions, expected)
 
