@@ -16,7 +16,6 @@ import unittest
 from bridger import test_utils
 
 from tools import training_batch_comparison_tool
-from tools import training_viewer
 
 from bridger.logging_utils import object_logging
 from bridger.logging_utils import object_log_readers
