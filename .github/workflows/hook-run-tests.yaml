@@ -30,6 +30,10 @@ jobs:
           cd rome/
           pip install -r requirements.txt
           pip install -r dev_requirements.txt
+      - name: Lint with black
+        uses: psf/black@stable
+        with:
+          version: "22.3.0"
       - name: Check types with pytype
         run: |
           cd rome/bridger
