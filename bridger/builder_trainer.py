@@ -12,7 +12,14 @@ from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
 
 
-from bridger import config, hash_utils, policies, qfunctions, replay_buffer, replay_buffer_initializers
+from bridger import (
+    config,
+    hash_utils,
+    policies,
+    qfunctions,
+    replay_buffer,
+    replay_buffer_initializers,
+)
 from bridger.debug import action_inversion_checker
 from bridger.logging import object_logging
 from bridger.logging import log_entry
@@ -314,7 +321,13 @@ class BridgeBuilderModel(pl.LightningModule):
     def on_train_start(self):
         """Populates the replay buffer with an initial set of memories before training steps begin."""
         if self.hparams.initialize_replay_buffer_strategy is not None:
-            replay_buffer_initializers.initialize_replay_buffer(strategy=self.hparams.initialize_replay_buffer_strategy, replay_buffer_capacity=self.hparams.capacity, env=self._validation_env, add_new_experience=self.replay_buffer.add_new_experience, state_visit_logger=self._state_visit_logger)
+            replay_buffer_initializers.initialize_replay_buffer(
+                strategy=self.hparams.initialize_replay_buffer_strategy,
+                replay_buffer_capacity=self.hparams.capacity,
+                env=self._validation_env,
+                add_new_experience=self.replay_buffer.add_new_experience,
+                state_visit_logger=self._state_visit_logger,
+            )
         else:
             self.make_memories(
                 batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
