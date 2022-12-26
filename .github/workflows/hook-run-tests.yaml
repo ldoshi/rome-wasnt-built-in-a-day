@@ -23,14 +23,13 @@ jobs:
       - name: Build gym-bridges
         run: |
           cd gym-bridges/
-          pip install -r requirements.txt
           ./reinstall.sh
       - name: Install dependencies and build rome
         run: |
           cd rome/
           pip install -r requirements.txt
           pip install -r dev_requirements.txt
-      - name: Check bridger types with pytype
+      - name: Check types with pytype
         run: |
           cd rome/bridger
           pytype .
