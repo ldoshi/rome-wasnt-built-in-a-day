@@ -2,4 +2,4 @@ black==22.3.0
 parameterized==0.8.1
 pylint==2.10.2
 pytest==6.2.2
-pytype==2022.1.13
+pytype==2022.12.15
