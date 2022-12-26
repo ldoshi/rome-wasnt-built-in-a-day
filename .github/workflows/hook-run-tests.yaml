@@ -29,7 +29,7 @@ jobs:
           cd rome/
           pip install -r requirements.txt
           pip install -r dev_requirements.txt
-      - name: Check bridger types with pytype
+      - name: Check types with pytype
         run: |
           cd rome/bridger
           pytype .
