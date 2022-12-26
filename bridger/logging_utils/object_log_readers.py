@@ -19,7 +19,7 @@ import torch
 from collections.abc import Hashable
 from typing import List, Optional, Tuple
 
-from bridger.logging import log_entry
+from bridger.logging_utils import log_entry
 
 
 def read_object_log(log_filepath: str):

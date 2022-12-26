@@ -17,10 +17,10 @@ from bridger import builder_trainer
 from bridger import hash_utils
 from bridger import policies
 from bridger import test_utils
-from bridger.logging import object_logging
-from bridger.logging import object_log_readers
-from bridger.logging import log_entry
-from bridger.logging.log_entry import TRAINING_BATCH_LOG_ENTRY
+from bridger.logging_utils import object_logging
+from bridger.logging_utils import object_log_readers
+from bridger.logging_utils import log_entry
+from bridger.logging_utils.log_entry import TRAINING_BATCH_LOG_ENTRY
 from bridger import test_utils
 from bridger.test_utils import _OBJECT_LOGGING_DIR
 

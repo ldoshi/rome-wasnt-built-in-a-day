@@ -14,8 +14,8 @@ from typing import Any, Union, Generator, Optional
 
 from bridger import config, hash_utils, policies, qfunctions, replay_buffer
 from bridger.debug import action_inversion_checker
-from bridger.logging import object_logging
-from bridger.logging import log_entry
+from bridger.logging_utils import object_logging
+from bridger.logging_utils import log_entry
 
 # TODO(lyric): Make this is a training config if being able to
 # override it proves to be desirable.

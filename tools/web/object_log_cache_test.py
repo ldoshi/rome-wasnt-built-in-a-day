@@ -4,9 +4,9 @@ import unittest
 import shutil
 
 from bridger import test_utils
-from bridger.logging import object_logging
-from bridger.logging import object_log_readers
-from bridger.logging import log_entry
+from bridger.logging_utils import object_logging
+from bridger.logging_utils import object_log_readers
+from bridger.logging_utils import log_entry
 
 from tools.web import object_log_cache
 
