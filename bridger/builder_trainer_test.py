@@ -25,7 +25,6 @@ from bridger import test_utils
 from bridger.test_utils import _OBJECT_LOGGING_DIR
 
 
-
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 _DELTA = 1e-6
 
