@@ -34,7 +34,9 @@ jobs:
         run: |
           cd rome/bridger
           pytype .
-	  cd ../tools
+      - name: Check types with pytype
+        run: |
+	  cd rome/tools
 	  pytype .
       - name: Test with pytest
         run: |
