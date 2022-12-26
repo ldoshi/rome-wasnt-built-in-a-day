@@ -320,7 +320,7 @@ class BridgeBuilderModel(pl.LightningModule):
     def on_train_batch_end(
         self,
         outputs: Union[torch.Tensor, dict[str, Any]],
-        batch: Any,
+        batch,
         batch_idx: int,
     ) -> None:
         """Complete follow-on calculations after the model weight updates made during the training step. Follow-on calculations include updating the target network, making additional memories using the updated model, and additional bookkeeping.
