@@ -327,6 +327,7 @@ class BridgeBuilderModel(pl.LightningModule):
                 env=self._validation_env,
                 add_new_experience=self.replay_buffer.add_new_experience,
                 state_visit_logger=self._state_visit_logger,
+                state_logger=self._state_logger,
             )
         else:
             self.make_memories(
