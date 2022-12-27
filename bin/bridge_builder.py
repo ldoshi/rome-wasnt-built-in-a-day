@@ -86,7 +86,7 @@ def test():
 
         # TODO(lyric): Temporary code until we decide how to track and
         # store evaluation results.
-        build_count = 1000
+        build_count = 1
         # TODO(lyric): Choose and persist a set seed value used for
         # evaluations to ensure they are repeatable and comparable.
         seed = 123456
