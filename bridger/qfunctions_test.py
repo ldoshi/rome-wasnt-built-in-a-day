@@ -28,9 +28,11 @@ class QFunctionsTest(unittest.TestCase):
         one_hot = qfunctions.encode_enum_state_to_channels(index_tensor, 3)
         self.assertTrue(torch.equal(one_hot, expected_tensor))
 
-_IMAGE_HEIGHT =3
-_IMAGE_WIDTH =3 
+
+_IMAGE_HEIGHT = 3
+_IMAGE_WIDTH = 3
 _NUM_ACTIONS = 4
+
 
 class QAndTargetValues(NamedTuple):
     q_value_0: torch.Tensor
@@ -40,10 +42,11 @@ class QAndTargetValues(NamedTuple):
     q_value_2: torch.Tensor
     target_value_2: torch.Tensor
 
+
 class CNNQManagerTest(unittest.TestCase):
-
-
-    def _get_q_and_target_values(self,q_manager: qfunctions.CNNQManager) -> QAndTargetValues:
+    def _get_q_and_target_values(
+        self, q_manager: qfunctions.CNNQManager
+    ) -> QAndTargetValues:
         x = torch.ones(_IMAGE_HEIGHT, _IMAGE_WIDTH)
 
         q_value_0 = q_manager.q(x)
@@ -66,12 +69,22 @@ class CNNQManagerTest(unittest.TestCase):
         # Calling update_target never affects q itself.
         self.assertTrue(torch.all(q_value_1 == q_value_2))
 
-        return QAndTargetValues(q_value_0=q_value_0, target_value_0=target_value_0,
-                                q_value_1=q_value_1, target_value_1=target_value_1,
-                                q_value_2=q_value_2, target_value_2=target_value_2)
-    
+        return QAndTargetValues(
+            q_value_0=q_value_0,
+            target_value_0=target_value_0,
+            q_value_1=q_value_1,
+            target_value_1=target_value_1,
+            q_value_2=q_value_2,
+            target_value_2=target_value_2,
+        )
+
     def test_tau_0(self):
-        q_manager = qfunctions.CNNQManager(image_height=_IMAGE_HEIGHT, image_width=_IMAGE_WIDTH, num_actions=_NUM_ACTIONS, tau=0)
+        q_manager = qfunctions.CNNQManager(
+            image_height=_IMAGE_HEIGHT,
+            image_width=_IMAGE_WIDTH,
+            num_actions=_NUM_ACTIONS,
+            tau=0,
+        )
         values = self._get_q_and_target_values(q_manager)
 
         # The q value changes, but the target has not been updated yet.
@@ -82,7 +95,12 @@ class CNNQManagerTest(unittest.TestCase):
         self.assertTrue(torch.all(values.target_value_1 == values.target_value_2))
 
     def test_tau_1(self):
-        q_manager = qfunctions.CNNQManager(image_height=_IMAGE_HEIGHT, image_width=_IMAGE_WIDTH, num_actions=_NUM_ACTIONS, tau=1)
+        q_manager = qfunctions.CNNQManager(
+            image_height=_IMAGE_HEIGHT,
+            image_width=_IMAGE_WIDTH,
+            num_actions=_NUM_ACTIONS,
+            tau=1,
+        )
         values = self._get_q_and_target_values(q_manager)
 
         # The q value changes, but the target has not been updated yet.
@@ -91,9 +109,14 @@ class CNNQManagerTest(unittest.TestCase):
 
         # With tao as 1, the target now matches q after update_target.
         self.assertTrue(torch.all(values.q_value_2 == values.target_value_2))
-                
+
     def test_tau_intermediate(self):
-        q_manager = qfunctions.CNNQManager(image_height=_IMAGE_HEIGHT, image_width=_IMAGE_WIDTH, num_actions=_NUM_ACTIONS, tau=.7)
+        q_manager = qfunctions.CNNQManager(
+            image_height=_IMAGE_HEIGHT,
+            image_width=_IMAGE_WIDTH,
+            num_actions=_NUM_ACTIONS,
+            tau=0.7,
+        )
         values = self._get_q_and_target_values(q_manager)
 
         # The q value changes, but the target has not been updated yet.
@@ -105,9 +128,13 @@ class CNNQManagerTest(unittest.TestCase):
         self.assertFalse(torch.all(values.target_value_1 == values.target_value_2))
         self.assertFalse(torch.all(values.q_value_2 == values.target_value_2))
 
-
     def test_tau_none(self):
-        q_manager = qfunctions.CNNQManager(image_height=_IMAGE_HEIGHT, image_width=_IMAGE_WIDTH, num_actions=_NUM_ACTIONS, tau=None)
+        q_manager = qfunctions.CNNQManager(
+            image_height=_IMAGE_HEIGHT,
+            image_width=_IMAGE_WIDTH,
+            num_actions=_NUM_ACTIONS,
+            tau=None,
+        )
         values = self._get_q_and_target_values(q_manager)
 
         # The q value changes and target evaluates the same network.
@@ -119,8 +146,6 @@ class CNNQManagerTest(unittest.TestCase):
         self.assertTrue(torch.all(values.target_value_1 == values.target_value_2))
         self.assertTrue(torch.all(values.q_value_2 == values.target_value_2))
 
-        
-        
+
 if __name__ == "__main__":
     unittest.main()
-
