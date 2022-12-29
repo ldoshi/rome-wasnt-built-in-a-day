@@ -278,7 +278,9 @@ class BridgeBuilderModel(pl.LightningModule):
             debug=self.hparams.debug,
         )
 
-        self.q_manager = qfunctions.CNNQManger(*self.env.shape, self.env.nA, self.hparams.tau)
+        self.q_manager = qfunctions.CNNQManger(
+            *self.env.shape, self.env.nA, self.hparams.tau
+        )
 
         # TODO(lyric): Consider specifying the policy as a hyperparam
         self.policy = policies.EpsilonGreedyPolicy(self.q_manager.q)

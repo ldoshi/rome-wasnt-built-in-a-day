@@ -23,38 +23,67 @@ def _update_target(tau: float, q: torch.nn.Module, target: torch.nn.Module) -> N
 
 
 class QManager(abc.ABC, torch.nn.Module):
-    """Requirements for a Q state action value function."""
+    """Base class to interact with a q function and its target.
+
+    The q and its target are coupled to ensure they have the same
+    architecture and are updated appropriately.
+
+    If a separate target is not being used, the q and target accessors
+    evaluate the same underlying function.
+
+    """
 
     @abc.abstractmethod
     def update_target(self) -> None:
+        """Update the target function from the q function."""
         pass
 
     @property
     @abc.abstractmethod
     def q(self) -> torch.nn.Module:
+        """Accessor to evaluate the q function."""
         pass
 
     @property
     @abc.abstractmethod
     def target(self) -> torch.nn.Module:
+        """Accessor to evaluate the target function."""
         pass
-    
-class CNNQManger(QManager):
 
-    def __init__(self, image_height: int, image_width: int, num_actions: int, tau: Optional[float]):
-        """
+
+class CNNQManger(QManager):
+    def __init__(
+        self,
+        image_height: int,
+        image_width: int,
+        num_actions: int,
+        tau: Optional[float],
+    ):
+        """Manager implementing q and the target as CNNQs.
 
         Args:
-          tau: If none, do not use a separate target network.
-        
+          image_height: The env height.
+          image_width: The env width.
+          num_actions: The number of actions supported in the env.
+          tau: The fraction of the step from target to q when the
+            target is updated. A value of 1 means q replaces the
+            target completely. If None, a separate target network is
+            not used.
+
         """
         super(CNNQManger, self).__init__()
-        
+
         self._tau = tau
-        self._q = CNNQ(image_height=image_height, image_width=image_width,num_actions=num_actions)
+        self._q = CNNQ(
+            image_height=image_height, image_width=image_width, num_actions=num_actions
+        )
 
         if self._tau is not None:
-            self._target = CNNQ(image_height=image_height, image_width=image_width,num_actions=num_actions)
+            self._target = CNNQ(
+                image_height=image_height,
+                image_width=image_width,
+                num_actions=num_actions,
+            )
             self._target.load_state_dict(self._q.state_dict())
         else:
             self._target = self._q
@@ -62,9 +91,8 @@ class CNNQManger(QManager):
     def update_target(self) -> None:
         if self._tau is None:
             return
-        
-        _update_target(self._tau, self._q, self._target)
 
+        _update_target(self._tau, self._q, self._target)
 
     @property
     def q(self) -> torch.nn.Module:
@@ -73,8 +101,8 @@ class CNNQManger(QManager):
     @property
     def target(self) -> torch.nn.Module:
         return self._target
-    
-    
+
+
 class CNNQ(torch.nn.Module):
     """Base class for CNN Q-function neural network module."""
 
