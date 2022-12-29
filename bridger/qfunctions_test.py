@@ -30,7 +30,7 @@ class QFunctionsTest(unittest.TestCase):
 
 
 _IMAGE_HEIGHT = 3
-_IMAGE_WIDTH = 3
+_IMAGE_WIDTH = 4
 _NUM_ACTIONS = 4
 
 
