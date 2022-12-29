@@ -53,7 +53,7 @@ class CNNQManger(QManager):
         self._tau = tau
         self._q = CNNQ(image_height=image_height, image_width=image_width,num_actions=num_actions)
 
-        if self._tau is None:
+        if self._tau is not None:
             self._target = CNNQ(image_height=image_height, image_width=image_width,num_actions=num_actions)
             self._target.load_state_dict(self._q.state_dict())
         else:
