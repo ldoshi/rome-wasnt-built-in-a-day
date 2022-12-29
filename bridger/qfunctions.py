@@ -22,7 +22,7 @@ def _update_target(tau: float, q: torch.nn.Module, target: torch.nn.Module) -> N
     target.load_state_dict(params)
 
 
-class QManager(abc.ABC):
+class QManager(abc.ABC, torch.nn.Module):
     """Requirements for a Q state action value function."""
 
     @abc.abstractmethod
@@ -39,7 +39,6 @@ class QManager(abc.ABC):
     def target(self) -> torch.nn.Module:
         pass
     
-    
 class CNNQManger(QManager):
 
     def __init__(self, image_height: int, image_width: int, num_actions: int, tau: Optional[float]):
@@ -49,6 +48,8 @@ class CNNQManger(QManager):
           tau: If none, do not use a separate target network.
         
         """
+        super(CNNQManger, self).__init__()
+        
         self._tau = tau
         self._q = CNNQ(image_height=image_height, image_width=image_width,num_actions=num_actions)
 
