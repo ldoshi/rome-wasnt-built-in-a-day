@@ -457,36 +457,6 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         for log_entry, expected_counts in zip(training_batch_log_entries, expected):
             self.assertEqual(log_entry.replay_buffer_state_counts, expected_counts)
 
-    @parameterized.expand(
-        [
-            ("No change", 0, False),
-            ("Has change", 1, True),
-        ]
-    )
-    def test_backprop_smoke_test_cnnq_manager(
-        self, name: str, training_steps: int, params_have_diff_expected: bool
-    ):
-        with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
-        ) as object_log_manager:
-
-            model = test_utils.get_model(
-                object_log_manager=object_log_manager,
-                initial_memories_count=1,
-            )
-
-            model_params_0 = copy.deepcopy(model.q_manager.q.state_dict())
-            test_utils.get_trainer(max_steps=training_steps).fit(model)
-            model_params_1 = model.q_manager.q.state_dict()
-
-            params_have_diff = False
-            for key_0, key_1 in zip(model_params_0, model_params_1):
-                self.assertEqual(key_0, key_1)
-                params_have_diff |= not torch.all(
-                    model_params_0[key_0] == model_params_1[key_1]
-                )
-            self.assertEqual(params_have_diff, params_have_diff_expected)
-
 
 class StateActionCacheTest(unittest.TestCase):
     """Verifies the creation and population of a StateActionCache."""
