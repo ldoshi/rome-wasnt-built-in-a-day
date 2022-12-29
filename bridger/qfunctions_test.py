@@ -7,7 +7,7 @@ from typing import NamedTuple
 from parameterized import parameterized
 
 import torch
-from bridger import builder_trainer, qfunctions
+from bridger import builder_trainer, hash_utils, qfunctions
 
 
 class QFunctionsTest(unittest.TestCase):
@@ -32,10 +32,13 @@ class QFunctionsTest(unittest.TestCase):
         self.assertTrue(torch.equal(one_hot, expected_tensor))
 
 
-_IMAGE_HEIGHT = 3
-_IMAGE_WIDTH = 4
+_ENV_WIDTH = 4
 _NUM_ACTIONS = 4
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"
+_ENV = builder_trainer.make_env(
+    name=_ENV_NAME, width=_ENV_WIDTH, force_standard_config=True
+)
+_BRICK_COUNT = 3
 
 
 class QAndTargetValues(NamedTuple):
@@ -51,7 +54,8 @@ class QManagerTest(unittest.TestCase):
     def _get_q_and_target_values(
         self, q_manager: qfunctions.QManager
     ) -> QAndTargetValues:
-        x = torch.ones(_IMAGE_HEIGHT, _IMAGE_WIDTH)
+        x_state = torch.Tensor(_ENV.reset())
+        x = x_state[None, :]
 
         q_value_0 = q_manager.q(x)
         target_value_0 = q_manager.target(x)
@@ -60,9 +64,21 @@ class QManagerTest(unittest.TestCase):
         self.assertTrue(torch.all(q_value_0 == target_value_0))
 
         q_params = q_manager.q.state_dict()
-        q_params[next(iter(q_params))] *= 2
-        q_manager.q.load_state_dict(q_params)
 
+        # We must access the entries for x_state explicitly in the
+        # tabular case. Manipulating any weights is sufficient in the
+        # neural network case. The x_hashed value relies on
+        # implementation details for creating keys from both
+        # TabularQManager and ParameterDict. This is suboptimal but
+        # was practical.
+        x_hashed = f"_q.{str(hash_utils.hash_tensor(x_state.int()))}"
+        if x_hashed in q_params:
+            params_key = x_hashed
+        else:
+            params_key = next(iter(q_params))
+        q_params[params_key] *= 2
+
+        q_manager.q.load_state_dict(q_params)
         q_value_1 = q_manager.q(x)
         target_value_1 = q_manager.target(x)
 
@@ -84,13 +100,23 @@ class QManagerTest(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("CNNQManager", qfunctions.CNNQManager(
-            image_height=_IMAGE_HEIGHT,
-            image_width=_IMAGE_WIDTH,
-            num_actions=_NUM_ACTIONS,
-            tau=0,
-            )),
-
+            (
+                "CNNQManager",
+                qfunctions.CNNQManager(
+                    image_height=_ENV.shape[0],
+                    image_width=_ENV.shape[1],
+                    num_actions=_NUM_ACTIONS,
+                    tau=0,
+                ),
+            ),
+            (
+                "TabularQManager",
+                qfunctions.TabularQManager(
+                    env=_ENV,
+                    brick_count=_BRICK_COUNT,
+                    tau=0,
+                ),
+            ),
         ]
     )
     def test_tau_0(self, name: str, q_manager: qfunctions.QManager):
@@ -105,8 +131,8 @@ class QManagerTest(unittest.TestCase):
 
     def test_tau_1(self):
         q_manager = qfunctions.CNNQManager(
-            image_height=_IMAGE_HEIGHT,
-            image_width=_IMAGE_WIDTH,
+            image_height=_ENV.shape[0],
+            image_width=_ENV.shape[1],
             num_actions=_NUM_ACTIONS,
             tau=1,
         )
@@ -121,8 +147,8 @@ class QManagerTest(unittest.TestCase):
 
     def test_tau_intermediate(self):
         q_manager = qfunctions.CNNQManager(
-            image_height=_IMAGE_HEIGHT,
-            image_width=_IMAGE_WIDTH,
+            image_height=_ENV.shape[0],
+            image_width=_ENV.shape[1],
             num_actions=_NUM_ACTIONS,
             tau=0.7,
         )
@@ -139,8 +165,8 @@ class QManagerTest(unittest.TestCase):
 
     def test_tau_none(self):
         q_manager = qfunctions.CNNQManager(
-            image_height=_IMAGE_HEIGHT,
-            image_width=_IMAGE_WIDTH,
+            image_height=_ENV.shape[0],
+            image_width=_ENV.shape[1],
             num_actions=_NUM_ACTIONS,
             tau=None,
         )

@@ -1,14 +1,15 @@
 import abc
 
+from collections.abc import Hashable
 import gym
-
+import itertools
 import torch
 import torch.nn
 import torch.nn.functional as F
 
 from bridger import hash_utils
 
-from typing import Optional
+from typing import Any, Callable, Optional
 
 
 def _update_target(tau: float, q: torch.nn.Module, target: torch.nn.Module) -> None:
@@ -156,7 +157,8 @@ def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int)
 class TabularQManager(QManager):
     def __init__(
         self,
-            env: gym.Env, brick_count: int,
+        env: gym.Env,
+        brick_count: int,
         tau: Optional[float],
     ):
         """Manager implementing q and the target as TabularQs.
@@ -174,10 +176,10 @@ class TabularQManager(QManager):
         super(TabularQManager, self).__init__()
 
         self._tau = tau
-        self._q = TabularQ(            env=env, brick_count=brick_count        )
+        self._q = TabularQ(env=env, brick_count=brick_count)
 
         if self._tau is not None:
-            self._target =          TabularQ(            env=env, brick_count=0       )
+            self._target = TabularQ(env=env, brick_count=brick_count)
             self._target.load_state_dict(self._q.state_dict())
         else:
             self._target = self._q
@@ -196,6 +198,7 @@ class TabularQManager(QManager):
     def target(self) -> torch.nn.Module:
         return self._target
 
+
 class TabularQ(torch.nn.Module):
     """A Q-function based on a look-up table.
 
@@ -211,8 +214,13 @@ class TabularQ(torch.nn.Module):
       the beginning.
 
     """
-    
-    def __init__(self, env: gym.Env, brick_count: int):
+
+    def __init__(
+        self,
+        env: gym.Env,
+        brick_count: int,
+        hash_fn: Callable[[Any], Hashable] = hash_utils.hash_tensor,
+    ):
         """Initializes all the states that this instance can handle.
 
         Args:
@@ -221,11 +229,13 @@ class TabularQ(torch.nn.Module):
             enumerating reachable states.
 
         """
-        
+
         super(TabularQ, self).__init__()
         self._q = torch.nn.ParameterDict()
-        # ParameterDict does not allow non-str as dict keys.
-        self._hash_fn = str
+        # ParameterDict does not allow non-str as dict keys. The
+        # hash_fn is used first to make the treatment of ndarray and
+        # tensors consistent.
+        self._hash_fn = hash_fn
 
         state_hashes = set()
         for episode_actions in itertools.product(range(env.nA), repeat=brick_count):
@@ -238,11 +248,16 @@ class TabularQ(torch.nn.Module):
                 state = next_state
 
         for state_hash in state_hashes:
-            self._q[state_hash] = torch.nn.Parameter(torch.rand(env.nA, requires_grad=True))
-
+            self._q[str(state_hash)] = torch.nn.Parameter(
+                torch.rand(env.nA, requires_grad=True)
+            )
 
     def forward(self, x):
-        return torch.stack([self._q[self._hash_fn(state)] for state in x])
+        # The tensor must be converted to int to match the state hash
+        # keys. Additionally, "." is not allowed in ParameterDict keys
+        # so we cannot use float. State cell values are defined as ints
+        # anyway.
+        return torch.stack([self._q[str(self._hash_fn(state.int()))] for state in x])
 
 
 # This architecture has not yet been validated (and is likely poor).
