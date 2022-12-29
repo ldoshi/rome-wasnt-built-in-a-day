@@ -156,7 +156,7 @@ def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int)
 class TabularQManager(QManager):
     def __init__(
         self,
-            env: gym.env, brick_count: int,
+            env: gym.Env, brick_count: int,
         tau: Optional[float],
     ):
         """Manager implementing q and the target as TabularQs.

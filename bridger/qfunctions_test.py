@@ -84,18 +84,16 @@ class QManagerTest(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("CNNQManager", int, None, 1, 5),
-            ("Tablular", list, str, [1], [2, 5]),
-        ]
-    )
-    def test_tau_0(self, manager):
-        print(manager)
-        q_manager = qfunctions.CNNQManager(
+            ("CNNQManager", qfunctions.CNNQManager(
             image_height=_IMAGE_HEIGHT,
             image_width=_IMAGE_WIDTH,
             num_actions=_NUM_ACTIONS,
             tau=0,
-        )
+            )),
+
+        ]
+    )
+    def test_tau_0(self, name: str, q_manager: qfunctions.QManager):
         values = self._get_q_and_target_values(q_manager)
 
         # The q value changes, but the target has not been updated yet.
