@@ -1,10 +1,13 @@
 """Tests for Q-learning modules"""
+
 import unittest
 
 from typing import NamedTuple
 
+from parameterized import parameterized
+
 import torch
-import bridger.qfunctions as qfunctions
+from bridger import builder_trainer, qfunctions
 
 
 class QFunctionsTest(unittest.TestCase):
@@ -32,6 +35,7 @@ class QFunctionsTest(unittest.TestCase):
 _IMAGE_HEIGHT = 3
 _IMAGE_WIDTH = 3
 _NUM_ACTIONS = 4
+_ENV_NAME = "gym_bridges.envs:Bridges-v0"
 
 
 class QAndTargetValues(NamedTuple):
@@ -43,9 +47,9 @@ class QAndTargetValues(NamedTuple):
     target_value_2: torch.Tensor
 
 
-class CNNQManagerTest(unittest.TestCase):
+class QManagerTest(unittest.TestCase):
     def _get_q_and_target_values(
-        self, q_manager: qfunctions.CNNQManager
+        self, q_manager: qfunctions.QManager
     ) -> QAndTargetValues:
         x = torch.ones(_IMAGE_HEIGHT, _IMAGE_WIDTH)
 
@@ -78,7 +82,14 @@ class CNNQManagerTest(unittest.TestCase):
             target_value_2=target_value_2,
         )
 
-    def test_tau_0(self):
+    @parameterized.expand(
+        [
+            ("CNNQManager", int, None, 1, 5),
+            ("Tablular", list, str, [1], [2, 5]),
+        ]
+    )
+    def test_tau_0(self, manager):
+        print(manager)
         q_manager = qfunctions.CNNQManager(
             image_height=_IMAGE_HEIGHT,
             image_width=_IMAGE_WIDTH,
