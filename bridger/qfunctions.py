@@ -236,6 +236,7 @@ class TabularQ(torch.nn.Module):
         # hash_fn is used first to make the treatment of ndarray and
         # tensors consistent.
         self._hash_fn = hash_fn
+        self._state_dimensions = len(env.reset().shape)
 
         state_hashes = set()
         for episode_actions in itertools.product(range(env.nA), repeat=brick_count):
@@ -257,6 +258,10 @@ class TabularQ(torch.nn.Module):
         # keys. Additionally, "." is not allowed in ParameterDict keys
         # so we cannot use float. State cell values are defined as ints
         # anyway.
+        
+        if len(x.shape) == self._state_dimensions:
+            return self._q[str(self._hash_fn(x.int()))]
+        
         return torch.stack([self._q[str(self._hash_fn(state.int()))] for state in x])
 
 
