@@ -1,7 +1,11 @@
+import abc
+
 import torch
 import torch.nn
 import torch.nn.functional as F
 
+class Q(abc.ABC):
+    """Requirements for a Q state action value function."""
 
 class CNNQ(torch.nn.Module):
     """Base class for CNN Q-function neural network module."""
