@@ -51,7 +51,7 @@ class QManager(abc.ABC, torch.nn.Module):
         pass
 
 
-class CNNQManger(QManager):
+class CNNQManager(QManager):
     def __init__(
         self,
         image_height: int,
@@ -71,7 +71,7 @@ class CNNQManger(QManager):
             not used.
 
         """
-        super(CNNQManger, self).__init__()
+        super(CNNQManager, self).__init__()
 
         self._tau = tau
         self._q = CNNQ(

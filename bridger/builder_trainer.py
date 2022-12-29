@@ -278,7 +278,7 @@ class BridgeBuilderModel(pl.LightningModule):
             debug=self.hparams.debug,
         )
 
-        self.q_manager = qfunctions.CNNQManger(
+        self.q_manager = qfunctions.CNNQManager(
             *self.env.shape, self.env.nA, self.hparams.tau
         )
 
