@@ -117,10 +117,10 @@ function render_plots() {
     for (let i = 0; i < state_index_list.length; i++) {
 	state_index = state_index_list[i]
 	let row_data = plot_data[state_index];
-	render_state_plot(state_index, row_data);
+	render_state_plot(i, row_data);
 	for (let metric_index = 0; metric_index < row_data['metrics'].length; metric_index++) {
 	    let metric_entry = row_data['metrics'][metric_index];
-	    render_training_plot(metric_entry['metric'], state_index, metric_index, _DATA['labels'], metric_entry['series_data'], metric_entry['series_labels']);
+	    render_training_plot(metric_entry['metric'], i, metric_index, _DATA['labels'], metric_entry['series_data'], metric_entry['series_labels']);
 	}
     }
 }
