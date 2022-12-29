@@ -457,6 +457,20 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         for log_entry, expected_counts in zip(training_batch_log_entries, expected):
             self.assertEqual(log_entry.replay_buffer_state_counts, expected_counts)
 
+    def test_illegal_q(
+        self,
+    ):
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR
+        ) as object_log_manager:
+            self.assertRaisesRegex(
+            ValueError,
+                "Unrecognized q function",
+            test_utils.get_model,
+                object_log_manager,
+            q="illegal",
+            )
+        
     @parameterized.expand(
         [
             ("No change", 0, False),
@@ -486,6 +500,36 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                     model_params_0[key_0] == model_params_1[key_1]
                 )
             self.assertEqual(params_have_diff, params_have_diff_expected)
+
+    @parameterized.expand(
+        [
+            ("No change", 0, 0),
+            ("Has change", 1, 1),
+        ]
+    )
+    def test_backprop_smoke_test_tabularq_manager(
+        self, name: str, training_steps: int, expected_change_count: int
+    ):
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR
+        ) as object_log_manager:
+
+            model = test_utils.get_model(
+                object_log_manager=object_log_manager,
+                initial_memories_count=1,
+                q=builder_trainer.Q_TABULAR,
+            )
+
+            model_params_0 = copy.deepcopy(model.q_manager.q.state_dict())
+            test_utils.get_trainer(max_steps=training_steps).fit(model)
+            model_params_1 = model.q_manager.q.state_dict()
+
+            change_count = 0 
+            for key_0, key_1 in zip(model_params_0, model_params_1):
+                self.assertEqual(key_0, key_1)                
+                change_count += torch.sum(model_params_0[key_0] != model_params_1[key_1])
+
+            self.assertEqual(change_count, expected_change_count)
 
 
 class StateActionCacheTest(unittest.TestCase):
