@@ -4,10 +4,16 @@ import torch
 import torch.nn
 import torch.nn.functional as F
 
-class Q(abc.ABC):
+class Q(abc.ABC, torch.nn.Module):
     """Requirements for a Q state action value function."""
 
-class CNNQ(torch.nn.Module):
+    @abc.abstractmethod
+    def forward(self, x):
+        pass
+
+    
+    
+class CNNQ(Q):
     """Base class for CNN Q-function neural network module."""
 
     def __init__(self, image_height, image_width, num_actions):
