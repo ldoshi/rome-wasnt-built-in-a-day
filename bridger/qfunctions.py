@@ -4,19 +4,80 @@ import torch
 import torch.nn
 import torch.nn.functional as F
 
-class Q(abc.ABC, torch.nn.Module):
+from typing import Optional
+
+
+def _update_target(tau: float, q: torch.nn.Module, target: torch.nn.Module) -> None:
+    """Updates the target network weights based on the q network weights.
+
+    The target network is updated using a weighted sum of its current
+    weights and the q network weights to increase stability in
+    training.
+
+    """
+    params = target.state_dict()
+    update = q.state_dict()
+    for param in params:
+        params[param] += tau * (update[param] - params[param])
+    target.load_state_dict(params)
+
+
+class QManager(abc.ABC):
     """Requirements for a Q state action value function."""
 
     @abc.abstractmethod
-    def forward(self, x):
+    def update_target(self) -> None:
         pass
 
+    @property
+    @abc.abstractmethod
+    def q(self) -> torch.nn.Module:
+        pass
+
+    @property
+    @abc.abstractmethod
+    def target(self) -> torch.nn.Module:
+        pass
     
     
-class CNNQ(Q):
+class CNNQManger(QManager):
+
+    def __init__(self, image_height: int, image_width: int, num_actions: int, tau: Optional[float]):
+        """
+
+        Args:
+          tau: If none, do not use a separate target network.
+        
+        """
+        self._tau = tau
+        self._q = CNNQ(image_height=image_height, image_width=image_width,num_actions=num_actions)
+
+        if self._tau is None:
+            self._target = CNNQ(image_height=image_height, image_width=image_width,num_actions=num_actions)
+            self._target.load_state_dict(self._q.state_dict())
+        else:
+            self._target = self._q
+
+    def update_target(self) -> None:
+        if self._tau is None:
+            return
+        
+        _update_target(self._tau, self._q, self._target)
+
+
+    @property
+    def q(self) -> torch.nn.Module:
+        return self._q
+
+    @property
+    def target(self) -> torch.nn.Module:
+        return self._target
+    
+    
+class CNNQ(torch.nn.Module):
     """Base class for CNN Q-function neural network module."""
 
-    def __init__(self, image_height, image_width, num_actions):
+    def __init__(self, image_height: int, image_width: int, num_actions: int):
         super(CNNQ, self).__init__()
         self.image_height = image_height
         self.image_width = image_width
