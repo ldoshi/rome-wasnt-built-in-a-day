@@ -488,7 +488,6 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
-
             model = test_utils.get_model(
                 object_log_manager=object_log_manager,
                 initial_memories_count=1,
