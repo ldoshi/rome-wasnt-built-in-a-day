@@ -80,7 +80,7 @@ class QManagerTest(unittest.TestCase):
 
         q_value_1 = q_manager.q(x)
         target_value_1 = q_manager.target(x)
-        
+
         q_manager.update_target()
         q_value_2 = q_manager.q(x)
         target_value_2 = q_manager.target(x)
@@ -167,7 +167,7 @@ class QManagerTest(unittest.TestCase):
                     image_height=_ENV.shape[0],
                     image_width=_ENV.shape[1],
                     num_actions=_NUM_ACTIONS,
-                    tau=.7,
+                    tau=0.7,
                 ),
             ),
             (
@@ -175,7 +175,7 @@ class QManagerTest(unittest.TestCase):
                 qfunctions.TabularQManager(
                     env=_ENV,
                     brick_count=_BRICK_COUNT,
-                    tau=.7,
+                    tau=0.7,
                 ),
             ),
         ]
@@ -225,7 +225,6 @@ class QManagerTest(unittest.TestCase):
         self.assertTrue(torch.all(values.target_value_1 == values.target_value_2))
         self.assertTrue(torch.all(values.q_value_2 == values.target_value_2))
 
-
     @parameterized.expand(
         [
             (
@@ -234,7 +233,6 @@ class QManagerTest(unittest.TestCase):
                     image_height=_ENV.shape[0],
                     image_width=_ENV.shape[1],
                     num_actions=_NUM_ACTIONS,
-
                 ),
             ),
             (
@@ -242,21 +240,18 @@ class QManagerTest(unittest.TestCase):
                 qfunctions.TabularQ(
                     env=_ENV,
                     brick_count=_BRICK_COUNT,
-
                 ),
             ),
         ]
     )
-    def test_forward(self, name: str, q: torch.nn.Module) :
-        q = qfunctions.TabularQ(
-            env=_ENV,
-            brick_count=_BRICK_COUNT)
+    def test_forward(self, name: str, q: torch.nn.Module):
+        q = qfunctions.TabularQ(env=_ENV, brick_count=_BRICK_COUNT)
 
         x = torch.Tensor(_ENV.reset())
 
         value_0 = q(x)
         self.assertEqual(value_0.shape, (_ENV_WIDTH,))
-        
+
         value_1 = q(x)
         self.assertTrue(torch.all(value_0 == value_1))
         self.assertIsNot(value_0, value_1)
@@ -264,18 +259,22 @@ class QManagerTest(unittest.TestCase):
         x_batch = x[None, :]
 
         batch_value_0 = q(x_batch)
-        self.assertEqual(batch_value_0.shape, (1, _ENV_WIDTH,))
+        self.assertEqual(
+            batch_value_0.shape,
+            (
+                1,
+                _ENV_WIDTH,
+            ),
+        )
 
         batch_value_1 = q(x_batch)
         self.assertTrue(torch.all(batch_value_0 == batch_value_1))
         self.assertIsNot(batch_value_0, batch_value_1)
         self.assertIsNot(batch_value_0[0], batch_value_1[0])
-        
-        self.assertTrue(torch.all(batch_value_0[0]== value_0))
-        self.assertIsNot(batch_value_0[0], batch_value_0)        
 
-        
-        
+        self.assertTrue(torch.all(batch_value_0[0] == value_0))
+        self.assertIsNot(batch_value_0[0], batch_value_0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -239,6 +239,7 @@ class TabularQ(torch.nn.Module):
         # tensors consistent.
         def _internal_hash(x):
             return str(hash_fn(x))
+
         self._hash_fn = _internal_hash
         self._state_dimensions = len(env.reset().shape)
 
@@ -262,10 +263,10 @@ class TabularQ(torch.nn.Module):
         # keys. Additionally, "." is not allowed in ParameterDict keys
         # so we cannot use float. State cell values are defined as ints
         # anyway.
-        
+
         if len(x.shape) == self._state_dimensions:
             return torch.clone(self._q[self._hash_fn(x.int())])
-        
+
         return torch.stack([self._q[self._hash_fn(state.int())] for state in x])
 
 
