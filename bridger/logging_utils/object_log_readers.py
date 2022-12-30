@@ -45,22 +45,18 @@ class MetricMapEntry:
     def __init__(self):
         self._batch_idxs = []
         self._metric_values = []
-        self._initializing_map = {}
-        self._finalized = False
 
     def add(self, batch_idx: int, metric_value: float) -> None:
-        assert not self._finalized
-        self._initializing_map[batch_idx] = metric_value
-
-    def finalize(self) -> None:
-        assert not self._finalized
-
-        for batch_idx, metric_value in sorted(self._initializing_map.items()):
-            self._batch_idxs.append(batch_idx)
-            self._metric_values.append(metric_value)
-
-        del self._initializing_map
-        self._finalized = True
+        most_recent_batch_idx = self._batch_idxs[-1] if self._batch_idxs else None
+        if most_recent_batch_idx:
+            assert batch_idx >= most_recent_batch_idx, ("Batch idxs must be increasing. Largest is {most_recent_batch_idx} and received {batch_idx}")
+            # Don't add duplicates.
+            if batch_idx == most_recent_batch_idx:
+                assert self._metric_values[-1] == metric_value, ("Metric values don't match for batch_idx duplicate. Current is {self._metric_values[-1]} and received {metric_value}")
+                return
+        
+        self._batch_idxs.append(batch_idx)
+        self._metric_values.append(metric_value)
 
     def get(self, start_batch_idx: Optional[int],    end_batch_idx: Optional[int]) -> Tuple[List[int], List[float]]:
         """Retrieves batch_idx and metric values for the requested range.
@@ -76,30 +72,23 @@ class MetricMapEntry:
           batch_idxs and the second contains corresponding metric
           values.  
         """
-        assert self._finalized
-        
         start_index = 0 if start_batch_idx is None else bisect.bisect_left(self._batch_idxs, start_batch_idx)
         end_index = len(self._batch_idxs) if end_batch_idx is None else bisect.bisect_right(self._batch_idxs, end_batch_idx)
         return self._batch_idxs[start_index:end_index], self._metric_values[start_index:end_index]
     
     
 class MetricMap:
+    """
+
+    Attributes:
+      nA: The number of actions.
+    """
 
     def __init__(self):
-        self._map = collections.defaultdict(lambda: defaultdict(lambda: MetricMapEntry))
-        self._finalized = False
+        self._map = collections.defaultdict(lambda: collections.defaultdict(lambda: MetricMapEntry()))
 
     def add(self,state_id: int, action: int, batch_idx: int, metric_value: float) -> None:
-        assert not         self._finalized
-        self._map[state_id][action].add(batch_idx, metric)
-
-    def finalize(self) -> None:
-        assert not self._finalized:
-        for submap in self._map.values():
-            for entry in submap.values():
-                entry.finalize()
-
-        self._finalized = True
+        self._map[state_id][action].add(batch_idx=batch_idx, metric_value=metric_value)
         
     def get(self, state_id: int, action: int,     start_batch_idx: Optional[int],    end_batch_idx: Optional[int]) -> Tuple[List[int], List[float]]:
         """Retrieves batch_idx and metric values for the requested range.
@@ -117,9 +106,13 @@ class MetricMap:
           batch_idxs and the second contains corresponding metric
           values.  
         """
-        assert self._finalized
         return self._map[state_id][action].get(start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx)
 
+    @property
+    def nA(self):
+        return max([max(entry) for entry in self._map.values()]) + 1
+    
+        
     
 def _get_values_by_state_and_action(
     df: pd.DataFrame,
@@ -165,12 +158,6 @@ def _get_values_by_state_and_action(
 class TrainingHistoryDatabase:
     """Provides aggregate query access over logged training history.
 
-    When initialized in r_and_d mode, logged data is loaded into
-    dataframes to enable quick implementation of exploratory
-    functions. As functions and APIs settle into confirmed useful
-    forms, they can be reimplemented with custom data structures for
-    efficiency.
-
     The TrainingHistoryDatabase combines the following log entries:
     * log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY
     * log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
@@ -178,17 +165,15 @@ class TrainingHistoryDatabase:
     * log_entry.STATE_NORMALIZED_LOG_ENTRY
 
     Attributes:
-      actions_n: The value of the max action found in the logs.
+      nA: The number of actions.
 
     """
 
-    def __init__(self, dirname: str, r_and_d_mode: bool):
+    def __init__(self, dirname: str):
         """Loads in training history data in dataframes for querying.
 
         Args:
           dirname: The directory containing the training history log files.
-          r_and_d_mode: Whether to additionally load logged data into
-            dataframes for exploring additional access functions.
 
         """
         self._states = pd.DataFrame(
@@ -201,26 +186,18 @@ class TrainingHistoryDatabase:
         )
 
         self._samples = pd.DataFrame(_read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY))
+
+        self._q_values = MetricMap()
+        self._q_target_values = MetricMap()
+        for entry in _read_object_log(dirname, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY):
+            self._q_values.add(state_id=entry.state_id, action=entry.action, batch_idx=entry.batch_idx, metric_value=entry.q_value)
+            self._q_target_values.add(state_id=entry.state_id, action=entry.action, batch_idx=entry.batch_idx, metric_value=entry.q_target_value)
         
-        self._q_values = pd.DataFrame(
-            _read_object_log(dirname, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY)
-        )
-        self._q_values = self._q_values.sort_values(
-            by=["state_id", "action", "batch_idx"]
-        )
-        self._q_values.set_index("state_id")
-
-        self._td_errors = pd.DataFrame(
-            _read_object_log(dirname, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY)
-        )
-        self._td_errors = self._td_errors.drop_duplicates(
-            ["state_id", "action", "batch_idx"]
-        ).sort_values(by=["state_id", "action", "batch_idx"])
-        self._td_errors.set_index("state_id")
-
-        self.actions_n = (
-            max(self._q_values["action"].max(), self._td_errors["action"].max()) + 1
-        )
+        self._td_errors = MetricMap()
+        for entry in _read_object_log(dirname, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY):
+            self._td_errors.add(state_id=entry.state_id, action=entry.action, batch_idx=entry.batch_idx, metric_value=entry.td_error)
+            
+        self.actions_n =             max(self._q_values.nA, self._q_target_values.nA, self._td_errors.nA)
 
     def get_states_by_visit_count(
         self,
@@ -308,8 +285,7 @@ class TrainingHistoryDatabase:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> pd.DataFrame:
-
+    )  -> Tuple[List[int], List[float]]:
         """Retrieves td_error values for the requested state and action.
 
         Args:
@@ -321,18 +297,11 @@ class TrainingHistoryDatabase:
             when filtering the data.
 
         Returns:
-          A dataframe with two columns, batch_idx and td_error,
-            filtered for rows that contain state_id and action as values
-            in the corresponding columns.
+          A tuple of lists of the same length. The first contains
+          batch_idxs and the second contains corresponding td error
+          values.
         """
-        return _get_values_by_state_and_action(
-            df=self._td_errors,
-            state_id=state_id,
-            action=action,
-            start_batch_idx=start_batch_idx,
-            end_batch_idx=end_batch_idx,
-            second_column="td_error",
-        )
+        return self._td_errors.get(state_id=state_id,action=action,start_batch_idx=start_batch_idx,end_batch_idx=end_batch_idx)
 
     def get_q_values(
         self,
@@ -340,8 +309,7 @@ class TrainingHistoryDatabase:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> pd.DataFrame:
-
+    )   -> Tuple[List[int], List[float]]:
         """Retrieves q values for the requested state and action.
 
         Args:
@@ -353,18 +321,11 @@ class TrainingHistoryDatabase:
             when filtering the data.
 
         Returns:
-          A dataframe with two columns, batch_idx and q_values,
-            filtered for rows that contain state_id and action as values
-            in the corresponding columns.
+          A tuple of lists of the same length. The first contains
+          batch_idxs and the second contains corresponding td error
+          values.
         """
-        return _get_values_by_state_and_action(
-            df=self._q_values,
-            state_id=state_id,
-            action=action,
-            start_batch_idx=start_batch_idx,
-            end_batch_idx=end_batch_idx,
-            second_column="q_value",
-        )
+        return      self._q_values.get(state_id=state_id,action=action,start_batch_idx=start_batch_idx,end_batch_idx=end_batch_idx)
 
     def get_q_target_values(
         self,
@@ -372,8 +333,7 @@ class TrainingHistoryDatabase:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> pd.DataFrame:
-
+    )   -> Tuple[List[int], List[float]]:
         """Retrieves q target values for the requested state and action.
 
         Args:
@@ -385,18 +345,11 @@ class TrainingHistoryDatabase:
             when filtering the data.
 
         Returns:
-          A dataframe with two columns, batch_idx and q_target_values,
-            filtered for rows that contain state_id and action as values
-            in the corresponding columns.
+          A tuple of lists of the same length. The first contains
+          batch_idxs and the second contains corresponding td error
+          values.
         """
-        return _get_values_by_state_and_action(
-            df=self._q_values,
-            state_id=state_id,
-            action=action,
-            start_batch_idx=start_batch_idx,
-            end_batch_idx=end_batch_idx,
-            second_column="q_target_value",
-        )
+        return     self._q_target_values.get(state_id=state_id,action=action,start_batch_idx=start_batch_idx,end_batch_idx=end_batch_idx)
 
 
 @dataclasses.dataclass
