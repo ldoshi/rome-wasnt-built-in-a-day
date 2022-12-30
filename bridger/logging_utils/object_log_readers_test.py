@@ -128,7 +128,7 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
 
         _, td_errors = self.training_history_database.get_td_errors(5, 5)
         self.assertEqual(len(td_errors), 0)
-        
+
         state_ids = list(range(3))
         actions = [0, 1, 2]
         for (state_id, action) in itertools.product(state_ids, actions):
@@ -136,8 +136,9 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
                 state_id=state_id, action=action
             )
             self.assertEqual(len(td_errors), 5)
-            self.assertTrue(                all(                    [                        isinstance(td_error, float)                        for td_error in td_errors                    ]                )            )
-
+            self.assertTrue(
+                all([isinstance(td_error, float) for td_error in td_errors])
+            )
 
     def test_get_q_values_and_q_target_values(self):
         """Spot check a few state/action pairs to verify the shape of the response."""
@@ -149,52 +150,68 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
 
         expected_batch_idx = list(range(5))
         for state_id, action in itertools.product(range(3), range(3)):
-            batch_idxs_q, q_values = self.training_history_database.get_q_values(state_id, action)
-            self.assertEqual(batch_idxs_q, expected_batch_idx)
-            self.assertTrue(                all(                    [                        isinstance(q_value, float)                        for q_value in q_values                    ]                )            )
-
-            batch_idxs_q_target, q_target_values = self.training_history_database.get_q_target_values(
+            batch_idxs_q, q_values = self.training_history_database.get_q_values(
                 state_id, action
             )
+            self.assertEqual(batch_idxs_q, expected_batch_idx)
+            self.assertTrue(all([isinstance(q_value, float) for q_value in q_values]))
+
+            (
+                batch_idxs_q_target,
+                q_target_values,
+            ) = self.training_history_database.get_q_target_values(state_id, action)
             self.assertEqual(batch_idxs_q_target, expected_batch_idx)
-            self.assertTrue(                all(                    [                        isinstance(q_target_value, float)                        for q_target_value in q_target_values                    ]                )            )
+            self.assertTrue(
+                all(
+                    [
+                        isinstance(q_target_value, float)
+                        for q_target_value in q_target_values
+                    ]
+                )
+            )
 
-            self.assertTrue(                all(                    [                        q_value != q_target_value                        for q_value, q_target_value in zip(q_values, q_target_values)                    ]                )            )
+            self.assertTrue(
+                all(
+                    [
+                        q_value != q_target_value
+                        for q_value, q_target_value in zip(q_values, q_target_values)
+                    ]
+                )
+            )
 
-    # @parameterized.expand(
-    #     [
-    #         ("start filter", "get_td_errors", "td_error", 2, None, 3),
-    #         ("end filter", "get_td_errors", "td_error", None, 3, 4),
-    #         ("both filters", "get_td_errors", "td_error", 2, 3, 2),
-    #         ("start filter", "get_q_values", "q_value", 2, None, 3),
-    #         ("end filter", "get_q_values", "q_value", None, 3, 4),
-    #         ("both filters", "get_q_values", "q_value", 2, 3, 2),
-    #         ("start filter", "get_q_target_values", "q_target_value", 2, None, 3),
-    #         ("end filter", "get_q_target_values", "q_target_value", None, 3, 4),
-    #         ("both filters", "get_q_target_values", "q_target_value", 2, 3, 2),
-    #     ]
-    # )
-    # def test_getters_with_batch_idx_filters(
-    #     self,
-    #     name,
-    #     getter_fn_name,
-    #     value_key,
-    #     start_batch_idx,
-    #     end_batch_idx,
-    #     expected_entry_count,
-    # ):
-    #     """Verifies batch filter indices prune entries considered."""
+    @parameterized.expand(
+        [
+            ("start filter", "get_td_errors", 2, None, 3),
+            ("end filter", "get_td_errors", None, 3, 4),
+            ("both filters", "get_td_errors", 2, 3, 2),
+            ("start filter", "get_q_values", 2, None, 3),
+            ("end filter", "get_q_values", None, 3, 4),
+            ("both filters", "get_q_values", 2, 3, 2),
+            ("start filter", "get_q_target_values", 2, None, 3),
+            ("end filter", "get_q_target_values", None, 3, 4),
+            ("both filters", "get_q_target_values", 2, 3, 2),
+        ]
+    )
+    def test_getters_with_batch_idx_filters(
+        self,
+        name,
+        getter_fn_name,
+        start_batch_idx,
+        end_batch_idx,
+        expected_entry_count,
+    ):
+        """Verifies batch filter indices prune entries considered."""
 
-    #     getter_fn = getattr(self.training_history_database, getter_fn_name)
+        getter_fn = getattr(self.training_history_database, getter_fn_name)
 
-    #     values = getter_fn(
-    #         state_id=0,
-    #         action=0,
-    #         start_batch_idx=start_batch_idx,
-    #         end_batch_idx=end_batch_idx,
-    #     )
-    #     self.assertEqual(len(values), expected_entry_count)
-    #     self.assertTrue(all([isinstance(value, float) for value in values[value_key]]))
+        batch_idxs, values = getter_fn(
+            state_id=0,
+            action=0,
+            start_batch_idx=start_batch_idx,
+            end_batch_idx=end_batch_idx,
+        )
+        self.assertEqual(len(values), expected_entry_count)
+        self.assertTrue(all([isinstance(value, float) for value in values]))
 
 
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
