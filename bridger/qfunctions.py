@@ -1,7 +1,6 @@
 import abc
 
 from collections.abc import Hashable
-import copy
 import gym
 import itertools
 import torch
