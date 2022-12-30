@@ -1,6 +1,7 @@
 import abc
 
 from collections.abc import Hashable
+import copy
 import gym
 import itertools
 import torch
@@ -24,6 +25,7 @@ def _update_target(tau: float, q: torch.nn.Module, target: torch.nn.Module) -> N
     update = q.state_dict()
     for param in params:
         params[param] += tau * (update[param] - params[param])
+
     target.load_state_dict(params)
 
 
@@ -235,7 +237,10 @@ class TabularQ(torch.nn.Module):
         # ParameterDict does not allow non-str as dict keys. The
         # hash_fn is used first to make the treatment of ndarray and
         # tensors consistent.
-        self._hash_fn = hash_fn
+        def _internal_hash(x):
+            return str(hash_fn(x))
+
+        self._hash_fn = _internal_hash
         self._state_dimensions = len(env.reset().shape)
 
         state_hashes = set()
@@ -249,7 +254,7 @@ class TabularQ(torch.nn.Module):
                 state = next_state
 
         for state_hash in state_hashes:
-            self._q[str(state_hash)] = torch.nn.Parameter(
+            self._q[state_hash] = torch.nn.Parameter(
                 torch.rand(env.nA, requires_grad=True)
             )
 
@@ -258,11 +263,11 @@ class TabularQ(torch.nn.Module):
         # keys. Additionally, "." is not allowed in ParameterDict keys
         # so we cannot use float. State cell values are defined as ints
         # anyway.
-        
+
         if len(x.shape) == self._state_dimensions:
-            return self._q[str(self._hash_fn(x.int()))]
-        
-        return torch.stack([self._q[str(self._hash_fn(state.int()))] for state in x])
+            return torch.clone(self._q[self._hash_fn(x.int())])
+
+        return torch.stack([self._q[self._hash_fn(state.int())] for state in x])
 
 
 # This architecture has not yet been validated (and is likely poor).
