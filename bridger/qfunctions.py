@@ -271,7 +271,7 @@ class TabularQ(torch.nn.Module):
 
         state_hashes = set()
         state_hashes.add(self._internal_hash(env.reset()))
-        
+
         with multiprocessing.Pool() as pool:
             for hashes in pool.imap(
                 _collect_parameters_function,
