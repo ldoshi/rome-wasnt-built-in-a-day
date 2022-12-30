@@ -217,7 +217,7 @@ def _collect_parameters(
         state = env.reset()
         for action in episode_actions:
             next_state, _, done, _ = env.step(action)
-            state_hashes.add(hash_fn(state))
+            state_hashes.add(hash_fn(next_state))
             if done:
                 break
             state = next_state
@@ -268,7 +268,10 @@ class TabularQ(torch.nn.Module):
         _collect_parameters_function = functools.partial(
             _collect_parameters, env, self._internal_hash, remaining_brick_count
         )
+
         state_hashes = set()
+        state_hashes.add(self._internal_hash(env.reset()))
+        
         with multiprocessing.Pool() as pool:
             for hashes in pool.imap(
                 _collect_parameters_function,
