@@ -5,6 +5,7 @@ object log to the TrainingHistoryDatabase, which supports queries on
 top of logged data.
 
 """
+import bisect
 import collections
 import copy
 import dataclasses
@@ -39,7 +40,87 @@ def read_object_log(log_filepath: str):
 def _read_object_log(dirname: str, log_filename: str):
     yield from read_object_log(log_filepath=os.path.join(dirname, log_filename))
 
+class MetricMapEntry:
 
+    def __init__(self):
+        self._batch_idxs = []
+        self._metric_values = []
+        self._initializing_map = {}
+        self._finalized = False
+
+    def add(self, batch_idx: int, metric_value: float) -> None:
+        assert not self._finalized
+        self._initializing_map[batch_idx] = metric_value
+
+    def finalize(self) -> None:
+        assert not self._finalized
+
+        for batch_idx, metric_value in sorted(self._initializing_map.items()):
+            self._batch_idxs.append(batch_idx)
+            self._metric_values.append(metric_value)
+
+        del self._initializing_map
+        self._finalized = True
+
+    def get(self, start_batch_idx: Optional[int],    end_batch_idx: Optional[int]) -> Tuple[List[int], List[float]]:
+        """Retrieves batch_idx and metric values for the requested range.
+
+        Args:
+          start_batch_idx: The first batch index (inclusive) to consider
+            when filtering metric values.
+          end_batch_idx: The last batch index (inclusive) to consider when
+            filtering metric values.
+        
+        Returns:
+          A tuple of lists of the same length. The first contains
+          batch_idxs and the second contains corresponding metric
+          values.  
+        """
+        assert self._finalized
+        
+        start_index = 0 if start_batch_idx is None else bisect.bisect_left(self._batch_idxs, start_batch_idx)
+        end_index = len(self._batch_idxs) if end_batch_idx is None else bisect.bisect_right(self._batch_idxs, end_batch_idx)
+        return self._batch_idxs[start_index:end_index], self._metric_values[start_index:end_index]
+    
+    
+class MetricMap:
+
+    def __init__(self):
+        self._map = collections.defaultdict(lambda: defaultdict(lambda: MetricMapEntry))
+        self._finalized = False
+
+    def add(self,state_id: int, action: int, batch_idx: int, metric_value: float) -> None:
+        assert not         self._finalized
+        self._map[state_id][action].add(batch_idx, metric)
+
+    def finalize(self) -> None:
+        assert not self._finalized:
+        for submap in self._map.values():
+            for entry in submap.values():
+                entry.finalize()
+
+        self._finalized = True
+        
+    def get(self, state_id: int, action: int,     start_batch_idx: Optional[int],    end_batch_idx: Optional[int]) -> Tuple[List[int], List[float]]:
+        """Retrieves batch_idx and metric values for the requested range.
+
+        Args:
+          state_id: The state id for which to retrieve rows.
+          action: The action for which to retrieve rows.
+          start_batch_idx: The first batch index (inclusive) to consider
+            when filtering metric values.
+          end_batch_idx: The last batch index (inclusive) to consider when
+            filtering metric values.
+        
+        Returns:
+          A tuple of lists of the same length. The first contains
+          batch_idxs and the second contains corresponding metric
+          values.  
+        """
+        assert self._finalized
+        return self._map[state_id][action].get(start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx)
+
+    
 def _get_values_by_state_and_action(
     df: pd.DataFrame,
     state_id: int,
@@ -84,6 +165,12 @@ def _get_values_by_state_and_action(
 class TrainingHistoryDatabase:
     """Provides aggregate query access over logged training history.
 
+    When initialized in r_and_d mode, logged data is loaded into
+    dataframes to enable quick implementation of exploratory
+    functions. As functions and APIs settle into confirmed useful
+    forms, they can be reimplemented with custom data structures for
+    efficiency.
+
     The TrainingHistoryDatabase combines the following log entries:
     * log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY
     * log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
@@ -92,13 +179,17 @@ class TrainingHistoryDatabase:
 
     Attributes:
       actions_n: The value of the max action found in the logs.
+
     """
 
-    def __init__(self, dirname: str):
+    def __init__(self, dirname: str, r_and_d_mode: bool):
         """Loads in training history data in dataframes for querying.
 
         Args:
           dirname: The directory containing the training history log files.
+          r_and_d_mode: Whether to additionally load logged data into
+            dataframes for exploring additional access functions.
+
         """
         self._states = pd.DataFrame(
             _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY)
@@ -109,6 +200,8 @@ class TrainingHistoryDatabase:
             _read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY)
         )
 
+        self._samples = pd.DataFrame(_read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY))
+        
         self._q_values = pd.DataFrame(
             _read_object_log(dirname, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY)
         )
@@ -149,6 +242,47 @@ class TrainingHistoryDatabase:
           corresponding id and visit count are also included. The
           columns of the dataframe are state_id, state, and
           visit_count.
+
+        """
+        visits = self._visits
+        if start_batch_idx is not None:
+            visits = visits[(visits["batch_idx"] >= start_batch_idx)]
+        if end_batch_idx is not None:
+            visits = visits[(visits["batch_idx"] <= end_batch_idx)]
+
+        return (
+            visits.groupby(["object"], sort=False)["batch_idx"]
+            .count()
+            .reset_index(name="visit_count")
+            .sort_values(["visit_count"], ascending=False)
+            .head(n)
+            .set_index("object")
+            .join(self._states)
+            .rename(columns={"object": "state", "id": "state_id"})
+        )
+
+    def get_states_by_sampled_count(
+        self,
+        n: Optional[int] = None,
+        start_batch_idx: Optional[int] = None,
+        end_batch_idx: Optional[int] = None,
+    ) -> pd.DataFrame:
+        """Retrieves the top-n states by sampled count.
+
+        The sampled count is the number of times the state was sampled
+        to appear in a training batch.
+
+        Args:
+          n: The number of states to return.
+          start_batch_idx: The first batch index (inclusive) to consider
+            when computing the states by sampled count.
+          end_batch_idx: The last batch index (inclusive) to consider
+            when computing the states by sampled count.
+
+        Returns: The top-n states sorted descending by sampled
+          count. The corresponding id and sampled count are also
+          included. The columns of the dataframe are state_id, state,
+          and sampled_count.
 
         """
         visits = self._visits
