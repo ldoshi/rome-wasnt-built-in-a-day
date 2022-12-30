@@ -1,6 +1,7 @@
 """Tests for core building and training components."""
 import unittest
 
+import copy
 import pathlib
 import itertools
 import numpy as np
