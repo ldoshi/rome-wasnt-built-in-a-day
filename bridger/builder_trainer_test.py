@@ -464,21 +464,26 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             dirname=_OBJECT_LOGGING_DIR
         ) as object_log_manager:
             self.assertRaisesRegex(
-            ValueError,
+                ValueError,
                 "Unrecognized q function",
-            test_utils.get_model,
+                test_utils.get_model,
                 object_log_manager,
-            q="illegal",
+                q="illegal",
             )
-        
+
     @parameterized.expand(
         [
-            ("No change", 0, False),
-            ("Has change", 1, True),
+            ("CNN no change", builder_trainer.Q_CNN, 0, 0),
+            # The value 442 is determined empirically. The primary
+            # goal is showing that the number is greater than 1, ie
+            # that many parameters change.
+            ("CNN has change", builder_trainer.Q_CNN, 1, 442),
+            ("Tabular no change", builder_trainer.Q_TABULAR, 0, 0),
+            ("Tabular has change", builder_trainer.Q_TABULAR, 1, 1),
         ]
     )
-    def test_backprop_smoke_test_cnnq_manager(
-        self, name: str, training_steps: int, params_have_diff_expected: bool
+    def test_q_manager_backprop_smoke_test(
+        self, name: str, q: str, training_steps: int, expected_change_count: int
     ):
         with object_logging.ObjectLogManager(
             dirname=_OBJECT_LOGGING_DIR
@@ -487,47 +492,19 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             model = test_utils.get_model(
                 object_log_manager=object_log_manager,
                 initial_memories_count=1,
+                q=q,
             )
 
             model_params_0 = copy.deepcopy(model.q_manager.q.state_dict())
             test_utils.get_trainer(max_steps=training_steps).fit(model)
             model_params_1 = model.q_manager.q.state_dict()
 
-            params_have_diff = False
+            change_count = 0
             for key_0, key_1 in zip(model_params_0, model_params_1):
                 self.assertEqual(key_0, key_1)
-                params_have_diff |= not torch.all(
-                    model_params_0[key_0] == model_params_1[key_1]
+                change_count += torch.sum(
+                    model_params_0[key_0] != model_params_1[key_1]
                 )
-            self.assertEqual(params_have_diff, params_have_diff_expected)
-
-    @parameterized.expand(
-        [
-            ("No change", 0, 0),
-            ("Has change", 1, 1),
-        ]
-    )
-    def test_backprop_smoke_test_tabularq_manager(
-        self, name: str, training_steps: int, expected_change_count: int
-    ):
-        with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
-        ) as object_log_manager:
-
-            model = test_utils.get_model(
-                object_log_manager=object_log_manager,
-                initial_memories_count=1,
-                q=builder_trainer.Q_TABULAR,
-            )
-
-            model_params_0 = copy.deepcopy(model.q_manager.q.state_dict())
-            test_utils.get_trainer(max_steps=training_steps).fit(model)
-            model_params_1 = model.q_manager.q.state_dict()
-
-            change_count = 0 
-            for key_0, key_1 in zip(model_params_0, model_params_1):
-                self.assertEqual(key_0, key_1)                
-                change_count += torch.sum(model_params_0[key_0] != model_params_1[key_1])
 
             self.assertEqual(change_count, expected_change_count)
 
