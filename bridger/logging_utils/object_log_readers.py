@@ -223,43 +223,6 @@ class MetricMap:
         return max([max(entry) for entry in self._map.values()]) + 1
 
 
-def _get_values_by_state_and_action(
-    df: pd.DataFrame,
-    state_id: int,
-    action: int,
-    start_batch_idx: Optional[int],
-    end_batch_idx: Optional[int],
-    second_column: str,
-) -> pd.DataFrame:
-    """Retrieves batch_idx and second_column from df.
-
-    Args:
-      df: The dataframe from which to select rows.
-      state_id: The state id for which to retrieve rows.
-      action: The action for which to retrieve rows.
-      start_batch_idx: The first batch index (inclusive) to consider
-        when filtering df.
-      end_batch_idx: The last batch index (inclusive) to consider when
-        filtering df.
-      second_column: The name of the second column to retrieve from df.
-
-    Returns:
-      A dataframe with two columns, batch_idx and second_column,
-        filtered for rows that contain state_id and action as values
-        in the corresponding columns.
-
-    """
-    df_filtered = df
-    if start_batch_idx is not None:
-        df_filtered = df_filtered[(df_filtered["batch_idx"] >= start_batch_idx)]
-    if end_batch_idx is not None:
-        df_filtered = df_filtered[(df_filtered["batch_idx"] <= end_batch_idx)]
-
-    return df_filtered[
-        (df_filtered["state_id"] == state_id) & (df_filtered["action"] == action)
-    ][["batch_idx", second_column]]
-
-
 # TODO(lyric): Consider adding batch_idx_min and batch_idx_max
 # parameters to the data retrieval functions when the data volume
 # grows enough such that debugging would benefit from a defined
