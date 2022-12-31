@@ -317,9 +317,15 @@ class TrainingHistoryDatabase:
         Args:
           dirname: The directory containing the training history log files.
         """
-        import time
+        self._states = pd.DataFrame(
+            _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY)
+        )
+        self._states.set_index("id")
 
-        start = int(time.time() * 1e3)
+        self._visits = pd.DataFrame(
+            _read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY)
+        )
+
         self._q_values = MetricMap()
         self._q_target_values = MetricMap()
         for entry in _read_object_log(
@@ -337,34 +343,8 @@ class TrainingHistoryDatabase:
                 batch_idx=entry.batch_idx,
                 metric_value=entry.q_target_value,
             )
-        end = int(time.time() * 1e3)
-        print(f"0 yoyoyo that took : {end-start})")
         self._q_values.finalize()
         self._q_target_values.finalize()
-        end = int(time.time() * 1e3)
-        print(f"1 yoyoyo that took : {end-start})")
-
-        self._states = pd.DataFrame(
-            _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY)
-        )
-        self._states.set_index("id")
-        end = int(time.time() * 1e3)
-        print(f"2 yoyoyo that took : {end-start})")
-
-        self._visits = pd.DataFrame(
-            _read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY)
-        )
-        end = int(time.time() * 1e3)
-        print(f"3 yoyoyo that took : {end-start})")
-
-        self._samples = pd.DataFrame(
-            _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY)
-        )
-        end = int(time.time() * 1e3)
-        print(f"4 yoyoyo that took : {end-start})")
-
-        # end = int(time.time() * 1e3)
-        # print(f"yoyoyo that took : {end-start})")
 
         self._td_errors = MetricMap()
         for entry in _read_object_log(
@@ -377,14 +357,10 @@ class TrainingHistoryDatabase:
                 metric_value=entry.td_error,
             )
         self._td_errors.finalize()
-        end = int(time.time() * 1e3)
-        print(f"5 yoyoyo that took : {end-start})")
 
         self.actions_n = max(
             self._q_values.nA, self._q_target_values.nA, self._td_errors.nA
         )
-        end = int(time.time() * 1e3)
-        print(f"6 yoyoyo that took : {end-start})")
 
     def get_states_by_visit_count(
         self,
