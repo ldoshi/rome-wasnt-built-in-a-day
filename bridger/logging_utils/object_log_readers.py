@@ -41,22 +41,44 @@ def _read_object_log(dirname: str, log_filename: str):
     yield from read_object_log(log_filepath=os.path.join(dirname, log_filename))
 
 
-class MetricMapEntry:
+class _MetricMapEntry:
+    """Stores batch_idx and metric values for efficient access."""
+    
     def __init__(self):
         self._batch_idxs = []
         self._metric_values = []
 
     def add(self, batch_idx: int, metric_value: float) -> None:
+        """Adds a batch_idx and metric_value pair.
+
+        Repeated calls to add must provide the batch_idxs in
+        increasing order. Providing a duplicate (batch_idx,
+        metric_value) is permitted and will be ignored. Providing
+        different metric_values for the same batch_idx is an error.
+
+        Args:
+          batch_idx: A batch idx.
+          metric_value: The metric value corresponding to the batch idx.
+
+        Raises:
+          ValueError: If the batch_idx provided is smaller than the
+            most recent batch_idx provided. If a batch_idx is provided
+            with a different metric_value than before.
+
+        """
         most_recent_batch_idx = self._batch_idxs[-1] if self._batch_idxs else None
         if most_recent_batch_idx:
-            assert (
-                batch_idx >= most_recent_batch_idx
-            ), "Batch idxs must be increasing. Largest is {most_recent_batch_idx} and received {batch_idx}"
-            # Don't add duplicates.
+            if batch_idx < most_recent_batch_idx:
+                raise ValueError(
+                f"Batch idxs must be increasing. Largest is {most_recent_batch_idx}"
+                f"and received {batch_idx}")
+
+            # Don't re-add duplicates.
             if batch_idx == most_recent_batch_idx:
-                assert (
-                    self._metric_values[-1] == metric_value
-                ), "Metric values don't match for batch_idx duplicate. Current is {self._metric_values[-1]} and received {metric_value}"
+                if self._metric_values[-1] != metric_value:
+                    raise ValueError(
+                        "Metric values don't match for batch_idx duplicate. Current "
+                        f"is {self._metric_values[-1]} and received {metric_value}")
                 return
 
         self._batch_idxs.append(batch_idx)
@@ -95,28 +117,54 @@ class MetricMapEntry:
 
 
 class MetricMap:
-    """
+    """Stores metric values for efficient access.
+
+    The optimized access pattern requests a series of batch_idx and
+    metric values for a given state_id and action pair.
 
     Attributes:
-      nA: The number of actions.
+      nA: The likely number of actions based on the added data.
     """
 
     def __init__(self):
         self._map = collections.defaultdict(
-            lambda: collections.defaultdict(lambda: MetricMapEntry())
+            lambda: collections.defaultdict(lambda: _MetricMapEntry())
         )
 
     def add(
         self, state_id: int, action: int, batch_idx: int, metric_value: float
     ) -> None:
+        """Adds a batch_idx and metric_value organized by state_id and action.
+
+        Repeated calls to add must provide the batch_idxs in
+        increasing order for a given state_id and action. Providing a
+        duplicate (batch_idx, metric_value) is permitted for a given
+        state_id and action and will be ignored. Providing different
+        metric_values for the same (state_id, action, batch_idx) is an
+        error.
+
+        Args:
+          state_id: The state id corresponding to the metric_value.
+          action: The action corresponding to the metric_value.
+          batch_idx: The batch idx corresponding to the metric_value.
+          metric_value: A metric value recorded for the (state_id,
+            action, batch_idx) triple.
+
+        Raises:
+          ValueError: If the batch_idx provided is smaller than the
+            most recent batch_idx provided for a given state_id and
+            action pair. If a batch_idx is provided with a different
+            metric_value than before for a given state_id and action
+            pair.
+        """
         self._map[state_id][action].add(batch_idx=batch_idx, metric_value=metric_value)
 
     def get(
         self,
         state_id: int,
         action: int,
-        start_batch_idx: Optional[int],
-        end_batch_idx: Optional[int],
+        start_batch_idx: Optional[int]=None,
+        end_batch_idx: Optional[int]=None,
     ) -> Tuple[List[int], List[float]]:
         """Retrieves batch_idx and metric values for the requested range.
 
@@ -288,48 +336,7 @@ class TrainingHistoryDatabase:
             .join(self._states)
             .rename(columns={"object": "state", "id": "state_id"})
         )
-
-    def get_states_by_sampled_count(
-        self,
-        n: Optional[int] = None,
-        start_batch_idx: Optional[int] = None,
-        end_batch_idx: Optional[int] = None,
-    ) -> pd.DataFrame:
-        """Retrieves the top-n states by sampled count.
-
-        The sampled count is the number of times the state was sampled
-        to appear in a training batch.
-
-        Args:
-          n: The number of states to return.
-          start_batch_idx: The first batch index (inclusive) to consider
-            when computing the states by sampled count.
-          end_batch_idx: The last batch index (inclusive) to consider
-            when computing the states by sampled count.
-
-        Returns: The top-n states sorted descending by sampled
-          count. The corresponding id and sampled count are also
-          included. The columns of the dataframe are state_id, state,
-          and sampled_count.
-
-        """
-        visits = self._visits
-        if start_batch_idx is not None:
-            visits = visits[(visits["batch_idx"] >= start_batch_idx)]
-        if end_batch_idx is not None:
-            visits = visits[(visits["batch_idx"] <= end_batch_idx)]
-
-        return (
-            visits.groupby(["object"], sort=False)["batch_idx"]
-            .count()
-            .reset_index(name="visit_count")
-            .sort_values(["visit_count"], ascending=False)
-            .head(n)
-            .set_index("object")
-            .join(self._states)
-            .rename(columns={"object": "state", "id": "state_id"})
-        )
-
+    
     def get_td_errors(
         self,
         state_id: int,

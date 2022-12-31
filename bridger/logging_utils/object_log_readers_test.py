@@ -6,7 +6,7 @@ import os
 import unittest
 
 import torch
-from typing import Any, List
+from typing import Any, List, Optional
 
 from parameterized import parameterized
 
@@ -17,6 +17,98 @@ from bridger import test_utils
 
 
 _LOG_FILENAME_0 = "log_filename_0_pytest"
+
+class TestMetricMap(unittest.TestCase):
+    def test_add_smaller(self):
+        test_map = object_log_readers.MetricMap()
+
+        test_map.add(state_id=0,action=0,batch_idx=10,metric_value=2.5)
+
+        # Adding an entry for a different state_id or action is ok.
+        test_map.add(state_id=0,action=1,batch_idx=9,metric_value=2.5)
+        test_map.add(state_id=1,action=0,batch_idx=9,metric_value=2.5)
+        
+        self.assertRaisesRegex(
+            ValueError,
+            "Batch idxs must be increasing",
+            test_map.add,state_id=0,action=0,batch_idx=9,metric_value=2.5
+            )
+        
+    def test_add_almost_duplicate(self):
+        test_map = object_log_readers.MetricMap()
+
+        test_map.add(state_id=0,action=0,batch_idx=10,metric_value=2.5)
+        self.assertRaisesRegex(
+            ValueError,
+            "Metric values don't match for batch_idx duplicate",
+            test_map.add,state_id=0,action=0,batch_idx=10,metric_value=2.6
+            )
+
+    def test_add_duplicate(self):
+        test_map = object_log_readers.MetricMap()
+
+        test_map.add(state_id=0,action=0,batch_idx=10,metric_value=2.5)
+        batch_idxs, values = test_map.get(state_id=0, action=0)
+
+        expected_batch_idxs = [10]
+        expected_values = [2.5]
+        self.assertEqual(batch_idxs, expected_batch_idxs)
+        self.assertEqual(values, expected_values)
+
+        test_map.add(state_id=0,action=0,batch_idx=10,metric_value=2.5)
+        batch_idxs, values = test_map.get(state_id=0, action=0)
+        self.assertEqual(batch_idxs, expected_batch_idxs)
+        self.assertEqual(values, expected_values)
+
+    @parameterized.expand(
+        [
+            ("neither", None, None),            ("no left", None, 3),            ("no right", 2, None), ("both", 2,3), 
+        ]
+    )
+    def test_empty_get_with_batch_idx_filters(self, name: str, start_batch_idx: Optional[int], end_batch_idx: Optional[int]):
+        test_map = object_log_readers.MetricMap()
+        batch_idxs, values = test_map.get(state_id=0,action=0, start_batch_idx=start_batch_idx, end_batch_idx= end_batch_idx)
+        self.assertFalse(batch_idxs)
+        self.assertFalse(values)
+
+    @parameterized.expand(
+        [
+            ("neither", None, None, [1,2,3,4], [1.1, 2.1, 3.1, 4.1]),
+            ("no left", None, 3, [1,2,3], [1.1, 2.1, 3.1]),
+            ("no right", 2, None, [2,3,4], [2.1, 3.1, 4.1]),
+            ("both", 2,3, [2,3], [ 2.1, 3.1])
+        ]
+    )
+    def test_get_with_batch_idx_filters(self, name: str, start_batch_idx: Optional[int], end_batch_idx: Optional[int], expected_batch_idxs: List[int], expected_values: List[float]):
+        test_map = object_log_readers.MetricMap()
+
+        test_map.add(state_id=0,action=0,batch_idx=1,metric_value=1.1)
+        test_map.add(state_id=0,action=0,batch_idx=2,metric_value=2.1)
+        test_map.add(state_id=0,action=0,batch_idx=3,metric_value=3.1)
+        test_map.add(state_id=0,action=0,batch_idx=4,metric_value=4.1)
+        
+        batch_idxs, values = test_map.get(state_id=0, action=0, start_batch_idx=start_batch_idx, end_batch_idx= end_batch_idx)
+        self.assertEqual(batch_idxs, expected_batch_idxs)
+        self.assertEqual(values, expected_values)
+
+    def test_get_different_states_and_actions(self):
+        test_map = object_log_readers.MetricMap()
+
+        test_map.add(state_id=0,action=0,batch_idx=1,metric_value=1.1)
+        test_map.add(state_id=0,action=1,batch_idx=2,metric_value=2.1)
+        test_map.add(state_id=1,action=0,batch_idx=1,metric_value=3.1)
+
+        batch_idxs, values = test_map.get(state_id=0, action=0)
+        self.assertEqual(batch_idxs, [1])
+        self.assertEqual(values, [1.1])
+
+        batch_idxs, values = test_map.get(state_id=0, action=1)
+        self.assertEqual(batch_idxs, [2])
+        self.assertEqual(values, [2.1])
+
+        batch_idxs, values = test_map.get(state_id=1, action=0)
+        self.assertEqual(batch_idxs, [1])
+        self.assertEqual(values, [3.1])
 
 
 class TestTrainingHistoryDatabase(unittest.TestCase):
