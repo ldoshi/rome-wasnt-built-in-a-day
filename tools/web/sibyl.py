@@ -73,7 +73,12 @@ def training_history_plot_data():
                 values = plot_utils.downsample_list(
                     data=values, n=max_points_per_series
                 )
-                series_data.append([{"x": batch_idx, "y": value} for batch_idx,value in zip(batch_idxs, values)])
+                series_data.append(
+                    [
+                        {"x": batch_idx, "y": value}
+                        for batch_idx, value in zip(batch_idxs, values)
+                    ]
+                )
                 series_labels.append(str(action))
 
                 # add tests in object_log_readers.
