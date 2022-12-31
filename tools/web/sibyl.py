@@ -19,10 +19,6 @@ def _get_int_or_none(name: str) -> Optional[int]:
     except:
         return None
 
-def print_time(start: int, descriptor: str) -> None:
-    end = int(time.time() * 1e3)
-    print(f"Sibyl {descriptor} took {end-start} ms.")
-    
 
 @app.route("/training_history_plot_data", methods=["GET"])
 def training_history_plot_data():
@@ -38,14 +34,12 @@ def training_history_plot_data():
     training_history_database = _OBJECT_LOG_CACHE.get(
         object_log_cache.TRAINING_HISTORY_DATABASE_KEY
     )
-    print_time(start, "access_cache")
-    
+
     states = training_history_database.get_states_by_visit_count(
         n=number_of_states,
         start_batch_idx=start_batch_idx,
         end_batch_idx=end_batch_idx,
     )
-    print_time(start, "get_states_by_visit_count")
     plot_data = []
 
     min_batch_idx = start_batch_idx
@@ -73,17 +67,20 @@ def training_history_plot_data():
                     start_batch_idx=start_batch_idx,
                     end_batch_idx=end_batch_idx,
                 )
-#                df = plot_utils.downsample(df=df, n=max_points_per_series)
-                series_data.append(
-                    [
-                        {"x": batch_idxs, "y": values}
-                    ]
+                batch_idxs = plot_utils.downsample_list(
+                    data=batch_idxs, n=max_points_per_series
                 )
+                values = plot_utils.downsample_list(
+                    data=values, n=max_points_per_series
+                )
+                series_data.append([{"x": batch_idxs, "y": values}])
                 series_labels.append(str(action))
 
-                # FIX downsample.
                 # add tests in object_log_readers.
                 # fix handling for min and max if batch_idxs is empty.
+                if not batch_idxs:
+                    continue
+
                 min_batch_idx = (
                     min(min_batch_idx, batch_idxs[0])
                     if min_batch_idx is not None
@@ -91,7 +88,7 @@ def training_history_plot_data():
                 )
                 max_batch_idx = (
                     max(max_batch_idx, batch_idxs[-1])
-                    if max_batch_idx is not None 
+                    if max_batch_idx is not None
                     else batch_idxs[-1]
                 )
 
@@ -102,12 +99,11 @@ def training_history_plot_data():
                     "series_labels": series_labels,
                 }
             )
-            print_time(start, f"one more metric: {metric}")
 
         plot_data.append(state_plot_data)
-        print_time(start, "one more state plot")
 
-    print_time(start, "training_history_plot_data")
+    end = int(time.time() * 1e3)
+    print(f"Sibyl training_history_plot_data took {end-start} ms.")
     return {
         "plot_data": plot_data,
         "labels": list(range(min_batch_idx, max_batch_idx + 1)),
