@@ -9,6 +9,7 @@ import bisect
 import collections
 import copy
 import dataclasses
+import itertools
 import numpy as np
 import os
 import pathlib
@@ -42,49 +43,65 @@ def _read_object_log(dirname: str, log_filename: str):
 
 
 class _MetricMapEntry:
-    """Stores batch_idx and metric values for efficient access."""
+    """Stores batch_idx and metric values for efficient access.
+
+    For efficiency, the map operates in 'add' mode until it is
+    'finalize'-d. It then becomes immutable.
+
+    """
 
     def __init__(self):
         self._batch_idxs = []
         self._metric_values = []
+        self._map = {}
+        self._finalized = False
 
     def add(self, batch_idx: int, metric_value: float) -> None:
         """Adds a batch_idx and metric_value pair.
 
         Repeated calls to add must provide the batch_idxs in
-        increasing order. Providing a duplicate (batch_idx,
-        metric_value) is permitted and will be ignored. Providing
-        different metric_values for the same batch_idx is an error.
+        increasing order. This is asserted once during finalize for
+        efficiency. Providing a duplicate (batch_idx, metric_value) is
+        permitted and will be ignored. Providing different
+        metric_values for the same batch_idx is an error.
 
         Args:
           batch_idx: A batch idx.
           metric_value: The metric value corresponding to the batch idx.
 
         Raises:
-          ValueError: If the batch_idx provided is smaller than the
-            most recent batch_idx provided. If a batch_idx is provided
-            with a different metric_value than before.
+          ValueError: If a batch_idx is provided with a different
+            metric_value than before.
 
         """
-        most_recent_batch_idx = self._batch_idxs[-1] if self._batch_idxs else None
-        if most_recent_batch_idx:
-            if batch_idx < most_recent_batch_idx:
+        assert not self._finalized
+
+        # Don't re-add duplicates. Consider removing this check and
+        # presuming the data satisfied this invariant when it was
+        # logged. Note that this invariant is not currently checked
+        # before logging.
+        duplicate_value = self._map.get(batch_idx)
+        if duplicate_value:
+            if duplicate_value != metric_value:
                 raise ValueError(
-                    f"Batch idxs must be increasing. Largest is {most_recent_batch_idx}"
-                    f"and received {batch_idx}"
+                    "Metric values don't match for batch_idx duplicate. Current "
+                    f"is {duplicate_value} and received {metric_value}"
                 )
+            return
 
-            # Don't re-add duplicates.
-            if batch_idx == most_recent_batch_idx:
-                if self._metric_values[-1] != metric_value:
-                    raise ValueError(
-                        "Metric values don't match for batch_idx duplicate. Current "
-                        f"is {self._metric_values[-1]} and received {metric_value}"
-                    )
-                return
+        self._map[batch_idx] = metric_value
 
-        self._batch_idxs.append(batch_idx)
-        self._metric_values.append(metric_value)
+    def finalize(self):
+        """Converts from add-optimized to get-optimized mode."""
+        assert not self._finalized
+        self._batch_idxs = list(self._map)
+        self._metric_values = list(self._map.values())
+
+        assert self._batch_idxs == sorted(
+            self._batch_idxs
+        ), "Batch_idxs must be added in increasing order."
+
+        del self._map
 
     def get(
         self, start_batch_idx: Optional[int], end_batch_idx: Optional[int]
@@ -124,6 +141,9 @@ class MetricMap:
     The optimized access pattern requests a series of batch_idx and
     metric values for a given state_id and action pair.
 
+    For efficiency, the map operates in 'add' mode until it is
+    'finalize'-d. It then becomes immutable.
+
     Attributes:
       nA: The likely number of actions based on the added data.
     """
@@ -132,6 +152,15 @@ class MetricMap:
         self._map = collections.defaultdict(
             lambda: collections.defaultdict(lambda: _MetricMapEntry())
         )
+        self._finalized = False
+
+    def finalize(self):
+        """Converts from add-optimized to get-optimized mode."""
+        assert not self._finalized
+        for actions_map in self._map.values():
+            for metric_map_entry in actions_map.values():
+                metric_map_entry.finalize()
+        self._finalized = True
 
     def add(
         self, state_id: int, action: int, batch_idx: int, metric_value: float
@@ -159,6 +188,7 @@ class MetricMap:
             metric_value than before for a given state_id and action
             pair.
         """
+        assert not self._finalized
         self._map[state_id][action].add(batch_idx=batch_idx, metric_value=metric_value)
 
     def get(
@@ -183,6 +213,7 @@ class MetricMap:
           batch_idxs and the second contains corresponding metric
           values.
         """
+        assert self._finalized
         return self._map[state_id][action].get(
             start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
         )
@@ -229,6 +260,39 @@ def _get_values_by_state_and_action(
     ][["batch_idx", second_column]]
 
 
+def grouper(iterable, n, fillvalue=None):
+    args = [iter(iterable)] * n
+    return itertools.zip_longest(*args, fillvalue=fillvalue)
+
+
+def _test(data):
+
+    q_values = MetricMap()
+    q_target_values = MetricMap()
+
+    counter = 0
+    for entry in data:
+        if not entry:
+            break
+        counter += 1
+        q_values.add(
+            state_id=entry.state_id,
+            action=entry.action,
+            batch_idx=entry.batch_idx,
+            metric_value=entry.q_value,
+        )
+        q_target_values.add(
+            state_id=entry.state_id,
+            action=entry.action,
+            batch_idx=entry.batch_idx,
+            metric_value=entry.q_target_value,
+        )
+
+    q_values.finalize()
+    q_target_values.finalize()
+    return q_values, q_target_values
+
+
 # TODO(lyric): Consider adding batch_idx_min and batch_idx_max
 # parameters to the data retrieval functions when the data volume
 # grows enough such that debugging would benefit from a defined
@@ -253,19 +317,9 @@ class TrainingHistoryDatabase:
         Args:
           dirname: The directory containing the training history log files.
         """
-        self._states = pd.DataFrame(
-            _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY)
-        )
-        self._states.set_index("id")
+        import time
 
-        self._visits = pd.DataFrame(
-            _read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY)
-        )
-
-        self._samples = pd.DataFrame(
-            _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY)
-        )
-
+        start = int(time.time() * 1e3)
         self._q_values = MetricMap()
         self._q_target_values = MetricMap()
         for entry in _read_object_log(
@@ -283,6 +337,34 @@ class TrainingHistoryDatabase:
                 batch_idx=entry.batch_idx,
                 metric_value=entry.q_target_value,
             )
+        end = int(time.time() * 1e3)
+        print(f"0 yoyoyo that took : {end-start})")
+        self._q_values.finalize()
+        self._q_target_values.finalize()
+        end = int(time.time() * 1e3)
+        print(f"1 yoyoyo that took : {end-start})")
+
+        self._states = pd.DataFrame(
+            _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY)
+        )
+        self._states.set_index("id")
+        end = int(time.time() * 1e3)
+        print(f"2 yoyoyo that took : {end-start})")
+
+        self._visits = pd.DataFrame(
+            _read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY)
+        )
+        end = int(time.time() * 1e3)
+        print(f"3 yoyoyo that took : {end-start})")
+
+        self._samples = pd.DataFrame(
+            _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY)
+        )
+        end = int(time.time() * 1e3)
+        print(f"4 yoyoyo that took : {end-start})")
+
+        # end = int(time.time() * 1e3)
+        # print(f"yoyoyo that took : {end-start})")
 
         self._td_errors = MetricMap()
         for entry in _read_object_log(
@@ -294,10 +376,15 @@ class TrainingHistoryDatabase:
                 batch_idx=entry.batch_idx,
                 metric_value=entry.td_error,
             )
+        self._td_errors.finalize()
+        end = int(time.time() * 1e3)
+        print(f"5 yoyoyo that took : {end-start})")
 
         self.actions_n = max(
             self._q_values.nA, self._q_target_values.nA, self._td_errors.nA
         )
+        end = int(time.time() * 1e3)
+        print(f"6 yoyoyo that took : {end-start})")
 
     def get_states_by_visit_count(
         self,

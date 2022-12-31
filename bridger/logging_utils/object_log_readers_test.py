@@ -24,19 +24,20 @@ class TestMetricMap(unittest.TestCase):
         test_map = object_log_readers.MetricMap()
 
         test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.5)
-
-        # Adding an entry for a different state_id or action is ok.
+        # Adding an entry with smaller batch_idx for a different
+        # state_id or action is ok.
         test_map.add(state_id=0, action=1, batch_idx=9, metric_value=2.5)
         test_map.add(state_id=1, action=0, batch_idx=9, metric_value=2.5)
+        test_map.finalize()
 
+        test_map = object_log_readers.MetricMap()
+
+        test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.5)
+        # Adding an entry with smaller batch_idx for the same state_id
+        # and action is not ok.
+        test_map.add(state_id=0, action=0, batch_idx=9, metric_value=2.5)
         self.assertRaisesRegex(
-            ValueError,
-            "Batch idxs must be increasing",
-            test_map.add,
-            state_id=0,
-            action=0,
-            batch_idx=9,
-            metric_value=2.5,
+            AssertionError, "must be added in increasing order", test_map.finalize
         )
 
     def test_add_almost_duplicate(self):
@@ -53,19 +54,35 @@ class TestMetricMap(unittest.TestCase):
             metric_value=2.6,
         )
 
+    def test_illegal_order_of_operations(self):
+        test_map = object_log_readers.MetricMap()
+
+        self.assertRaises(AssertionError, test_map.get, state_id=0, action=0)
+
+        test_map.finalize()
+
+        self.assertRaises(
+            AssertionError,
+            test_map.add,
+            state_id=0,
+            action=0,
+            batch_idx=0,
+            metric_value=0,
+        )
+
+        self.assertRaises(AssertionError, test_map.finalize)
+
     def test_add_duplicate(self):
         test_map = object_log_readers.MetricMap()
 
         test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.5)
+        test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.5)
+        test_map.finalize()
+
         batch_idxs, values = test_map.get(state_id=0, action=0)
 
         expected_batch_idxs = [10]
         expected_values = [2.5]
-        self.assertEqual(batch_idxs, expected_batch_idxs)
-        self.assertEqual(values, expected_values)
-
-        test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.5)
-        batch_idxs, values = test_map.get(state_id=0, action=0)
         self.assertEqual(batch_idxs, expected_batch_idxs)
         self.assertEqual(values, expected_values)
 
@@ -81,6 +98,7 @@ class TestMetricMap(unittest.TestCase):
         self, name: str, start_batch_idx: Optional[int], end_batch_idx: Optional[int]
     ):
         test_map = object_log_readers.MetricMap()
+        test_map.finalize()
         batch_idxs, values = test_map.get(
             state_id=0,
             action=0,
@@ -112,6 +130,7 @@ class TestMetricMap(unittest.TestCase):
         test_map.add(state_id=0, action=0, batch_idx=2, metric_value=2.1)
         test_map.add(state_id=0, action=0, batch_idx=3, metric_value=3.1)
         test_map.add(state_id=0, action=0, batch_idx=4, metric_value=4.1)
+        test_map.finalize()
 
         batch_idxs, values = test_map.get(
             state_id=0,
@@ -128,6 +147,7 @@ class TestMetricMap(unittest.TestCase):
         test_map.add(state_id=0, action=0, batch_idx=1, metric_value=1.1)
         test_map.add(state_id=0, action=1, batch_idx=2, metric_value=2.1)
         test_map.add(state_id=1, action=0, batch_idx=1, metric_value=3.1)
+        test_map.finalize()
 
         batch_idxs, values = test_map.get(state_id=0, action=0)
         self.assertEqual(batch_idxs, [1])
