@@ -260,39 +260,6 @@ def _get_values_by_state_and_action(
     ][["batch_idx", second_column]]
 
 
-def grouper(iterable, n, fillvalue=None):
-    args = [iter(iterable)] * n
-    return itertools.zip_longest(*args, fillvalue=fillvalue)
-
-
-def _test(data):
-
-    q_values = MetricMap()
-    q_target_values = MetricMap()
-
-    counter = 0
-    for entry in data:
-        if not entry:
-            break
-        counter += 1
-        q_values.add(
-            state_id=entry.state_id,
-            action=entry.action,
-            batch_idx=entry.batch_idx,
-            metric_value=entry.q_value,
-        )
-        q_target_values.add(
-            state_id=entry.state_id,
-            action=entry.action,
-            batch_idx=entry.batch_idx,
-            metric_value=entry.q_target_value,
-        )
-
-    q_values.finalize()
-    q_target_values.finalize()
-    return q_values, q_target_values
-
-
 # TODO(lyric): Consider adding batch_idx_min and batch_idx_max
 # parameters to the data retrieval functions when the data volume
 # grows enough such that debugging would benefit from a defined
