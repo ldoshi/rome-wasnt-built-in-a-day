@@ -185,8 +185,8 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
     def tearDown(self):
         test_utils.delete_temp_dir()
 
-    def test_actions_n(self):
-        self.assertEqual(self.training_history_database.actions_n, 3)
+    def test_nA(self):
+        self.assertEqual(self.training_history_database.nA, 3)
 
     @parameterized.expand(
         [

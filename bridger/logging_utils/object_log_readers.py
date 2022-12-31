@@ -288,9 +288,7 @@ class TrainingHistoryDatabase:
             )
         self._td_errors.finalize()
 
-        self.actions_n = max(
-            self._q_values.nA, self._q_target_values.nA, self._td_errors.nA
-        )
+        self.nA = max(self._q_values.nA, self._q_target_values.nA, self._td_errors.nA)
 
     def get_states_by_visit_count(
         self,
