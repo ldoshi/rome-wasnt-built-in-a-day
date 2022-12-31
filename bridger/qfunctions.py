@@ -261,7 +261,8 @@ class TabularQ(torch.nn.Module):
         self._hash_fn = hash_fn
         self._state_dimensions = len(env.reset().shape)
 
-        # Adjust later as needed.
+        # Assigning a non-trivial chunk of work per
+        # _collect_parameters call. Adjust later if needed.
         remaining_brick_count = min(5, brick_count - 1)
         initial_brick_count = brick_count - remaining_brick_count
 
@@ -273,7 +274,7 @@ class TabularQ(torch.nn.Module):
         state_hashes.add(self._internal_hash(env.reset()))
 
         with multiprocessing.Pool() as pool:
-            for hashes in pool.imap(
+            for hashes in pool.map(
                 _collect_parameters_function,
                 itertools.product(range(env.nA), repeat=initial_brick_count),
             ):
