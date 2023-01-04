@@ -2,10 +2,10 @@ name: Run pytest CI for PRs and merges
 on: [pull_request, push]
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9.6"]
+        python-version: ["3.10.9"]
     steps:
       - name: Set up Python ${{ matrix.python-version}}
         uses: actions/setup-python@v2
@@ -23,7 +23,6 @@ jobs:
       - name: Build gym-bridges
         run: |
           cd gym-bridges/
-          pip install -r requirements.txt
           ./reinstall.sh
       - name: Install dependencies and build rome
         run: |
@@ -33,6 +32,8 @@ jobs:
       - name: Check types with pytype
         run: |
           cd rome/bridger
+          pytype .
+          cd ../tools
           pytype .
       - name: Test with pytest
         run: |
