@@ -33,7 +33,7 @@ jobs:
       - name: Lint with black
         uses: psf/black@stable
         with:
-          version: "22.3.0"
+          version: "22.12.0"
       - name: Check types with pytype
         run: |
           cd rome/bridger
