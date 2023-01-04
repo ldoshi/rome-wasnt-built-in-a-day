@@ -60,7 +60,7 @@ def training_history_plot_data():
         for metric, metric_display_name, data_fn in metrics_and_data_fns:
             series_data = []
             series_labels = []
-            for action in range(training_history_database.actions_n):
+            for action in range(training_history_database.nA):
                 batch_idxs, values = data_fn(
                     state_id=row["state_id"],
                     action=action,
