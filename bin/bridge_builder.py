@@ -23,6 +23,7 @@ from bridger.callbacks import DemoCallback
 from pathlib import Path
 from bridger.logging_utils import object_logging
 
+def _get_logging_dir(object_logging_base_dir: str, experiment_name: str):
 
 def test():
     MAX_STEPS = 100
@@ -32,7 +33,7 @@ def test():
     parser = builder_trainer.get_hyperparam_parser()
     hparams = parser.parse_args()
     with object_logging.ObjectLogManager(
-        hparams.object_logging_dir
+            _get_logging_dir(hparams.object_logging_dir, hparams.experiment_name)
     ) as object_log_manager:
         if hparams.load_checkpoint_path:
             # TODO(arvind): Decide on and implement the functionality we'd like to

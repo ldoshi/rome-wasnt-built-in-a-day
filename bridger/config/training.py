@@ -52,9 +52,14 @@ hparam_dict[key] = {"type": bool, "default": False, "action": BooleanOptionalAct
 help_str = "Whether to check and log td errors for debugging purposes"
 hparam_dict[key]["help"] = help_str
 
-key = "object_logging_dir"
+key = "object_logging_base_dir"
 hparam_dict[key] = {"type": str, "default": "object_logging"}
-help_str = "Path to folder in which all object logs will be saved"
+help_str = "Path to the base folder in which all object logs will be saved"
+hparam_dict[key]["help"] = help_str
+
+key = "experiment_name"
+hparam_dict[key] = {"type": str, "default": ""}
+help_str = "The subdirectory name under object_logging_dir for a particular experiment run. The current datetime is prepended to this value to compose the full subdirectory name."
 hparam_dict[key]["help"] = help_str
 
 key = "initial_memories_count"
