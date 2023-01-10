@@ -21,7 +21,7 @@ from bridger import builder
 from bridger import builder_trainer
 from bridger.callbacks import DemoCallback
 from pathlib import Path
-from bridger.logging import object_logging
+from bridger.logging_utils import object_logging
 
 _DEMO_CALLBACK_FREQUENCY = 100
 MAX_DEMO_EPISODE_LENGTH = 50

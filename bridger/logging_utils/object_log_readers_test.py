@@ -10,9 +10,9 @@ from typing import Any, List
 
 from parameterized import parameterized
 
-from bridger.logging import log_entry
-from bridger.logging import object_logging
-from bridger.logging import object_log_readers
+from bridger.logging_utils import log_entry
+from bridger.logging_utils import object_logging
+from bridger.logging_utils import object_log_readers
 from bridger import test_utils
 
 

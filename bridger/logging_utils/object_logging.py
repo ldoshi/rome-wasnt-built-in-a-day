@@ -22,7 +22,7 @@ import torch
 
 from collections.abc import Hashable
 
-from bridger.logging import log_entry
+from bridger.logging_utils import log_entry
 
 
 class ObjectLogManager:
