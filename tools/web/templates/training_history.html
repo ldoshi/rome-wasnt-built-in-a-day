@@ -46,12 +46,31 @@
 
     <div class="interactive-tools">
       <div class="control">
+	<div class="control-label">State Filter Function Body</div>
+	<button class="control-label" onclick="update_state_filter()">
+	  Apply
+	</button>
+	<textarea id="state-filter-function-body" class="control-function-body-input">
+// Compose the body of a state filter function here. Feel free to delete these comments.
+//
+// Assume a function with Args:
+//   state: A 2D array representing the state. The row index comes first and 0 is the top row.
+//
+// Returns:
+//   True if the state should be displayed here, false otherwise.
+
+return true;</textarea>
+      </div>
+    </div>
+
+    <div class="interactive-tools">
+      <div class="control">
 	<div class="control-label">Plot Zoom</div>
 	<button id="zoom-button-default" class="control-label button-selected" onclick="zoom_default_charts()">Default</button>
 	<button id="zoom-button-full" class="control-label button-unselected" onclick="zoom_in_charts()">Full Width</button>
       </div>
     </div>
-    
+
     <div id="plots-holder"></div>
 
     <script>
