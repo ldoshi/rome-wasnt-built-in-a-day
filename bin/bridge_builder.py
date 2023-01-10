@@ -26,6 +26,7 @@ from bridger.logging_utils import object_logging
 _DEMO_CALLBACK_FREQUENCY = 100
 MAX_DEMO_EPISODE_LENGTH = 50
 
+
 def run():
     # TODO(arvind): split the args into those relevant for the LightningModule
     #               and those relevant for the Trainer/Callbacks
