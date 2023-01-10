@@ -94,6 +94,10 @@ function update_state_filter() {
 }
 
 function render_plots() {
+    if (_DATA == null) {
+	return;
+    }
+    
     let plot_data = _DATA['plot_data'];
     if (plot_data.length == 0) {
 	return;
