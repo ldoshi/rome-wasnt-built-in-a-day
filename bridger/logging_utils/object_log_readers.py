@@ -85,7 +85,7 @@ class _MetricMapEntry:
             if duplicate_value != metric_value:
                 raise ValueError(
                     "Metric values don't match for batch_idx duplicate. Current "
-                    f"is {duplicate_value} and received {metric_value}"
+                    f"is {duplicate_value} and received {metric_value}."
                 )
             return
 
