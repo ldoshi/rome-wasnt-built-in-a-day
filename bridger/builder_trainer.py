@@ -12,7 +12,14 @@ from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
 
 
-from bridger import config, hash_utils, policies, qfunctions, replay_buffer
+from bridger import (
+    config,
+    hash_utils,
+    policies,
+    qfunctions,
+    replay_buffer,
+    replay_buffer_initializers,
+)
 from bridger.debug import action_inversion_checker
 from bridger.logging_utils import object_logging
 from bridger.logging_utils import log_entry
@@ -75,15 +82,14 @@ def make_env(
     return env
 
 
-def get_action_inversion_checker_actions_standard_configuration(
+def get_actions_for_standard_configuration(
     env_width: int,
 ) -> List[List[int]]:
-    """Produces action inversion checker actions.
+    """Produces actions to build a bridge in the standard configuration.
 
-    The current ActionInversionChecker implementation presumes an
-    environment of even width where the bridge is built up from edge
-    to edge without intermediate supports. The actions are initialized
-    based on this presumption.
+    The implementation presumes an environment of even width where the
+    bridge is built up from edge to edge without intermediate
+    supports. The actions are initialized based on this presumption.
 
     Args:
       env_width: The width of the environment.
@@ -298,9 +304,7 @@ class BridgeBuilderModel(pl.LightningModule):
 
         self._action_inversion_checker = None
         if self.hparams.debug_action_inversion_checker:
-            actions = get_action_inversion_checker_actions_standard_configuration(
-                self.hparams.env_width
-            )
+            actions = get_actions_for_standard_configuration(self.hparams.env_width)
             self._action_inversion_checker = (
                 action_inversion_checker.ActionInversionChecker(
                     env=self._validation_env, actions=actions
@@ -313,9 +317,19 @@ class BridgeBuilderModel(pl.LightningModule):
 
     def on_train_start(self):
         """Populates the replay buffer with an initial set of memories before training steps begin."""
-        self.make_memories(
-            batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
-        )
+        if self.hparams.initialize_replay_buffer_strategy is not None:
+            replay_buffer_initializers.initialize_replay_buffer(
+                strategy=self.hparams.initialize_replay_buffer_strategy,
+                replay_buffer_capacity=self.hparams.capacity,
+                env=self._validation_env,
+                add_new_experience=self.replay_buffer.add_new_experience,
+                state_visit_logger=self._state_visit_logger,
+                state_logger=self._state_logger,
+            )
+        else:
+            self.make_memories(
+                batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
+            )
 
     def on_train_batch_end(
         self,
@@ -383,7 +397,7 @@ class BridgeBuilderModel(pl.LightningModule):
         """Makes memories according to the requested memory count or default number of steps."""
         memory_count = (
             requested_memory_count
-            if requested_memory_count
+            if requested_memory_count is not None
             else self.hparams.inter_training_steps
         )
         with torch.no_grad():
