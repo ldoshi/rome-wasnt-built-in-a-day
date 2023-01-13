@@ -11,7 +11,8 @@ from bridger.logging_utils import log_entry
 from tools.web import object_log_cache
 
 _OBJECT_LOGGING_DIR = "tmp_object_logging_dir"
-
+_SUBDIR_0 = "subdir_0"
+_SUBDIR_1 = "subdir_1"
 
 class ObjectLogCacheTest(unittest.TestCase):
     """Verifies cache loading behavior."""
@@ -29,9 +30,12 @@ class ObjectLogCacheTest(unittest.TestCase):
             FileNotFoundError,
             "action_inversion_report",
             cache.get,
-            key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
+            subdir=_SUBDIR_0,
+            data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
         )
 
+        ugg, make key def public?
+        
         self.assertEqual(
             cache.key_miss_counts[object_log_cache.ACTION_INVERSION_DATABASE_KEY],
             1,
@@ -45,7 +49,7 @@ class ObjectLogCacheTest(unittest.TestCase):
             FileNotFoundError,
             "action_inversion_report",
             cache.get,
-            key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
+            data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
         )
 
         self.assertEqual(
@@ -60,7 +64,7 @@ class ObjectLogCacheTest(unittest.TestCase):
     def test_get_illegal_key(self):
         cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
 
-        self.assertRaisesRegex(ValueError, "Unsupported", cache.get, key="illegal")
+        self.assertRaisesRegex(ValueError, "Unsupported", cache.get, data_key="illegal")
 
     def test_get_and_load(self):
         """Verifies cache loads files once."""

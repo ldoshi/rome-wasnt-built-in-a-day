@@ -52,10 +52,11 @@ class ObjectLogCache:
         """Initializes cache.
 
         Args:
-          log_dir: The directory containing the object log files.
+          log_dir: The base directory containing the object logging 
+            subdirectories and log files.
           loaders: A dict containing a custom load function for each
-            supported key. On cache miss, the load function will be
-            called and its return value will be cached as the value
+            supported data_key. On cache miss, the load function will
+            be called and its return value will be cached as the value
             corresponding to the key.
 
         """
@@ -63,39 +64,43 @@ class ObjectLogCache:
         self._log_dir = log_dir
         self._cache = {}
         self._loaders = loaders
-        self.key_hit_counts = collections.defaultdict(int)
-        self.key_miss_counts = collections.defaultdict(int)
+        self.hit_counts = collections.defaultdict(int)
+        self.miss_counts = collections.defaultdict(int)
 
-    def get(self, key: str) -> Any:
+    def get(self, subdir: str, data_key: str) -> Any:
         """Retrieves the requested data constructed from log entries.
 
         If the data has not been loaded yet, it will be loaded here
-        first. Each support key type has a custom log entry loader.
+        first. Each support date_key type has a custom log entry loader.
 
         Args:
-          key: The corresponding to the desired log-based data.
+          subdir: The subdirectory containing log files for the experiment 
+            of interest.
+          data_key: The key describing the desired log-based data.
 
         Returns:
           Logged data loaded into a data structure corresponding to
-          the key. See loader definitions. None if backing files do not
-          exist at the provided location.
+          the data_key for the experiment contained in subdir. See
+          loader definitions. None if backing files do not exist at
+          the provided location.
 
         Raises:
-          ValueError on unsupported key.
-          FileNotFoundError if key does not correspond to a backing
-            data file.
+          ValueError on unsupported data_key.
+          FileNotFoundError if the (subdir, data_key) pair does not 
+            correspond to a backing data file.
 
         """
-        if key not in self._loaders:
-            raise ValueError(f"Unsupported key: {key}")
+        if data_key not in self._loaders:
+            raise ValueError(f"Unsupported data_key: {data_key}")
 
-        if key not in self._cache:
-            self.key_miss_counts[key] += 1
+        cache_key = tuple(subdir, data_key)
+        if cache_key not in self._cache:
+            self.miss_counts[cache_key] += 1
             start = int(time.time() * 1e3)
-            self._cache[key] = self._loaders[key](self._log_dir)
+            self._cache[cache_key] = self._loaders[data_key](self._log_dir)
             end = int(time.time() * 1e3)
-            print(f"ObjectLogCache loading {key} took {end-start} ms.")
+            print(f"ObjectLogCache loading {(subdir, data_key)} took {end-start} ms.")
         else:
-            self.key_hit_counts[key] += 1
+            self.hit_counts[cache_key] += 1
 
-        return self._cache[key]
+        return self._cache[cache_key]
