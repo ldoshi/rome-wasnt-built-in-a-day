@@ -102,6 +102,7 @@ class _MetricMapEntry:
         ), "Batch_idxs must be added in increasing order."
 
         del self._map
+        self._finalized = True
 
     def get(
         self, start_batch_idx: Optional[int], end_batch_idx: Optional[int]
@@ -119,6 +120,7 @@ class _MetricMapEntry:
           batch_idxs and the second contains corresponding metric
           values.
         """
+        assert self._finalized
         start_index = (
             0
             if start_batch_idx is None
@@ -149,9 +151,7 @@ class MetricMap:
     """
 
     def __init__(self):
-        self._map = collections.defaultdict(
-            lambda: collections.defaultdict(lambda: _MetricMapEntry())
-        )
+        self._map = {}
         self._finalized = False
 
     def finalize(self):
@@ -189,7 +189,9 @@ class MetricMap:
             pair.
         """
         assert not self._finalized
-        self._map[state_id][action].add(batch_idx=batch_idx, metric_value=metric_value)
+        self._map.setdefault(state_id, {}).setdefault(action, _MetricMapEntry()).add(
+            batch_idx=batch_idx, metric_value=metric_value
+        )
 
     def get(
         self,
@@ -214,12 +216,31 @@ class MetricMap:
           values.
         """
         assert self._finalized
-        return self._map[state_id][action].get(
-            start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
-        )
+
+        state_map = self._map.get(state_id)
+        if state_map:
+            entry = state_map.get(action)
+            if entry:
+                return entry.get(
+                    start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
+                )
+
+        return [], []
 
     @property
-    def nA(self):
+    def nA(self) -> int:
+        """Estimates the number of actions in the environment.
+
+        The maximum action observed in the added log data is used as a
+        proxy for the maximum action in the environment. Actions are
+        consecutive ints so the (maximum value + 1) is the number of
+        actions.
+
+        Returns:
+          The number of actions in the environment.
+
+        """
+        assert self._finalized
         return max([max(entry) for entry in self._map.values()]) + 1
 
 
@@ -237,7 +258,9 @@ class TrainingHistoryDatabase:
     * log_entry.STATE_NORMALIZED_LOG_ENTRY
 
     Attributes:
-      nA: The number of actions.
+      nA: The number of actions. Knowing the number of actions allows
+        a user of TrainingHistoryDatabase to iteratively query metrics
+        for all possible actions.
 
     """
 

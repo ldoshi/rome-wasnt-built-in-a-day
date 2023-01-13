@@ -59,6 +59,9 @@ class TestMetricMap(unittest.TestCase):
 
         self.assertRaises(AssertionError, test_map.get, state_id=0, action=0)
 
+        with self.assertRaises(AssertionError):
+            test_map.nA
+
         test_map.finalize()
 
         self.assertRaises(
