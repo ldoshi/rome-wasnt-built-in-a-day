@@ -42,7 +42,7 @@ def _read_object_log(dirname: str, log_filename: str):
     yield from read_object_log(log_filepath=os.path.join(dirname, log_filename))
 
 
-class _MetricMapEntry:
+class MetricMap:
     """Stores batch_idx and metric values for efficient access.
 
     For efficiency, the map operates in 'add' mode until it is
@@ -137,7 +137,7 @@ class _MetricMapEntry:
         )
 
 
-class MetricMap:
+class StateActionMetricMap:
     """Stores metric values for efficient access.
 
     The optimized access pattern requests a series of batch_idx and
@@ -189,7 +189,7 @@ class MetricMap:
             pair.
         """
         assert not self._finalized
-        self._map.setdefault(state_id, {}).setdefault(action, _MetricMapEntry()).add(
+        self._map.setdefault(state_id, {}).setdefault(action, MetricMap()).add(
             batch_idx=batch_idx, metric_value=metric_value
         )
 
@@ -279,8 +279,8 @@ class TrainingHistoryDatabase:
             _read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY)
         )
 
-        self._q_values = MetricMap()
-        self._q_target_values = MetricMap()
+        self._q_values = StateActionMetricMap()
+        self._q_target_values = StateActionMetricMap()
         for entry in _read_object_log(
             dirname, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
         ):
@@ -299,7 +299,7 @@ class TrainingHistoryDatabase:
         self._q_values.finalize()
         self._q_target_values.finalize()
 
-        self._td_errors = MetricMap()
+        self._td_errors = StateActionMetricMap()
         for entry in _read_object_log(
             dirname, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY
         ):

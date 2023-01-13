@@ -19,9 +19,9 @@ from bridger import test_utils
 _LOG_FILENAME_0 = "log_filename_0_pytest"
 
 
-class TestMetricMap(unittest.TestCase):
+class TestStateActionMetricMap(unittest.TestCase):
     def test_add_smaller(self):
-        test_map = object_log_readers.MetricMap()
+        test_map = object_log_readers.StateActionMetricMap()
 
         test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.5)
         # Adding an entry with smaller batch_idx for a different
@@ -30,7 +30,7 @@ class TestMetricMap(unittest.TestCase):
         test_map.add(state_id=1, action=0, batch_idx=9, metric_value=2.5)
         test_map.finalize()
 
-        test_map = object_log_readers.MetricMap()
+        test_map = object_log_readers.StateActionMetricMap()
 
         test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.5)
         # Adding an entry with smaller batch_idx for the same state_id
@@ -41,7 +41,7 @@ class TestMetricMap(unittest.TestCase):
         )
 
     def test_add_almost_duplicate(self):
-        test_map = object_log_readers.MetricMap()
+        test_map = object_log_readers.StateActionMetricMap()
 
         test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.5)
         self.assertRaisesRegex(
@@ -55,7 +55,7 @@ class TestMetricMap(unittest.TestCase):
         )
 
     def test_illegal_order_of_operations(self):
-        test_map = object_log_readers.MetricMap()
+        test_map = object_log_readers.StateActionMetricMap()
 
         self.assertRaises(AssertionError, test_map.get, state_id=0, action=0)
 
@@ -76,7 +76,7 @@ class TestMetricMap(unittest.TestCase):
         self.assertRaises(AssertionError, test_map.finalize)
 
     def test_add_duplicate(self):
-        test_map = object_log_readers.MetricMap()
+        test_map = object_log_readers.StateActionMetricMap()
 
         test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.5)
         test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.5)
@@ -100,7 +100,7 @@ class TestMetricMap(unittest.TestCase):
     def test_empty_get_with_batch_idx_filters(
         self, name: str, start_batch_idx: Optional[int], end_batch_idx: Optional[int]
     ):
-        test_map = object_log_readers.MetricMap()
+        test_map = object_log_readers.StateActionMetricMap()
         test_map.finalize()
         batch_idxs, values = test_map.get(
             state_id=0,
@@ -127,7 +127,7 @@ class TestMetricMap(unittest.TestCase):
         expected_batch_idxs: List[int],
         expected_values: List[float],
     ):
-        test_map = object_log_readers.MetricMap()
+        test_map = object_log_readers.StateActionMetricMap()
 
         test_map.add(state_id=0, action=0, batch_idx=1, metric_value=1.1)
         test_map.add(state_id=0, action=0, batch_idx=2, metric_value=2.1)
@@ -145,7 +145,7 @@ class TestMetricMap(unittest.TestCase):
         self.assertEqual(values, expected_values)
 
     def test_get_different_states_and_actions(self):
-        test_map = object_log_readers.MetricMap()
+        test_map = object_log_readers.StateActionMetricMap()
 
         test_map.add(state_id=0, action=0, batch_idx=1, metric_value=1.1)
         test_map.add(state_id=0, action=1, batch_idx=2, metric_value=2.1)
