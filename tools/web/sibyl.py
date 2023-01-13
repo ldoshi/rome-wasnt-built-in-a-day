@@ -37,8 +37,6 @@ def training_history_plot_data():
 
     states = training_history_database.get_states_by_visit_count(
         n=number_of_states,
-        start_batch_idx=start_batch_idx,
-        end_batch_idx=end_batch_idx,
     )
     plot_data = []
 
