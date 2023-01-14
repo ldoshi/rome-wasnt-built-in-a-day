@@ -10,6 +10,7 @@ import collections
 import copy
 import dataclasses
 import itertools
+import math
 import numpy as np
 import os
 import pathlib
@@ -82,7 +83,7 @@ class MetricMap:
         # before logging.
         duplicate_value = self._map.get(batch_idx)
         if duplicate_value:
-            if duplicate_value != metric_value:
+            if not math.isclose(duplicate_value, metric_value, abs_tol=1e-6):
                 raise ValueError(
                     "Metric values don't match for batch_idx duplicate. Current "
                     f"is {duplicate_value} and received {metric_value}."

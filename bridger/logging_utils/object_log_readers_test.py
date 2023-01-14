@@ -78,14 +78,14 @@ class TestStateActionMetricMap(unittest.TestCase):
     def test_add_duplicate(self):
         test_map = object_log_readers.StateActionMetricMap()
 
-        test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.5)
-        test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.5)
+        test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.000000)
+        test_map.add(state_id=0, action=0, batch_idx=10, metric_value=2.0000009)
         test_map.finalize()
 
         batch_idxs, values = test_map.get(state_id=0, action=0)
 
         expected_batch_idxs = [10]
-        expected_values = [2.5]
+        expected_values = [2.000000]
         self.assertEqual(batch_idxs, expected_batch_idxs)
         self.assertEqual(values, expected_values)
 
