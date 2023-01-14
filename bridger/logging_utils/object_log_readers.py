@@ -5,9 +5,12 @@ object log to the TrainingHistoryDatabase, which supports queries on
 top of logged data.
 
 """
+import bisect
 import collections
 import copy
 import dataclasses
+import itertools
+import math
 import numpy as np
 import os
 import pathlib
@@ -40,41 +43,206 @@ def _read_object_log(dirname: str, log_filename: str):
     yield from read_object_log(log_filepath=os.path.join(dirname, log_filename))
 
 
-def _get_values_by_state_and_action(
-    df: pd.DataFrame,
-    state_id: int,
-    action: int,
-    start_batch_idx: Optional[int],
-    end_batch_idx: Optional[int],
-    second_column: str,
-) -> pd.DataFrame:
-    """Retrieves batch_idx and second_column from df.
+class MetricMap:
+    """Stores batch_idx and metric values for efficient access.
 
-    Args:
-      df: The dataframe from which to select rows.
-      state_id: The state id for which to retrieve rows.
-      action: The action for which to retrieve rows.
-      start_batch_idx: The first batch index (inclusive) to consider
-        when filtering df.
-      end_batch_idx: The last batch index (inclusive) to consider when
-        filtering df.
-      second_column: The name of the second column to retrieve from df.
-
-    Returns:
-      A dataframe with two columns, batch_idx and second_column,
-        filtered for rows that contain state_id and action as values
-        in the corresponding columns.
+    For efficiency, the map operates in 'add' mode until it is
+    'finalize'-d. It then becomes immutable.
 
     """
-    df_filtered = df
-    if start_batch_idx is not None:
-        df_filtered = df_filtered[(df_filtered["batch_idx"] >= start_batch_idx)]
-    if end_batch_idx is not None:
-        df_filtered = df_filtered[(df_filtered["batch_idx"] <= end_batch_idx)]
 
-    return df_filtered[
-        (df_filtered["state_id"] == state_id) & (df_filtered["action"] == action)
-    ][["batch_idx", second_column]]
+    def __init__(self):
+        self._batch_idxs = []
+        self._metric_values = []
+        self._map = {}
+        self._finalized = False
+
+    def add(self, batch_idx: int, metric_value: float) -> None:
+        """Adds a batch_idx and metric_value pair.
+
+        Repeated calls to add must provide the batch_idxs in
+        increasing order. This is asserted once during finalize for
+        efficiency. Providing a duplicate (batch_idx, metric_value) is
+        permitted and will be ignored. Providing different
+        metric_values for the same batch_idx is an error.
+
+        Args:
+          batch_idx: A batch idx.
+          metric_value: The metric value corresponding to the batch idx.
+
+        Raises:
+          ValueError: If a batch_idx is provided with a different
+            metric_value than before.
+
+        """
+        assert not self._finalized
+
+        # Don't re-add duplicates. Consider removing this check and
+        # presuming the data satisfied this invariant when it was
+        # logged. Note that this invariant is not currently checked
+        # before logging.
+        duplicate_value = self._map.get(batch_idx)
+        if duplicate_value:
+            if not math.isclose(duplicate_value, metric_value, abs_tol=1e-5):
+                raise ValueError(
+                    "Metric values don't match for batch_idx duplicate. Current "
+                    f"is {duplicate_value} and received {metric_value}."
+                )
+            return
+
+        self._map[batch_idx] = metric_value
+
+    def finalize(self):
+        """Converts from add-optimized to get-optimized mode."""
+        assert not self._finalized
+        self._batch_idxs = list(self._map)
+        self._metric_values = list(self._map.values())
+
+        assert self._batch_idxs == sorted(
+            self._batch_idxs
+        ), "Batch_idxs must be added in increasing order."
+
+        del self._map
+        self._finalized = True
+
+    def get(
+        self, start_batch_idx: Optional[int], end_batch_idx: Optional[int]
+    ) -> Tuple[List[int], List[float]]:
+        """Retrieves batch_idx and metric values for the requested range.
+
+        Args:
+          start_batch_idx: The first batch index (inclusive) to consider
+            when filtering metric values.
+          end_batch_idx: The last batch index (inclusive) to consider when
+            filtering metric values.
+
+        Returns:
+          A tuple of lists of the same length. The first contains
+          batch_idxs and the second contains corresponding metric
+          values.
+        """
+        assert self._finalized
+        start_index = (
+            0
+            if start_batch_idx is None
+            else bisect.bisect_left(self._batch_idxs, start_batch_idx)
+        )
+        end_index = (
+            len(self._batch_idxs)
+            if end_batch_idx is None
+            else bisect.bisect_right(self._batch_idxs, end_batch_idx)
+        )
+        return (
+            self._batch_idxs[start_index:end_index],
+            self._metric_values[start_index:end_index],
+        )
+
+
+class StateActionMetricMap:
+    """Stores metric values for efficient access.
+
+    The optimized access pattern requests a series of batch_idx and
+    metric values for a given state_id and action pair.
+
+    For efficiency, the map operates in 'add' mode until it is
+    'finalize'-d. It then becomes immutable.
+
+    Attributes:
+      nA: The likely number of actions based on the added data.
+    """
+
+    def __init__(self):
+        self._map = {}
+        self._finalized = False
+
+    def finalize(self):
+        """Converts from add-optimized to get-optimized mode."""
+        assert not self._finalized
+        for actions_map in self._map.values():
+            for metric_map_entry in actions_map.values():
+                metric_map_entry.finalize()
+        self._finalized = True
+
+    def add(
+        self, state_id: int, action: int, batch_idx: int, metric_value: float
+    ) -> None:
+        """Adds a batch_idx and metric_value organized by state_id and action.
+
+        Repeated calls to add must provide the batch_idxs in
+        increasing order for a given state_id and action. Providing a
+        duplicate (batch_idx, metric_value) is permitted for a given
+        state_id and action and will be ignored. Providing different
+        metric_values for the same (state_id, action, batch_idx) is an
+        error.
+
+        Args:
+          state_id: The state id corresponding to the metric_value.
+          action: The action corresponding to the metric_value.
+          batch_idx: The batch idx corresponding to the metric_value.
+          metric_value: A metric value recorded for the (state_id,
+            action, batch_idx) triple.
+
+        Raises:
+          ValueError: If the batch_idx provided is smaller than the
+            most recent batch_idx provided for a given state_id and
+            action pair. If a batch_idx is provided with a different
+            metric_value than before for a given state_id and action
+            pair.
+        """
+        assert not self._finalized
+        self._map.setdefault(state_id, {}).setdefault(action, MetricMap()).add(
+            batch_idx=batch_idx, metric_value=metric_value
+        )
+
+    def get(
+        self,
+        state_id: int,
+        action: int,
+        start_batch_idx: Optional[int] = None,
+        end_batch_idx: Optional[int] = None,
+    ) -> Tuple[List[int], List[float]]:
+        """Retrieves batch_idx and metric values for the requested range.
+
+        Args:
+          state_id: The state id for which to retrieve rows.
+          action: The action for which to retrieve rows.
+          start_batch_idx: The first batch index (inclusive) to consider
+            when filtering metric values.
+          end_batch_idx: The last batch index (inclusive) to consider when
+            filtering metric values.
+
+        Returns:
+          A tuple of lists of the same length. The first contains
+          batch_idxs and the second contains corresponding metric
+          values.
+        """
+        assert self._finalized
+
+        state_map = self._map.get(state_id)
+        if state_map:
+            entry = state_map.get(action)
+            if entry:
+                return entry.get(
+                    start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
+                )
+
+        return [], []
+
+    @property
+    def nA(self) -> int:
+        """Estimates the number of actions in the environment.
+
+        The maximum action observed in the added log data is used as a
+        proxy for the maximum action in the environment. Actions are
+        consecutive ints so the (maximum value + 1) is the number of
+        actions.
+
+        Returns:
+          The number of actions in the environment.
+
+        """
+        assert self._finalized
+        return max([max(entry) for entry in self._map.values()]) + 1
 
 
 # TODO(lyric): Consider adding batch_idx_min and batch_idx_max
@@ -91,7 +259,10 @@ class TrainingHistoryDatabase:
     * log_entry.STATE_NORMALIZED_LOG_ENTRY
 
     Attributes:
-      actions_n: The value of the max action found in the logs.
+      nA: The number of actions. Knowing the number of actions allows
+        a user of TrainingHistoryDatabase to iteratively query metrics
+        for all possible actions.
+
     """
 
     def __init__(self, dirname: str):
@@ -109,25 +280,39 @@ class TrainingHistoryDatabase:
             _read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY)
         )
 
-        self._q_values = pd.DataFrame(
-            _read_object_log(dirname, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY)
-        )
-        self._q_values = self._q_values.sort_values(
-            by=["state_id", "action", "batch_idx"]
-        )
-        self._q_values.set_index("state_id")
+        self._q_values = StateActionMetricMap()
+        self._q_target_values = StateActionMetricMap()
+        for entry in _read_object_log(
+            dirname, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
+        ):
+            self._q_values.add(
+                state_id=entry.state_id,
+                action=entry.action,
+                batch_idx=entry.batch_idx,
+                metric_value=entry.q_value,
+            )
+            self._q_target_values.add(
+                state_id=entry.state_id,
+                action=entry.action,
+                batch_idx=entry.batch_idx,
+                metric_value=entry.q_target_value,
+            )
+        self._q_values.finalize()
+        self._q_target_values.finalize()
 
-        self._td_errors = pd.DataFrame(
-            _read_object_log(dirname, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY)
-        )
-        self._td_errors = self._td_errors.drop_duplicates(
-            ["state_id", "action", "batch_idx"]
-        ).sort_values(by=["state_id", "action", "batch_idx"])
-        self._td_errors.set_index("state_id")
+        self._td_errors = StateActionMetricMap()
+        for entry in _read_object_log(
+            dirname, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY
+        ):
+            self._td_errors.add(
+                state_id=entry.state_id,
+                action=entry.action,
+                batch_idx=entry.batch_idx,
+                metric_value=entry.td_error,
+            )
+        self._td_errors.finalize()
 
-        self.actions_n = (
-            max(self._q_values["action"].max(), self._td_errors["action"].max()) + 1
-        )
+        self.nA = max(self._q_values.nA, self._q_target_values.nA, self._td_errors.nA)
 
     def get_states_by_visit_count(
         self,
@@ -174,8 +359,7 @@ class TrainingHistoryDatabase:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> pd.DataFrame:
-
+    ) -> Tuple[List[int], List[float]]:
         """Retrieves td_error values for the requested state and action.
 
         Args:
@@ -187,17 +371,15 @@ class TrainingHistoryDatabase:
             when filtering the data.
 
         Returns:
-          A dataframe with two columns, batch_idx and td_error,
-            filtered for rows that contain state_id and action as values
-            in the corresponding columns.
+          A tuple of lists of the same length. The first contains
+          batch_idxs and the second contains corresponding td error
+          values.
         """
-        return _get_values_by_state_and_action(
-            df=self._td_errors,
+        return self._td_errors.get(
             state_id=state_id,
             action=action,
             start_batch_idx=start_batch_idx,
             end_batch_idx=end_batch_idx,
-            second_column="td_error",
         )
 
     def get_q_values(
@@ -206,8 +388,7 @@ class TrainingHistoryDatabase:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> pd.DataFrame:
-
+    ) -> Tuple[List[int], List[float]]:
         """Retrieves q values for the requested state and action.
 
         Args:
@@ -219,17 +400,15 @@ class TrainingHistoryDatabase:
             when filtering the data.
 
         Returns:
-          A dataframe with two columns, batch_idx and q_values,
-            filtered for rows that contain state_id and action as values
-            in the corresponding columns.
+          A tuple of lists of the same length. The first contains
+          batch_idxs and the second contains corresponding td error
+          values.
         """
-        return _get_values_by_state_and_action(
-            df=self._q_values,
+        return self._q_values.get(
             state_id=state_id,
             action=action,
             start_batch_idx=start_batch_idx,
             end_batch_idx=end_batch_idx,
-            second_column="q_value",
         )
 
     def get_q_target_values(
@@ -238,8 +417,7 @@ class TrainingHistoryDatabase:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> pd.DataFrame:
-
+    ) -> Tuple[List[int], List[float]]:
         """Retrieves q target values for the requested state and action.
 
         Args:
@@ -251,17 +429,15 @@ class TrainingHistoryDatabase:
             when filtering the data.
 
         Returns:
-          A dataframe with two columns, batch_idx and q_target_values,
-            filtered for rows that contain state_id and action as values
-            in the corresponding columns.
+          A tuple of lists of the same length. The first contains
+          batch_idxs and the second contains corresponding td error
+          values.
         """
-        return _get_values_by_state_and_action(
-            df=self._q_values,
+        return self._q_target_values.get(
             state_id=state_id,
             action=action,
             start_batch_idx=start_batch_idx,
             end_batch_idx=end_batch_idx,
-            second_column="q_target_value",
         )
 
 
