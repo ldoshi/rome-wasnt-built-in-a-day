@@ -20,16 +20,30 @@ ACTION_INVERSION_DATABASE_KEY = "action_inversion_database_key"
 TRAINING_HISTORY_DATABASE_KEY = "training_history_database_key"
 
 
+def get_experiment_data_dir(log_dir: str, experiment_name: str) -> str:
+    return os.path.join(log_dir, experiment_name)
+
+
 def _load_action_inversion_database(
     log_dir: str,
+    experiment_name: str,
 ) -> object_log_readers.ActionInversionDatabase:
-    return object_log_readers.ActionInversionDatabase(dirname=log_dir)
+    return object_log_readers.ActionInversionDatabase(
+        dirname=get_experiment_data_dir(
+            log_dir=log_dir, experiment_name=experiment_name
+        )
+    )
 
 
 def _load_training_history_database(
     log_dir: str,
+    experiment_name: str,
 ) -> object_log_readers.TrainingHistoryDatabase:
-    return object_log_readers.TrainingHistoryDatabase(dirname=log_dir)
+    return object_log_readers.TrainingHistoryDatabase(
+        dirname=get_experiment_data_dir(
+            log_dir=log_dir, experiment_name=experiment_name
+        )
+    )
 
 
 _LOADERS = {
@@ -42,17 +56,17 @@ class ObjectLogCache:
     """Loads and caches logged objects for efficient re-access.
 
     Attributes:
-      key_hit_counts: Dict of the number of cache hits per key.
-      key_miss_counts: Dict of the number of cache misses per key.
+      hit_counts: Dict of the number of cache hits per key.
+      miss_counts: Dict of the number of cache misses per key.
     """
 
     def __init__(
-        self, log_dir: str, loaders: Dict[str, Callable[[str], Any]] = _LOADERS
+        self, log_dir: str, loaders: Dict[str, Callable[[str, str], Any]] = _LOADERS
     ):
         """Initializes cache.
 
         Args:
-          log_dir: The base directory containing the object logging 
+          log_dir: The base directory containing the object logging
             subdirectories and log files.
           loaders: A dict containing a custom load function for each
             supported data_key. On cache miss, the load function will
@@ -67,39 +81,43 @@ class ObjectLogCache:
         self.hit_counts = collections.defaultdict(int)
         self.miss_counts = collections.defaultdict(int)
 
-    def get(self, subdir: str, data_key: str) -> Any:
+    def get(self, experiment_name: str, data_key: str) -> Any:
         """Retrieves the requested data constructed from log entries.
 
         If the data has not been loaded yet, it will be loaded here
         first. Each support date_key type has a custom log entry loader.
 
         Args:
-          subdir: The subdirectory containing log files for the experiment 
-            of interest.
+          experiment_name: The name of the experiment of interest.
           data_key: The key describing the desired log-based data.
 
         Returns:
           Logged data loaded into a data structure corresponding to
-          the data_key for the experiment contained in subdir. See
-          loader definitions. None if backing files do not exist at
-          the provided location.
+          the data_key for the requested experiment. See loader
+          definitions. None if backing files do not exist at the
+          provided location.
 
         Raises:
           ValueError on unsupported data_key.
-          FileNotFoundError if the (subdir, data_key) pair does not 
-            correspond to a backing data file.
+          FileNotFoundError if the (experiment_name, data_key) pair
+            does not correspond to a backing data file.
 
         """
         if data_key not in self._loaders:
             raise ValueError(f"Unsupported data_key: {data_key}")
 
-        cache_key = tuple(subdir, data_key)
+        cache_key = (experiment_name, data_key)
         if cache_key not in self._cache:
             self.miss_counts[cache_key] += 1
             start = int(time.time() * 1e3)
-            self._cache[cache_key] = self._loaders[data_key](self._log_dir)
+            self._cache[cache_key] = self._loaders[data_key](
+                self._log_dir, experiment_name
+            )
             end = int(time.time() * 1e3)
-            print(f"ObjectLogCache loading {(subdir, data_key)} took {end-start} ms.")
+            print(
+                f"ObjectLogCache loading {(experiment_name, data_key)} "
+                f"took {end-start} ms."
+            )
         else:
             self.hit_counts[cache_key] += 1
 

@@ -11,8 +11,9 @@ from bridger.logging_utils import log_entry
 from tools.web import object_log_cache
 
 _OBJECT_LOGGING_DIR = "tmp_object_logging_dir"
-_SUBDIR_0 = "subdir_0"
-_SUBDIR_1 = "subdir_1"
+_EXPERIMENT_NAME_0 = "experiment_name_0"
+_EXPERIMENT_NAME_1 = "experiment_name_1"
+
 
 class ObjectLogCacheTest(unittest.TestCase):
     """Verifies cache loading behavior."""
@@ -30,18 +31,17 @@ class ObjectLogCacheTest(unittest.TestCase):
             FileNotFoundError,
             "action_inversion_report",
             cache.get,
-            subdir=_SUBDIR_0,
+            experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
         )
 
-        ugg, make key def public?
-        
+        cache_key = (_EXPERIMENT_NAME_0, object_log_cache.ACTION_INVERSION_DATABASE_KEY)
         self.assertEqual(
-            cache.key_miss_counts[object_log_cache.ACTION_INVERSION_DATABASE_KEY],
+            cache.miss_counts[cache_key],
             1,
         )
         self.assertEqual(
-            cache.key_hit_counts[object_log_cache.ACTION_INVERSION_DATABASE_KEY],
+            cache.hit_counts[cache_key],
             0,
         )
 
@@ -49,63 +49,140 @@ class ObjectLogCacheTest(unittest.TestCase):
             FileNotFoundError,
             "action_inversion_report",
             cache.get,
+            experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
         )
 
         self.assertEqual(
-            cache.key_miss_counts[object_log_cache.ACTION_INVERSION_DATABASE_KEY],
+            cache.miss_counts[cache_key],
             2,
         )
         self.assertEqual(
-            cache.key_hit_counts[object_log_cache.ACTION_INVERSION_DATABASE_KEY],
+            cache.hit_counts[cache_key],
             0,
         )
 
-    def test_get_illegal_key(self):
+    def test_get_illegal_key_and_experiment_name_data_is_different(self):
         cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
 
-        self.assertRaisesRegex(ValueError, "Unsupported", cache.get, data_key="illegal")
-
-    def test_get_and_load(self):
-        """Verifies cache loads files once."""
+        self.assertRaises(
+            FileNotFoundError,
+            cache.get,
+            experiment_name=_EXPERIMENT_NAME_0,
+            data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
+        )
+        self.assertRaises(
+            FileNotFoundError,
+            cache.get,
+            experiment_name=_EXPERIMENT_NAME_1,
+            data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
+        )
 
         max_steps = 1
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            dirname=object_log_cache.get_experiment_data_dir(
+                log_dir=_OBJECT_LOGGING_DIR, experiment_name=_EXPERIMENT_NAME_0
+            )
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=max_steps).fit(
                 test_utils.get_model(
                     object_log_manager=object_log_manager,
                     debug=True,
                     env_width=4,
-                    max_episode_length=10,
+                    max_episode_length=1,
+                    initial_memories_count=1,
+                )
+            )
+
+        # By not raising, we know _EXPERIMENT_NAME_0 now
+        # exists. _EXPERIMENT_NAME_1 still does not exist and does
+        # raise.
+        cache.get(
+            experiment_name=_EXPERIMENT_NAME_0,
+            data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
+        )
+        self.assertRaises(
+            FileNotFoundError,
+            cache.get,
+            experiment_name=_EXPERIMENT_NAME_1,
+            data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            "Unsupported",
+            cache.get,
+            experiment_name=_EXPERIMENT_NAME_0,
+            data_key="illegal",
+        )
+
+        with object_logging.ObjectLogManager(
+            dirname=object_log_cache.get_experiment_data_dir(
+                log_dir=_OBJECT_LOGGING_DIR, experiment_name=_EXPERIMENT_NAME_1
+            )
+        ) as object_log_manager:
+            test_utils.get_trainer(max_steps=max_steps).fit(
+                test_utils.get_model(
+                    object_log_manager=object_log_manager,
+                    debug=True,
+                    env_width=4,
+                    max_episode_length=1,
+                    initial_memories_count=1,
+                )
+            )
+
+        # By not raising, we know _EXPERIMENT_NAME_1 now exists.
+        cache.get(
+            experiment_name=_EXPERIMENT_NAME_1,
+            data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
+        )
+
+    def test_get_and_load(self):
+        """Verifies cache loads files once."""
+
+        max_steps = 1
+        with object_logging.ObjectLogManager(
+            dirname=object_log_cache.get_experiment_data_dir(
+                log_dir=_OBJECT_LOGGING_DIR, experiment_name=_EXPERIMENT_NAME_0
+            )
+        ) as object_log_manager:
+            test_utils.get_trainer(max_steps=max_steps).fit(
+                test_utils.get_model(
+                    object_log_manager=object_log_manager,
+                    debug=True,
+                    env_width=4,
+                    max_episode_length=1,
                     initial_memories_count=1,
                 )
             )
 
         cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
 
-        self.assertIsNotNone(cache.get(object_log_cache.TRAINING_HISTORY_DATABASE_KEY))
-        self.assertEqual(
-            cache.key_miss_counts[object_log_cache.TRAINING_HISTORY_DATABASE_KEY], 1
+        self.assertIsNotNone(
+            cache.get(
+                experiment_name=_EXPERIMENT_NAME_0,
+                data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
+            )
         )
-        self.assertEqual(
-            cache.key_hit_counts[object_log_cache.TRAINING_HISTORY_DATABASE_KEY], 0
-        )
+        cache_key = (_EXPERIMENT_NAME_0, object_log_cache.TRAINING_HISTORY_DATABASE_KEY)
+        self.assertEqual(cache.miss_counts[cache_key], 1)
+        self.assertEqual(cache.hit_counts[cache_key], 0)
 
-        self.assertIsNotNone(cache.get(object_log_cache.TRAINING_HISTORY_DATABASE_KEY))
-        self.assertEqual(
-            cache.key_miss_counts[object_log_cache.TRAINING_HISTORY_DATABASE_KEY], 1
+        self.assertIsNotNone(
+            cache.get(
+                experiment_name=_EXPERIMENT_NAME_0,
+                data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
+            )
         )
-        self.assertEqual(
-            cache.key_hit_counts[object_log_cache.TRAINING_HISTORY_DATABASE_KEY], 1
-        )
+        self.assertEqual(cache.miss_counts[cache_key], 1)
+        self.assertEqual(cache.hit_counts[cache_key], 1)
 
     def test_loaders_smoke_test(self):
         """Verifies each loader produces a reasonably shaped result."""
         max_steps = 4
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            dirname=object_log_cache.get_experiment_data_dir(
+                log_dir=_OBJECT_LOGGING_DIR, experiment_name=_EXPERIMENT_NAME_0
+            )
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=max_steps).fit(
                 test_utils.get_model(
@@ -121,12 +198,14 @@ class ObjectLogCacheTest(unittest.TestCase):
         cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
 
         action_inversion_database = cache.get(
-            object_log_cache.ACTION_INVERSION_DATABASE_KEY
+            experiment_name=_EXPERIMENT_NAME_0,
+            data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
         )
         self.assertEqual(len(action_inversion_database.get_incidence_rate()), 2)
 
         training_history_database = cache.get(
-            object_log_cache.TRAINING_HISTORY_DATABASE_KEY
+            experiment_name=_EXPERIMENT_NAME_0,
+            data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
         )
         self.assertEqual(len(training_history_database.get_states_by_visit_count()), 2)
 
