@@ -33,10 +33,11 @@ def _get_logging_dir(object_logging_base_dir: str, experiment_name: str):
         f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}{'_' if experiment_name else ''}{experiment_name}",
     )
 
+_DEMO_CALLBACK_FREQUENCY = 100
+MAX_DEMO_EPISODE_LENGTH = 50
 
-def test():
-    MAX_STEPS = 100
-    MAX_DEMO_EPISODE_LENGTH = 50
+
+def run():
     # TODO(arvind): split the args into those relevant for the LightningModule
     #               and those relevant for the Trainer/Callbacks
     parser = builder_trainer.get_hyperparam_parser()
@@ -76,8 +77,8 @@ def test():
         if hparams.debug:
             callbacks += [
                 DemoCallback(
-                    steps_per_update=MAX_STEPS,
-                    max_episode_length=MAX_DEMO_EPISODE_LENGTH,
+                    steps_per_update=_DEMO_CALLBACK_FREQUENCY,
+                    max_episode_length=hparams.max_episode_length,
                 ),
             ]
 
@@ -116,4 +117,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    run()

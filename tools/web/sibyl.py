@@ -37,8 +37,6 @@ def training_history_plot_data():
 
     states = training_history_database.get_states_by_visit_count(
         n=number_of_states,
-        start_batch_idx=start_batch_idx,
-        end_batch_idx=end_batch_idx,
     )
     plot_data = []
 
@@ -60,30 +58,41 @@ def training_history_plot_data():
         for metric, metric_display_name, data_fn in metrics_and_data_fns:
             series_data = []
             series_labels = []
-            for action in range(training_history_database.actions_n):
-                df = data_fn(
+            for action in range(training_history_database.nA):
+                batch_idxs, values = data_fn(
                     state_id=row["state_id"],
                     action=action,
                     start_batch_idx=start_batch_idx,
                     end_batch_idx=end_batch_idx,
                 )
-                df = plot_utils.downsample(df=df, n=max_points_per_series)
+                batch_idxs = plot_utils.downsample_list(
+                    data=batch_idxs, n=max_points_per_series
+                )
+                values = plot_utils.downsample_list(
+                    data=values, n=max_points_per_series
+                )
                 series_data.append(
                     [
-                        {"x": df_row["batch_idx"], "y": df_row[metric]}
-                        for df_index, df_row in df.iterrows()
+                        {"x": batch_idx, "y": value}
+                        for batch_idx, value in zip(batch_idxs, values)
                     ]
                 )
                 series_labels.append(str(action))
+
+                # add tests in object_log_readers.
+                # fix handling for min and max if batch_idxs is empty.
+                if not batch_idxs:
+                    continue
+
                 min_batch_idx = (
-                    min(min_batch_idx, df["batch_idx"].min())
+                    min(min_batch_idx, batch_idxs[0])
                     if min_batch_idx is not None
-                    else df["batch_idx"].min()
+                    else batch_idxs[0]
                 )
                 max_batch_idx = (
-                    max(max_batch_idx, df["batch_idx"].max())
-                    if max_batch_idx is not None and not df.empty
-                    else max_batch_idx
+                    max(max_batch_idx, batch_idxs[-1])
+                    if max_batch_idx is not None
+                    else batch_idxs[-1]
                 )
 
             state_plot_data["metrics"].append(

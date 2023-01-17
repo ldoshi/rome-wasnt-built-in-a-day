@@ -1,3 +1,5 @@
+let _MAX_RENDER_COUNT = 20
+
 let _CHART_OPTIONS_TEMPLATE = {
     scales: {
 	x: {
@@ -68,6 +70,12 @@ let _COLORS = [
     'rgba(127, 0, 127, 1)',
 ]
 
+let _DATA = null;
+
+let _STATE_FILTER = function (state) {
+    return true;
+}
+
 function update_plots() {
     let start_batch_idx = $("#start-batch-idx").val();
     let end_batch_idx = $("#end-batch-idx").val();
@@ -75,22 +83,50 @@ function update_plots() {
     let number_of_states = $("#number-of-states").val();
 
     $.get(`${_ROOT_URL}training_history_plot_data`, { "start_batch_idx": start_batch_idx, "end_batch_idx" : end_batch_idx, "max_points_per_series" : max_points_per_series, "number_of_states" : number_of_states}, function(data, response) {
-	let plot_data = data['plot_data'];
-	if (plot_data.length == 0) {
-	    return;
-	}
-
-	create_plot_div_structure(plot_data.length, plot_data[0]['metrics'].length);
-
-	for (let state_index = 0; state_index < plot_data.length; state_index++) {
-	    let row_data = plot_data[state_index];
-	    render_state_plot(state_index, row_data);
-	    for (let metric_index = 0; metric_index < row_data['metrics'].length; metric_index++) {
-		let metric_entry = row_data['metrics'][metric_index];
-		render_training_plot(metric_entry['metric'], state_index, metric_index, data['labels'], metric_entry['series_data'], metric_entry['series_labels']);
-	    }
-	}
+	_DATA = data;
+	render_plots();
     });    
+}
+
+function update_state_filter() {
+    _STATE_FILTER = new Function('state', $("#state-filter-function-body").val());
+    render_plots();
+}
+
+function render_plots() {
+    if (_DATA == null) {
+	return;
+    }
+    
+    let plot_data = _DATA['plot_data'];
+    if (plot_data.length == 0) {
+	return;
+    }
+
+    let state_index_list = []
+    let render_count = Math.min(plot_data.length, _MAX_RENDER_COUNT)
+
+    for (let state_index = 0; state_index < plot_data.length; state_index++) {
+	if (_STATE_FILTER(plot_data[state_index]['state'])) {
+	    state_index_list.push(state_index);
+	}
+
+	if (state_index_list.length == render_count) {
+	    break;
+	}
+    }
+    
+    create_plot_div_structure(state_index_list.length, plot_data[0]['metrics'].length);
+
+    for (let i = 0; i < state_index_list.length; i++) {
+	state_index = state_index_list[i]
+	let row_data = plot_data[state_index];
+	render_state_plot(i, row_data);
+	for (let metric_index = 0; metric_index < row_data['metrics'].length; metric_index++) {
+	    let metric_entry = row_data['metrics'][metric_index];
+	    render_training_plot(metric_entry['metric'], i, metric_index, _DATA['labels'], metric_entry['series_data'], metric_entry['series_labels']);
+	}
+    }
 }
 
 function create_plot_div_structure(state_count, metric_count) {
