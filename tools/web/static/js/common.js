@@ -31,20 +31,22 @@ function render_array_2d(data, canvas_id, top_row_half_block_positions=null, top
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, width, height);
 
+    let y_shift = has_special_top_row ? 1 : 0;
+    
     // Label axes.
     for (let y = 0; y < data.length; y++) {
 	ctx.fillStyle = _AXIS_LABEL_BACKGROUND_COLOR;
-	ctx.fillRect(_BLOCK_BORDER_WIDTH, y * block_size + _BLOCK_BORDER_WIDTH, block_size - 2 * _BLOCK_BORDER_WIDTH, block_size - 2 * _BLOCK_BORDER_WIDTH);
+	ctx.fillRect(_BLOCK_BORDER_WIDTH, (y + y_shift) * block_size + _BLOCK_BORDER_WIDTH, block_size - 2 * _BLOCK_BORDER_WIDTH, block_size - 2 * _BLOCK_BORDER_WIDTH);
 	ctx.fillStyle = _AXIS_LABEL_COLOR;
 	ctx.font = _AXIS_FONT;
-	ctx.fillText(y, block_size/4, (y + 3/4) * block_size);
+	ctx.fillText(y, block_size/4, ((y + y_shift) + 3/4) * block_size);
     }
     for (let x = 0; x < data[0].length; x++) {
 	ctx.fillStyle = _AXIS_LABEL_BACKGROUND_COLOR;
-	ctx.fillRect((x + 1) * block_size + _BLOCK_BORDER_WIDTH, data.length * block_size + _BLOCK_BORDER_WIDTH, block_size - 2 * _BLOCK_BORDER_WIDTH, block_size - 2 * _BLOCK_BORDER_WIDTH);
+	ctx.fillRect((x + 1) * block_size + _BLOCK_BORDER_WIDTH, (data.length + y_shift) * block_size + _BLOCK_BORDER_WIDTH, block_size - 2 * _BLOCK_BORDER_WIDTH, block_size - 2 * _BLOCK_BORDER_WIDTH);
 	ctx.fillStyle = _AXIS_LABEL_COLOR;
 	ctx.font = _AXIS_FONT;
-	ctx.fillText(x, (x + 1) * block_size + block_size/4, (data.length + 3/4) * block_size);
+	ctx.fillText(x, (x + 1) * block_size + block_size/4, ((data.length + y_shift) + 3/4) * block_size);
     }
        
     if (top_row_half_block_positions != null) {
@@ -69,7 +71,6 @@ function render_array_2d(data, canvas_id, top_row_half_block_positions=null, top
 	}
     }
     
-    let y_shift = has_special_top_row ? 1 : 0;
     for (let y = 0; y < data.length; y++) {
 	// Add one to x since the left-most column is the axes label.
 	for (let x = 0; x < data[y].length; x++) {
