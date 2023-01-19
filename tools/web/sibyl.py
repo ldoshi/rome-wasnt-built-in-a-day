@@ -1,5 +1,6 @@
 import argparse
 import flask
+import os
 import time
 
 from typing import Optional
@@ -10,10 +11,16 @@ from tools.web import plot_utils
 app = flask.Flask(__name__)
 
 _OBJECT_LOG_CACHE = None
+_LOG_DIR = None
+
+
+def _get_string_or_none(name: str) -> Optional[str]:
+    return flask.request.args.get(name)
 
 
 def _get_int_or_none(name: str) -> Optional[int]:
     value = flask.request.args.get(name)
+
     try:
         return int(value)
     except:
@@ -26,13 +33,15 @@ def training_history_plot_data():
 
     This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
+    experiment_name = _get_string_or_none("experiment_name")
     start_batch_idx = _get_int_or_none("start_batch_idx")
     end_batch_idx = _get_int_or_none("end_batch_idx")
     max_points_per_series = _get_int_or_none("max_points_per_series")
     number_of_states = _get_int_or_none("number_of_states")
 
     training_history_database = _OBJECT_LOG_CACHE.get(
-        object_log_cache.TRAINING_HISTORY_DATABASE_KEY
+        experiment_name=experiment_name,
+        data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
     )
 
     states = training_history_database.get_states_by_visit_count(
@@ -119,11 +128,13 @@ def action_inversion_plot_data():
 
     This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
+    experiment_name = _get_string_or_none("experiment_name")
     start_batch_idx = _get_int_or_none("start_batch_idx")
     end_batch_idx = _get_int_or_none("end_batch_idx")
 
     action_inversion_database = _OBJECT_LOG_CACHE.get(
-        object_log_cache.ACTION_INVERSION_DATABASE_KEY
+        experiment_name=experiment_name,
+        data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
     )
 
     series_data = []
@@ -177,12 +188,14 @@ def action_inversion_batch_reports():
 
     This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
+    experiment_name = _get_string_or_none("experiment_name")
     batch_idx = _get_int_or_none("batch_idx")
     if batch_idx is None:
         return []
 
     action_inversion_database = _OBJECT_LOG_CACHE.get(
-        object_log_cache.ACTION_INVERSION_DATABASE_KEY
+        experiment_name=experiment_name,
+        data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
     )
 
     reports = action_inversion_database.get_reports(batch_idx=batch_idx)
@@ -204,12 +217,18 @@ def action_inversion_batch_reports():
 @app.route("/")
 @app.route("/training_history")
 def training_history():
-    return flask.render_template("training_history.html")
+    experiment_names = sorted(os.listdir(_LOG_DIR))
+    return flask.render_template(
+        "training_history.html", experiment_names=experiment_names
+    )
 
 
 @app.route("/action_inversion")
 def action_inversion():
-    return flask.render_template("action_inversion.html")
+    experiment_names = sorted(os.listdir(_LOG_DIR))
+    return flask.render_template(
+        "action_inversion.html", experiment_names=experiment_names
+    )
 
 
 if __name__ == "__main__":
@@ -217,9 +236,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--log_dir",
         help="The path to the object logging dir.",
+        type=str,
         required=True,
     )
     args = parser.parse_args()
-    _OBJECT_LOG_CACHE = object_log_cache.ObjectLogCache(log_dir=args.log_dir)
+    _LOG_DIR = args.log_dir
+    _OBJECT_LOG_CACHE = object_log_cache.ObjectLogCache(log_dir=_LOG_DIR)
 
     app.run(host="0.0.0.0", port=5001)

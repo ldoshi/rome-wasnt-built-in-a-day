@@ -34,6 +34,11 @@ body {
     float: left;
     padding: 10px;
 }
+.control-select {
+    float: left;
+    padding: 10px;
+    font-size: 14px;
+}
 .control-function-body-input {
     float: left;
     padding: 10px;
@@ -68,3 +73,6 @@ body {
     background-color: lightgray;
 }
 
+#experiment-name {
+    width: 500px;
+}
