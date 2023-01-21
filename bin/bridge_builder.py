@@ -13,6 +13,9 @@
 # 3. take_action will take the requested action, potentially multiple times, before
 #    returning to the IPython shell
 
+import datetime
+import os
+
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import EarlyStopping
@@ -22,6 +25,14 @@ from bridger import builder_trainer
 from bridger.callbacks import DemoCallback
 from pathlib import Path
 from bridger.logging_utils import object_logging
+
+
+def _get_logging_dir(object_logging_base_dir: str, experiment_name: str):
+    return os.path.join(
+        object_logging_base_dir,
+        f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}{'_' if experiment_name else ''}{experiment_name}",
+    )
+
 
 _DEMO_CALLBACK_FREQUENCY = 100
 MAX_DEMO_EPISODE_LENGTH = 50
@@ -33,7 +44,7 @@ def run():
     parser = builder_trainer.get_hyperparam_parser()
     hparams = parser.parse_args()
     with object_logging.ObjectLogManager(
-        hparams.object_logging_dir
+        _get_logging_dir(hparams.object_logging_base_dir, hparams.experiment_name)
     ) as object_log_manager:
         if hparams.load_checkpoint_path:
             # TODO(arvind): Decide on and implement the functionality we'd like to
