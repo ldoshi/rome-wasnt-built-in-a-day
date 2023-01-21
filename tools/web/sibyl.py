@@ -5,6 +5,7 @@ import time
 
 from typing import Optional
 
+from bridger.logging_utils import log_entry
 from tools.web import object_log_cache
 from tools.web import plot_utils
 
@@ -223,9 +224,17 @@ def training_history():
     )
 
 
+def _contains_action_inversion_report(experiment_name: str) -> bool:
+    return log_entry.ACTION_INVERSION_REPORT_ENTRY in os.listdir(
+        os.path.join(_LOG_DIR, experiment_name)
+    )
+
+
 @app.route("/action_inversion")
 def action_inversion():
-    experiment_names = sorted(os.listdir(_LOG_DIR))
+    experiment_names = sorted(
+        filter(_contains_action_inversion_report, os.listdir(_LOG_DIR))
+    )
     return flask.render_template(
         "action_inversion.html", experiment_names=experiment_names
     )
