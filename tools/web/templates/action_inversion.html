@@ -27,6 +27,15 @@
 	</button>
       </div>
       <div class="control">
+	<div class="control-label">Experiment Name</div>
+	<select id="experiment-name" class="control-select">
+	  <option value="{{experiment_names[0]}}" selected>{{experiment_names[0]}}</option>
+	  {% for experiment_name in experiment_names[1:] %}
+	  <option value="{{experiment_name}}">{{experiment_name}}</option>
+	  {% endfor %}
+	</select>
+      </div>
+      <div class="control">
 	<div class="control-label">Start Batch Index</div>
 	<input id="start-batch-idx" class="control-input" size="2" value="-1">
       </div>

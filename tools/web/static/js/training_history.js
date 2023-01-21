@@ -77,14 +77,23 @@ let _STATE_FILTER = function (state) {
 }
 
 function update_plots() {
+    let experiment_name = $("#experiment-name").val();
     let start_batch_idx = $("#start-batch-idx").val();
     let end_batch_idx = $("#end-batch-idx").val();
     let max_points_per_series = $("#max-points-per-series").val();
     let number_of_states = $("#number-of-states").val();
 
-    $.get(`${_ROOT_URL}training_history_plot_data`, { "start_batch_idx": start_batch_idx, "end_batch_idx" : end_batch_idx, "max_points_per_series" : max_points_per_series, "number_of_states" : number_of_states}, function(data, response) {
-	_DATA = data;
-	render_plots();
+    $.get(`${_ROOT_URL}training_history_plot_data`,
+	  {
+	      "experiment_name" : experiment_name,
+	      "start_batch_idx" : start_batch_idx,
+	      "end_batch_idx" : end_batch_idx,
+	      "max_points_per_series" : max_points_per_series,
+	      "number_of_states" : number_of_states
+	  },
+	  function(data, response) {
+	      _DATA = data;
+	      render_plots();
     });    
 }
 
