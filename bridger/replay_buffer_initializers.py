@@ -14,7 +14,7 @@ import torch
 from typing import Any, Callable, Generator, Optional, Tuple
 
 from bridger import builder_trainer, hash_utils
-from bridger.logging import object_logging
+from bridger.logging_utils import object_logging
 
 
 def _only_reset_state(
