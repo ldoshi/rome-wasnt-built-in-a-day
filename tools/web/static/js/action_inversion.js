@@ -81,6 +81,7 @@ function update_plots() {
 	  },
 	  function(data, response) {
 	      render_action_inversion_plot(data);
+	      $("#current-experiment-name").html(experiment_name);
     });    
 }
 

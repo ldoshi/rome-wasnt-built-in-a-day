@@ -94,6 +94,7 @@ function update_plots() {
 	  function(data, response) {
 	      _DATA = data;
 	      render_plots();
+	      $("#current-experiment-name").html(experiment_name);
     });    
 }
 
