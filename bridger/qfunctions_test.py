@@ -91,7 +91,7 @@ class CNNQManagerTest(unittest.TestCase):
         self.assertFalse(torch.all(values.q_value_0 == values.q_value_1))
         self.assertTrue(torch.all(values.target_value_0 == values.target_value_1))
 
-        # With tao as 0, the target is unchanged after update_target.
+        # With tau as 0, the target is unchanged after update_target.
         self.assertTrue(torch.all(values.target_value_1 == values.target_value_2))
 
     def test_tau_1(self):
@@ -107,7 +107,7 @@ class CNNQManagerTest(unittest.TestCase):
         self.assertFalse(torch.all(values.q_value_0 == values.q_value_1))
         self.assertTrue(torch.all(values.target_value_0 == values.target_value_1))
 
-        # With tao as 1, the target now matches q after update_target.
+        # With tau as 1, the target now matches q after update_target.
         self.assertTrue(torch.all(values.q_value_2 == values.target_value_2))
 
     def test_tau_intermediate(self):
@@ -123,7 +123,7 @@ class CNNQManagerTest(unittest.TestCase):
         self.assertFalse(torch.all(values.q_value_0 == values.q_value_1))
         self.assertTrue(torch.all(values.target_value_0 == values.target_value_1))
 
-        # With tao as .7, the target has changed and also does not
+        # With tau as .7, the target has changed and also does not
         # match q after update_target.
         self.assertFalse(torch.all(values.target_value_1 == values.target_value_2))
         self.assertFalse(torch.all(values.q_value_2 == values.target_value_2))
@@ -142,7 +142,7 @@ class CNNQManagerTest(unittest.TestCase):
         self.assertFalse(torch.all(values.target_value_0 == values.target_value_1))
         self.assertTrue(torch.all(values.q_value_1 == values.target_value_1))
 
-        # With tao as None, update_target does not do anything.
+        # With tau as None, update_target does not do anything.
         self.assertTrue(torch.all(values.target_value_1 == values.target_value_2))
         self.assertTrue(torch.all(values.q_value_2 == values.target_value_2))
 
