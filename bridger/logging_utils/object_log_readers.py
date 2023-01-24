@@ -20,7 +20,8 @@ import shutil
 import torch
 
 from collections.abc import Hashable
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
+import torch
 
 from bridger.logging_utils import log_entry
 
@@ -57,7 +58,9 @@ class MetricMap:
         self._map = {}
         self._finalized = False
 
-    def add(self, batch_idx: int, metric_value: float) -> None:
+    def add(
+        self, batch_idx: int, metric_value: Union[float, dict[torch.tensor, int]]
+    ) -> None:
         """Adds a batch_idx and metric_value pair.
 
         Repeated calls to add must provide the batch_idxs in
@@ -80,7 +83,8 @@ class MetricMap:
         # Don't re-add duplicates. Consider removing this check and
         # presuming the data satisfied this invariant when it was
         # logged. Note that this invariant is not currently checked
-        # before logging.
+        # before logging. If the metric value being used is not a float,
+        # an error will be thrown here if a duplicate value is found.
         duplicate_value = self._map.get(batch_idx)
         if duplicate_value:
             if not math.isclose(duplicate_value, metric_value, abs_tol=1e-5):
@@ -312,6 +316,14 @@ class TrainingHistoryDatabase:
             )
         self._td_errors.finalize()
 
+        self._replay_buffer_state_counts = MetricMap()
+        for entry in _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY):
+            self._replay_buffer_state_counts.add(
+                batch_idx=entry.batch_idx,
+                metric_value=entry.replay_buffer_state_counts,
+            )
+        self._replay_buffer_state_counts.finalize()
+
         self.nA = max(self._q_values.nA, self._q_target_values.nA, self._td_errors.nA)
 
     def get_states_by_visit_count(
@@ -436,6 +448,30 @@ class TrainingHistoryDatabase:
         return self._q_target_values.get(
             state_id=state_id,
             action=action,
+            start_batch_idx=start_batch_idx,
+            end_batch_idx=end_batch_idx,
+        )
+
+    def get_replay_buffer_state_counts(
+        self,
+        start_batch_idx: Optional[int] = None,
+        end_batch_idx: Optional[int] = None,
+    ) -> Tuple[List[int], List[List[tuple[int, int]]]]:
+        """Retrieves replay buffer state counts for the requested interval of start and end batch idxs.
+
+        Args:
+            start_batch_idx: The first batch index (inclusive) to consider
+            when filtering the data.
+            end_batch_idx: The last batch index (inclusive) to consider
+            when filtering the data.
+
+        Returns:
+            A tuple of lists of the same length. The first contains
+            batch_idxs and the second contains corresponding replay buffer state counts.
+
+        """
+        print("test")
+        return self._replay_buffer_state_counts.get(
             start_batch_idx=start_batch_idx,
             end_batch_idx=end_batch_idx,
         )

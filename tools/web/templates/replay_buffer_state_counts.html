@@ -1,0 +1,60 @@
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+<script>
+  var _ROOT_URL = '{{ request.url_root }}';
+</script>
+
+<script src= {{ url_for('static',filename='js/common.js') }}></script>
+<script src= {{ url_for('static',filename='js/replay_buffer_state_counts.js') }}></script>
+
+<link rel= "stylesheet" type= "text/css" href= {{ url_for('static',filename='css/common.css') }}>
+<link rel= "stylesheet" type= "text/css" href= {{ url_for('static',filename='css/replay_buffer_state_counts.css') }}>
+
+
+<html>
+  <head>
+    <title>Sibyl: Replay Buffer State Counts Viewer</title>
+  </head>
+  <body>
+
+    <div id="welcome">Replay Buffer State Counts</div>
+
+    <div class="interactive-tools">
+      <div class="control">
+	<button class="control-label" onclick="update_plots()">
+	  Update Plots
+	</button>
+      </div>
+      <div class="control">
+	<div class="control-label">Start Batch Index</div>
+	<input id="start-batch-idx" class="control-input" size="2" value="-1">
+      </div>
+      <div class="control">
+	<div class="control-label">End Batch Index</div>
+	<input id="end-batch-idx" class="control-input" size="2">
+      </div>
+      <div class="control">
+	<div class="control-label">Max Points Per Series</div>
+	<input id="max-points-per-series" class="control-input" size="2" value="200">
+      </div>
+      <div class="control">
+
+    <div class="interactive-tools">
+      <div class="control">
+	<div class="control-label">Plot Zoom</div>
+	<button id="zoom-button-default" class="control-label button-selected" onclick="zoom_default_charts()">Default</button>
+	<button id="zoom-button-full" class="control-label button-unselected" onclick="zoom_in_charts()">Full Width</button>
+      </div>
+    </div>
+
+    <div id="plots-holder"></div>
+
+    <script>
+      $( document ).ready(function() {
+	  update_plots();
+      });
+    </script>
+
+  </body>
+</html>

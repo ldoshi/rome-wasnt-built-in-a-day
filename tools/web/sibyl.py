@@ -148,6 +148,46 @@ def training_history_plot_data():
     }
 
 
+@app.route("/replay_buffer_state_counts", methods=["GET"])
+def replay_buffer_state_counts_plot_data():
+    """Provides plot data on states and metrics based on filters.
+
+    This endpoint is intended to respond to an AJAX call."""
+    start = int(time.time() * 1e3)
+    start_batch_idx = _get_int_or_none("start_batch_idx")
+    end_batch_idx = _get_int_or_none("end_batch_idx")
+    max_points_per_series = _get_int_or_none("max_points_per_series")
+    number_of_states = _get_int_or_none("number_of_states")
+
+    training_history_database = _OBJECT_LOG_CACHE.get(
+        object_log_cache.TRAINING_HISTORY_DATABASE_KEY
+    )
+
+    min_batch_idx = start_batch_idx
+    max_batch_idx = end_batch_idx if end_batch_idx is not None else start_batch_idx
+    print(min_batch_idx, max_batch_idx)
+
+    replay_buffer_state_counts = (
+        training_history_database.get_replay_buffer_state_counts(
+            start_batch_idx=min_batch_idx,
+            end_batch_idx=max_batch_idx,
+        )
+    )
+
+    end = int(time.time() * 1e3)
+    print(f"Sibyl training_history_plot_data took {end-start} ms.")
+    print(
+        {
+            "plot_data": replay_buffer_state_counts,
+            "labels": list(range(min_batch_idx, max_batch_idx + 1)),
+        }
+    )
+    return {
+        "plot_data": replay_buffer_state_counts,
+        "labels": list(range(min_batch_idx, max_batch_idx + 1)),
+    }
+
+
 @app.route("/action_inversion_plot_data", methods=["GET"])
 def action_inversion_plot_data():
     """Provides summary plot data based on filters.
@@ -278,6 +318,12 @@ def _contains_action_inversion_report(experiment_name: str) -> bool:
     return log_entry.ACTION_INVERSION_REPORT_ENTRY in os.listdir(
         os.path.join(_LOG_DIR, experiment_name)
     )
+
+
+@app.route("/")
+@app.route("/replay_buffer_state_counts")
+def replay_buffer_state_counts():
+    return flask.render_template("replay_buffer_state_counts.html")
 
 
 @app.route("/action_inversion")
