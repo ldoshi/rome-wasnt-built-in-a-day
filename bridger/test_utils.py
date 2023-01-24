@@ -5,7 +5,7 @@ import pathlib
 import shutil
 
 
-from bridger.logging import object_logging
+from bridger.logging_utils import object_logging
 from bridger import builder_trainer
 
 from typing import List, Optional

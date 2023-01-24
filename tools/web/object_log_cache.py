@@ -13,8 +13,8 @@ import torch
 
 from typing import Any, Callable, Dict, List
 
-from bridger.logging import log_entry
-from bridger.logging import object_log_readers
+from bridger.logging_utils import log_entry
+from bridger.logging_utils import object_log_readers
 
 ACTION_INVERSION_DATABASE_KEY = "action_inversion_database_key"
 TRAINING_HISTORY_DATABASE_KEY = "training_history_database_key"

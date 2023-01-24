@@ -165,7 +165,7 @@ class TabularQManager(QManager):
         """Manager implementing q and the target as TabularQs.
 
         Args:
-          env: A gym for executing population strategies
+          env: A gym for executing population strategies.
           brick_count: The number of bricks to place as a tool for
             enumerating reachable states.
           tau: The fraction of the step from target to q when the

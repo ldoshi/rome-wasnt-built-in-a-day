@@ -12,10 +12,17 @@ from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
 
 
-from bridger import config, hash_utils, policies, qfunctions, replay_buffer
+from bridger import (
+    config,
+    hash_utils,
+    policies,
+    qfunctions,
+    replay_buffer,
+    replay_buffer_initializers,
+)
 from bridger.debug import action_inversion_checker
-from bridger.logging import object_logging
-from bridger.logging import log_entry
+from bridger.logging_utils import object_logging
+from bridger.logging_utils import log_entry
 
 # TODO(lyric): Make this is a training config if being able to
 # override it proves to be desirable.
@@ -320,16 +327,25 @@ class BridgeBuilderModel(pl.LightningModule):
 
     def on_train_start(self):
         """Populates the replay buffer with an initial set of memories before training steps begin."""
-        self.make_memories(
-            batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
-        )
+        if self.hparams.initialize_replay_buffer_strategy is not None:
+            replay_buffer_initializers.initialize_replay_buffer(
+                strategy=self.hparams.initialize_replay_buffer_strategy,
+                replay_buffer_capacity=self.hparams.capacity,
+                env=self._validation_env,
+                add_new_experience=self.replay_buffer.add_new_experience,
+                state_visit_logger=self._state_visit_logger,
+                state_logger=self._state_logger,
+            )
+        else:
+            self.make_memories(
+                batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
+            )
 
     def on_train_batch_end(
         self,
         outputs: Union[torch.Tensor, dict[str, Any]],
         batch: Any,
         batch_idx: int,
-        dataloader_idx: int,
     ) -> None:
         """Complete follow-on calculations after the model weight updates made during the training step. Follow-on calculations include updating the target network, making additional memories using the updated model, and additional bookkeeping.
 
@@ -337,7 +353,6 @@ class BridgeBuilderModel(pl.LightningModule):
             outputs: The output of a training step, type defined in pytorch_lightning/utilities/types.py.
             batch: A group of memories, size determined by `hparams.batch_size`.
             batch_idx: The index of the current batch, which also signifies the current round of model weight updates.
-            dataloader_idx: The index of the dataloader.
         """
         self.q_manager.update_target()
 
@@ -382,7 +397,7 @@ class BridgeBuilderModel(pl.LightningModule):
         """Makes memories according to the requested memory count or default number of steps."""
         memory_count = (
             requested_memory_count
-            if requested_memory_count
+            if requested_memory_count is not None
             else self.hparams.inter_training_steps
         )
         with torch.no_grad():
