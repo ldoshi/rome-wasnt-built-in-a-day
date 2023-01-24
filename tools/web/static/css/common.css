@@ -34,6 +34,13 @@ body {
     float: left;
     padding: 10px;
 }
+.control-function-body-input {
+    float: left;
+    padding: 10px;
+    width: 800px;
+    height: 200px;
+    clear: both;
+}
 
 #plots-holder {
 

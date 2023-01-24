@@ -21,12 +21,13 @@ from bridger import builder
 from bridger import builder_trainer
 from bridger.callbacks import DemoCallback
 from pathlib import Path
-from bridger.logging import object_logging
+from bridger.logging_utils import object_logging
+
+_DEMO_CALLBACK_FREQUENCY = 100
+MAX_DEMO_EPISODE_LENGTH = 50
 
 
-def test():
-    MAX_STEPS = 100
-    MAX_DEMO_EPISODE_LENGTH = 50
+def run():
     # TODO(arvind): split the args into those relevant for the LightningModule
     #               and those relevant for the Trainer/Callbacks
     parser = builder_trainer.get_hyperparam_parser()
@@ -66,8 +67,8 @@ def test():
         if hparams.debug:
             callbacks += [
                 DemoCallback(
-                    steps_per_update=MAX_STEPS,
-                    max_episode_length=MAX_DEMO_EPISODE_LENGTH,
+                    steps_per_update=_DEMO_CALLBACK_FREQUENCY,
+                    max_episode_length=hparams.max_episode_length,
                 ),
             ]
 
@@ -106,4 +107,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    run()

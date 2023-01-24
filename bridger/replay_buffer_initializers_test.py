@@ -14,7 +14,7 @@ from bridger import (
     replay_buffer,
     replay_buffer_initializers,
 )
-from bridger.logging import object_logging
+from bridger.logging_utils import object_logging
 
 
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"

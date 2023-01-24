@@ -8,7 +8,7 @@
 """
 
 import argparse
-from bridger.logging import object_log_readers
+from bridger.logging_utils import object_log_readers
 import os
 import torch
 
