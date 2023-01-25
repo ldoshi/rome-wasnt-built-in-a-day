@@ -68,3 +68,22 @@ body {
     background-color: lightgray;
 }
 
+.message-banner {
+    padding: 1px;
+    font-size: 18px;
+    font-weight: bold;
+    position: fixed;
+    width: 100%;
+}
+
+#loading {
+    background-color: green;
+}
+
+#load-error {
+    background-color: red;
+}
+
+.hidden {
+    display: none;
+}
