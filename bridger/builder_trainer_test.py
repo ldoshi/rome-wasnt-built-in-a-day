@@ -17,6 +17,7 @@ from bridger import builder
 from bridger import builder_trainer
 from bridger import hash_utils
 from bridger import policies
+from bridger import qfunctions
 from bridger import test_utils
 from bridger.logging_utils import object_logging
 from bridger.logging_utils import object_log_readers
@@ -471,6 +472,18 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 q="illegal",
             )
 
+        qfunctions.choices["illegal"] = "illegal"
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR
+        ) as object_log_manager:
+            self.assertRaisesRegex(
+                ValueError,
+                "Provided q function not supported",
+                test_utils.get_model,
+                object_log_manager,
+                q="illegal",
+            )
+
     @parameterized.expand(
         [
             ("CNN no change", builder_trainer.Q_CNN, 0, 0),
@@ -499,11 +512,10 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
             model_params_1 = model.q_manager.q.state_dict()
 
             change_count = 0
-            for key_0, key_1 in zip(model_params_0, model_params_1):
-                self.assertEqual(key_0, key_1)
-                change_count += torch.sum(
-                    model_params_0[key_0] != model_params_1[key_1]
-                )
+            self.assertEqual(len(model_params_0), len(model_params_1))
+            for key in model_params_0:
+                self.assertIn(key, model_params_1)
+                change_count += torch.sum(model_params_0[key] != model_params_1[key])
 
             self.assertEqual(change_count, expected_change_count)
 

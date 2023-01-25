@@ -1,3 +1,5 @@
+from bridger import qfunctions
+
 hparam_dict = dict()
 
 key = "tau"
@@ -6,7 +8,11 @@ help_str = "The fraction of the step (from target Q to real Q) taken when updati
 hparam_dict[key]["help"] = help_str
 
 key = "q"
-hparam_dict[key] = {"type": str, "default": "cnn", "choices" : ["cnn" , "tabular"]}
+hparam_dict[key] = {
+    "type": str,
+    "default": qfunctions.choices["default"],
+    "choices": qfunctions.choices.keys(),
+}
 help_str = "The type of q function to use."
 hparam_dict[key]["help"] = help_str
 

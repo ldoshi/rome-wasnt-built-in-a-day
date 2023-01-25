@@ -270,4 +270,4 @@ class TabularQ(torch.nn.Module):
 
 
 # This architecture has not yet been validated (and is likely poor).
-choices = {"default": CNNQ}
+choices = {"default": CNNQ, "cnn": CNNQ, "tabular": TabularQ}
