@@ -3,7 +3,7 @@ import flask
 import os
 import time
 
-from typing import Optional
+from typing import Any, Optional
 
 from bridger.logging_utils import log_entry
 from tools.web import object_log_cache
@@ -14,18 +14,43 @@ app = flask.Flask(__name__)
 _OBJECT_LOG_CACHE = None
 _LOG_DIR = None
 
+_START_BATCH_IDX_DEFAULT_VALUE = -1
+_MAX_POINTS_PER_SERIES_DEFAULT_VALUE = 200
+_NUMBER_OF_STATES_DEFAULT_VALUE = 10
+_STATE_FILTER_FUNCTION_BODY_DEFAULT_VALUE = """
+// Compose the body of a state filter function here. Feel free to delete these comments.
+//
+// Assume a function with Args:
+//   state: A 2D array representing the state. The row index comes first and 0 is the top row.
+//
+// Returns:
+//   True if the state should be displayed here, false otherwise.
 
-def _get_string_or_none(name: str) -> Optional[str]:
-    return flask.request.args.get(name)
+return true;
+"""
+
+_EXPERIMENT_NAME = "experiment_name"
+_START_BATCH_IDX = "start_batch_idx"
+_END_BATCH_IDX = "end_batch_idx"
+_MAX_POINTS_PER_SERIES = "max_points_per_series"
+_NUMBER_OF_STATES = "number_of_states"
+_STATE_FILTER_FUNCTION_BODY = "state_filter_function_body"
+
+_BATCH_IDX = "batch_idx"
 
 
-def _get_int_or_none(name: str) -> Optional[int]:
+def _get_string_or_default(name: str, default: str = None) -> Optional[str]:
+    value = flask.request.args.get(name)
+    return value if value is not None else default
+
+
+def _get_int_or_default(name: str, default: int = None) -> Optional[int]:
     value = flask.request.args.get(name)
 
     try:
         return int(value)
     except:
-        return None
+        return default
 
 
 @app.route("/training_history_plot_data", methods=["GET"])
@@ -34,11 +59,11 @@ def training_history_plot_data():
 
     This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
-    experiment_name = _get_string_or_none("experiment_name")
-    start_batch_idx = _get_int_or_none("start_batch_idx")
-    end_batch_idx = _get_int_or_none("end_batch_idx")
-    max_points_per_series = _get_int_or_none("max_points_per_series")
-    number_of_states = _get_int_or_none("number_of_states")
+    experiment_name = _get_string_or_default(_EXPERIMENT_NAME)
+    start_batch_idx = _get_int_or_default(_START_BATCH_IDX)
+    end_batch_idx = _get_int_or_default(_END_BATCH_IDX)
+    max_points_per_series = _get_int_or_default(_MAX_POINTS_PER_SERIES)
+    number_of_states = _get_int_or_default(_NUMBER_OF_STATES)
 
     training_history_database = _OBJECT_LOG_CACHE.get(
         experiment_name=experiment_name,
@@ -129,9 +154,9 @@ def action_inversion_plot_data():
 
     This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
-    experiment_name = _get_string_or_none("experiment_name")
-    start_batch_idx = _get_int_or_none("start_batch_idx")
-    end_batch_idx = _get_int_or_none("end_batch_idx")
+    experiment_name = _get_string_or_default(_EXPERIMENT_NAME)
+    start_batch_idx = _get_int_or_default(_START_BATCH_IDX)
+    end_batch_idx = _get_int_or_default(_END_BATCH_IDX)
 
     action_inversion_database = _OBJECT_LOG_CACHE.get(
         experiment_name=experiment_name,
@@ -189,8 +214,8 @@ def action_inversion_batch_reports():
 
     This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
-    experiment_name = _get_string_or_none("experiment_name")
-    batch_idx = _get_int_or_none("batch_idx")
+    experiment_name = _get_string_or_default(_EXPERIMENT_NAME)
+    batch_idx = _get_int_or_default(_BATCH_IDX)
     if batch_idx is None:
         return []
 
@@ -215,12 +240,38 @@ def action_inversion_batch_reports():
     return results
 
 
-@app.route("/")
-@app.route("/training_history")
+@app.route("/", methods=["GET"])
+@app.route("/training_history", methods=["GET"])
 def training_history():
     experiment_names = sorted(os.listdir(_LOG_DIR))
+
+    selected_experiment_name = _get_string_or_default(
+        name=_EXPERIMENT_NAME, default=experiment_names[0]
+    )
+    start_batch_idx = _get_int_or_default(
+        name=_START_BATCH_IDX, default=_START_BATCH_IDX_DEFAULT_VALUE
+    )
+    end_batch_idx = _get_int_or_default(_END_BATCH_IDX)
+    max_points_per_series = _get_int_or_default(
+        name=_MAX_POINTS_PER_SERIES, default=_MAX_POINTS_PER_SERIES_DEFAULT_VALUE
+    )
+    number_of_states = _get_int_or_default(
+        name=_NUMBER_OF_STATES, default=_NUMBER_OF_STATES_DEFAULT_VALUE
+    )
+    state_filter_function_body = _get_string_or_default(
+        name=_STATE_FILTER_FUNCTION_BODY,
+        default=_STATE_FILTER_FUNCTION_BODY_DEFAULT_VALUE,
+    )
+
     return flask.render_template(
-        "training_history.html", experiment_names=experiment_names
+        "training_history.html",
+        experiment_names=experiment_names,
+        selected_experiment_name=selected_experiment_name,
+        start_batch_idx=start_batch_idx,
+        end_batch_idx=end_batch_idx,
+        max_points_per_series=max_points_per_series,
+        number_of_states=number_of_states,
+        state_filter_function_body=state_filter_function_body,
     )
 
 
