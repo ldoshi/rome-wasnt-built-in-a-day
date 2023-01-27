@@ -80,3 +80,19 @@ function render_array_2d(data, canvas_id, top_row_half_block_positions=null, top
     }
 
 }
+
+function add_loading_indicator() {
+    $("#loading").removeClass("hidden");
+}
+
+function remove_loading_indicator() {
+    $("#loading").addClass("hidden");
+}
+
+function add_load_error_indicator() {
+    $("#load-error").removeClass("hidden");
+}
+
+function remove_load_error_indicator() {
+    $("#load-error").addClass("hidden");
+}
