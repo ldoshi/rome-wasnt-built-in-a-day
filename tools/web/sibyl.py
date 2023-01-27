@@ -39,12 +39,12 @@ _STATE_FILTER_FUNCTION_BODY = "state_filter_function_body"
 _BATCH_IDX = "batch_idx"
 
 
-def _get_string_or_default(name: str, default: str = None) -> Optional[str]:
+def _get_string_or_default(name: str, default: Optional[str] = None) -> Optional[str]:
     value = flask.request.args.get(name)
     return value if value is not None else default
 
 
-def _get_int_or_default(name: str, default: int = None) -> Optional[int]:
+def _get_int_or_default(name: str, default: Optional[int] = None) -> Optional[int]:
     value = flask.request.args.get(name)
 
     try:
