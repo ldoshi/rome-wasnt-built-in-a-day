@@ -75,24 +75,13 @@ let _DATA = null;
 let _STATE_FILTER = null;
 
 function update_plots() {
-    let experiment_name = $("#experiment-name").val();
-    let start_batch_idx = $("#start-batch-idx").val();
-    let end_batch_idx = $("#end-batch-idx").val();
-    let max_points_per_series = $("#max-points-per-series").val();
-    let number_of_states = $("#number-of-states").val();
-    
+    let plot_params = get_plot_params();
     $.get(`${_ROOT_URL}training_history_plot_data`,
-	  {
-	      "experiment_name" : experiment_name,
-	      "start_batch_idx" : start_batch_idx,
-	      "end_batch_idx" : end_batch_idx,
-	      "max_points_per_series" : max_points_per_series,
-	      "number_of_states" : number_of_states
-	  },
+	  plot_params,
 	  function(data, response) {
 	      _DATA = data;
 	      render_plots();
-	      $("#current-experiment-name").html(experiment_name);
+	      $("#current-experiment-name").html(plot_params['experiment_name']);
     });    
 }
 
@@ -101,23 +90,25 @@ function update_state_filter() {
     render_plots();
 }
 
-function update_url() {
+function get_plot_params() {
     let experiment_name = $("#experiment-name").val();
     let start_batch_idx = $("#start-batch-idx").val();
     let end_batch_idx = $("#end-batch-idx").val();
     let max_points_per_series = $("#max-points-per-series").val();
     let number_of_states = $("#number-of-states").val();
-    let state_filter_function_body = $("#state-filter-function-body").val();
 
-    url_params = {
+    return {
 	"experiment_name" : experiment_name,
 	"start_batch_idx" : start_batch_idx,
 	"end_batch_idx" : end_batch_idx,
 	"max_points_per_series" : max_points_per_series,
 	"number_of_states" : number_of_states,
-	"state_filter_function_body" : state_filter_function_body
     }
-    
+}
+
+function update_url() {
+    let url_params = get_plot_params();
+    url_params["state_filter_function_body"] = $("#state-filter-function-body").val();   
     window.history.pushState(null, null, _ROOT_URL + "?" + $.param(url_params));
 }
 
