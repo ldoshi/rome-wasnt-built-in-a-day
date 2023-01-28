@@ -69,32 +69,46 @@ let _DATASET_TEMPLATE = {
 };
 
 function update_plots() {
+    let experiment_name = $("#experiment-name").val();
     let start_batch_idx = $("#start-batch-idx").val();
     let end_batch_idx = $("#end-batch-idx").val();
 
     remove_load_error_indicator();
     add_loading_indicator();
 
-    $.get(`${_ROOT_URL}action_inversion_plot_data`, { "start_batch_idx": start_batch_idx, "end_batch_idx" : end_batch_idx}, function(data, response) {
-	render_action_inversion_plot(data);
+    $.get(`${_ROOT_URL}action_inversion_plot_data`,
+	  {
+	      "experiment_name" : experiment_name,
+	      "start_batch_idx": start_batch_idx,
+	      "end_batch_idx" : end_batch_idx
+	  },
+	  function(data, response) {
+	      render_action_inversion_plot(data);
+	      $("#current-experiment-name").html(experiment_name);
     }).fail(function() {
 	add_load_error_indicator();
     }).always(function() {
 	remove_loading_indicator();
-    });
+    });    
 }
 
 function update_batch_reports() {
+    let experiment_name = $("#experiment-name").val();
     let batch_idx = $("#view-batch-reports-batch-idx").val();
 
     remove_load_error_indicator();
     add_loading_indicator();
 
-    $.get(`${_ROOT_URL}action_inversion_batch_reports`, { "batch_idx": batch_idx}, function(data, response) {
-	create_batch_report_div_structure(data.length);
-	render_batch_reports(data);
+    $.get(`${_ROOT_URL}action_inversion_batch_reports`,
+	  {
+	      "experiment_name" : experiment_name,
+	      "batch_idx": batch_idx
+	  },
+	  function(data, response) {
+	      create_batch_report_div_structure(data.length);
+	      render_batch_reports(data);
     }).fail(function() {
-	add_load_error_indicator();
+	      add_load_error_indicator();
     }).always(function() {
 	remove_loading_indicator();
     });    

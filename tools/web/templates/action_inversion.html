@@ -21,12 +21,22 @@
     <div id="loading" class="message-banner hidden">Loading...</div>
     <div id="load-error" class="message-banner hidden">Load Error</div>
     <div id="welcome">Action Inversion Analysis</div>
+    <div id="current-experiment-name-holder"><div id="current-experiment-name-label">Now Showing </div><div id="current-experiment-name"></div></div>
 
     <div class="interactive-tools">
       <div class="control">
 	<button class="control-label" onclick="update_plots()">
 	  Update Plots
 	</button>
+      </div>
+      <div class="control">
+	<div class="control-label">Experiment Name</div>
+	<select id="experiment-name" class="control-select">
+	  <option value="{{experiment_names[0]}}" selected>{{experiment_names[0]}}</option>
+	  {% for experiment_name in experiment_names[1:] %}
+	  <option value="{{experiment_name}}">{{experiment_name}}</option>
+	  {% endfor %}
+	</select>
       </div>
       <div class="control">
 	<div class="control-label">Start Batch Index</div>
