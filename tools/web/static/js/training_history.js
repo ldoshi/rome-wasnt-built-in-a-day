@@ -76,12 +76,20 @@ let _STATE_FILTER = null;
 
 function update_plots() {
     let plot_params = get_plot_params();
+
+    remove_load_error_indicator();
+    add_loading_indicator();
+
     $.get(`${_ROOT_URL}training_history_plot_data`,
 	  plot_params,
 	  function(data, response) {
 	      _DATA = data;
 	      render_plots();
 	      $("#current-experiment-name").html(plot_params['experiment_name']);
+    }).fail(function() {
+	add_load_error_indicator();
+    }).always(function() {
+	remove_loading_indicator();
     });    
 }
 
@@ -224,3 +232,4 @@ function zoom_default_charts() {
     $(".plot-holder-metric").addClass("plot-holder-metric-default-width");
     $(".plot-holder-metric").removeClass("plot-holder-metric-full-width");
 }
+
