@@ -285,15 +285,16 @@ class BridgeBuilderModel(pl.LightningModule):
             debug=self.hparams.debug,
         )
 
-        self.Q = qfunctions.CNNQ(*self.env.shape, self.env.nA)
-        self.target = qfunctions.CNNQ(*self.env.shape, self.env.nA)
-        self.target.load_state_dict(self.Q.state_dict())
+        self.q_manager = qfunctions.CNNQManager(
+            *self.env.shape, self.env.nA, self.hparams.tau
+        )
+
         # TODO(lyric): Consider specifying the policy as a hyperparam
-        self.policy = policies.EpsilonGreedyPolicy(self.Q)
+        self.policy = policies.EpsilonGreedyPolicy(self.q_manager.q)
         # At this time, the world is static once the initial
         # conditions are set. The agent is not navigating a dynamic
         # environment.
-        self._validation_policy = policies.GreedyPolicy(self.Q)
+        self._validation_policy = policies.GreedyPolicy(self.q_manager.q)
 
         self.epsilon = self.hparams.epsilon_training_start
         self.memories = self._memory_generator()
@@ -313,7 +314,7 @@ class BridgeBuilderModel(pl.LightningModule):
 
     @property
     def trained_policy(self):
-        return policies.GreedyPolicy(self.Q)
+        return policies.GreedyPolicy(self.q_manager.q)
 
     def on_train_start(self):
         """Populates the replay buffer with an initial set of memories before training steps begin."""
@@ -344,21 +345,11 @@ class BridgeBuilderModel(pl.LightningModule):
             batch: A group of memories, size determined by `hparams.batch_size`.
             batch_idx: The index of the current batch, which also signifies the current round of model weight updates.
         """
-        self.update_target()
+        self.q_manager.update_target()
 
         if self.hparams.debug:
             self._record_q_values_debug_helper(batch_idx)
         self.make_memories(batch_idx)
-
-    def update_target(self) -> None:
-        """Updates the target network weights based on the Q network weights.
-
-        The target network is updated using a weighted sum of its current weights and the Q network weights to increase stability in training."""
-        params = self.target.state_dict()
-        update = self.Q.state_dict()
-        for param in params:
-            params[param] += self.hparams.tau * (update[param] - params[param])
-        self.target.load_state_dict(params)
 
     def _record_q_values_debug_helper(self, batch_idx: int) -> None:
         """Compute and log q values.
@@ -375,8 +366,8 @@ class BridgeBuilderModel(pl.LightningModule):
         frequently_visted_states_tensor = torch.stack(frequently_visted_states)
         for state, q_values, q_target_values in zip(
             frequently_visted_states,
-            self.Q(frequently_visted_states_tensor).tolist(),
-            self.target(frequently_visted_states_tensor).tolist(),
+            self.q_manager.q(frequently_visted_states_tensor).tolist(),
+            self.q_manager.target(frequently_visted_states_tensor).tolist(),
         ):
             state_id = self._state_logger.get_logged_object_id(state)
             for action, (q_value, q_target_value) in enumerate(
@@ -607,10 +598,10 @@ class BridgeBuilderModel(pl.LightningModule):
             success: Whether the transition marked the end of the episode.
         """
         row_idx = torch.arange(actions.shape[0])
-        qvals = self.Q(states)[row_idx, actions]
+        qvals = self.q_manager.q(states)[row_idx, actions]
         with torch.no_grad():
-            next_actions = self.Q(next_states).argmax(dim=1)
-            next_vals = self.target(next_states)[row_idx, next_actions]
+            next_actions = self.q_manager.q(next_states).argmax(dim=1)
+            next_vals = self.q_manager.target(next_states)[row_idx, next_actions]
             expected_qvals = rewards + (~success) * self.hparams.gamma * next_vals
         return expected_qvals - qvals
 
