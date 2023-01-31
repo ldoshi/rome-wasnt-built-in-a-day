@@ -1,15 +1,17 @@
 import abc
 
 from collections.abc import Hashable
+import functools
 import gym
 import itertools
+import multiprocessing
 import torch
 import torch.nn
 import torch.nn.functional as F
 
 from bridger import hash_utils
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Set, Tuple
 
 
 def _update_target(tau: float, q: torch.nn.Module, target: torch.nn.Module) -> None:
@@ -200,6 +202,29 @@ class TabularQManager(QManager):
         return self._target
 
 
+def _collect_parameters(
+    env: gym.Env,
+    hash_fn: Callable[[Any], str],
+    remaining_brick_count: int,
+    initial_actions: Tuple[int],
+) -> Set[str]:
+    state_hashes = set()
+    for remaining_actions in itertools.product(
+        range(env.nA), repeat=remaining_brick_count
+    ):
+        episode_actions = initial_actions + remaining_actions
+
+        state = env.reset()
+        for action in episode_actions:
+            next_state, _, done, _ = env.step(action)
+            state_hashes.add(hash_fn(next_state))
+            if done:
+                break
+            state = next_state
+
+    return state_hashes
+
+
 class TabularQ(torch.nn.Module):
     """A Q-function based on a look-up table.
 
@@ -233,29 +258,42 @@ class TabularQ(torch.nn.Module):
 
         super(TabularQ, self).__init__()
         self._q = torch.nn.ParameterDict()
-        # ParameterDict does not allow non-str as dict keys. The
-        # hash_fn is used first to make the treatment of ndarray and
-        # tensors consistent.
-        def _internal_hash(x):
-            return str(hash_fn(x))
-
-        self._hash_fn = _internal_hash
+        self._hash_fn = hash_fn
         self._state_dimensions = len(env.reset().shape)
 
+        # Assigning a non-trivial chunk of work per
+        # _collect_parameters call. Adjust later if needed.
+        remaining_brick_count = min(5, brick_count - 1)
+        initial_brick_count = brick_count - remaining_brick_count
+
+        _collect_parameters_function = functools.partial(
+            _collect_parameters, env, self._internal_hash, remaining_brick_count
+        )
+
         state_hashes = set()
-        for episode_actions in itertools.product(range(env.nA), repeat=brick_count):
-            state = env.reset()
-            for action in episode_actions:
-                next_state, _, done, _ = env.step(action)
-                state_hashes.add(self._hash_fn(state))
-                if done:
-                    break
-                state = next_state
+        state_hashes.add(self._internal_hash(env.reset()))
+
+        with multiprocessing.Pool() as pool:
+            for hashes in pool.map(
+                _collect_parameters_function,
+                itertools.product(range(env.nA), repeat=initial_brick_count),
+            ):
+                state_hashes.update(hashes)
 
         for state_hash in state_hashes:
             self._q[state_hash] = torch.nn.Parameter(
                 torch.rand(env.nA, requires_grad=True)
             )
+
+    def _internal_hash(self, x) -> str:
+        """Hashes states per component requirements.
+
+        ParameterDict does not allow non-str as dict keys. The
+        self._hash_fn is used first to make the treatment of ndarray
+        and tensors consistent.
+        """
+
+        return str(self._hash_fn(x))
 
     def forward(self, x):
         # The tensor must be converted to int to match the state hash
@@ -264,9 +302,9 @@ class TabularQ(torch.nn.Module):
         # anyway.
 
         if len(x.shape) == self._state_dimensions:
-            return torch.clone(self._q[self._hash_fn(x.int())])
+            return torch.clone(self._q[self._internal_hash(x.int())])
 
-        return torch.stack([self._q[self._hash_fn(state.int())] for state in x])
+        return torch.stack([self._q[self._internal_hash(state.int())] for state in x])
 
 
 # This architecture has not yet been validated (and is likely poor).
