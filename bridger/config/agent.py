@@ -10,7 +10,7 @@ hparam_dict[key]["help"] = help_str
 key = "q"
 hparam_dict[key] = {
     "type": str,
-    "default": qfunctions.choices["default"],
+    "default": "cnn",
     "choices": qfunctions.choices.keys(),
 }
 help_str = "The type of q function to use."
