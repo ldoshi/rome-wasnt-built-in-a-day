@@ -167,7 +167,7 @@ class TabularQManager(QManager):
         """Manager implementing q and the target as TabularQs.
 
         Args:
-          env: A gym for executing population strategies
+          env: A gym for executing population strategies.
           brick_count: The number of bricks to place as a tool for
             enumerating reachable states.
           tau: The fraction of the step from target to q when the
@@ -308,4 +308,4 @@ class TabularQ(torch.nn.Module):
 
 
 # This architecture has not yet been validated (and is likely poor).
-choices = {"default": CNNQ}
+choices = {"default": CNNQ, "cnn": CNNQ, "tabular": TabularQ}

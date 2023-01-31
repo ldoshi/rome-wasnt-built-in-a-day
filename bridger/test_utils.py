@@ -5,7 +5,7 @@ import pathlib
 import shutil
 
 
-from bridger.logging import object_logging
+from bridger.logging_utils import object_logging
 from bridger import builder_trainer
 
 from typing import List, Optional
@@ -41,7 +41,7 @@ def get_model(
     batch_size=5,
     initial_memories_count=1000,
     q=builder_trainer.Q_CNN,
-        tabular_q_initialization_brick_count=3
+    tabular_q_initialization_brick_count=3,
 ) -> builder_trainer.BridgeBuilderModel:
     return builder_trainer.BridgeBuilderModel(
         object_log_manager,
@@ -57,7 +57,7 @@ def get_model(
         debug_action_inversion_checker=debug_action_inversion_checker,
         debug_td_error=debug_td_error,
         q=q,
-        tabular_q_initialization_brick_count=tabular_q_initialization_brick_count
+        tabular_q_initialization_brick_count=tabular_q_initialization_brick_count,
     )
 
 
