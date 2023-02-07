@@ -244,7 +244,6 @@ def action_inversion_batch_reports():
 @app.route("/training_history", methods=["GET"])
 def training_history():
     experiment_names = sorted(os.listdir(_LOG_DIR))
-
     selected_experiment_name = _get_string_or_default(
         name=_EXPERIMENT_NAME, default=experiment_names[0]
     )

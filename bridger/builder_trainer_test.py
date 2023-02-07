@@ -1,6 +1,7 @@
 """Tests for core building and training components."""
 import unittest
 
+import copy
 import pathlib
 import itertools
 import numpy as np
@@ -16,6 +17,7 @@ from bridger import builder
 from bridger import builder_trainer
 from bridger import hash_utils
 from bridger import policies
+from bridger import qfunctions
 from bridger import test_utils
 from bridger.logging_utils import object_logging
 from bridger.logging_utils import object_log_readers
@@ -455,6 +457,67 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         for log_entry, expected_counts in zip(training_batch_log_entries, expected):
             self.assertEqual(log_entry.replay_buffer_state_counts, expected_counts)
+
+    def test_illegal_q(
+        self,
+    ):
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR
+        ) as object_log_manager:
+            self.assertRaisesRegex(
+                ValueError,
+                "Unrecognized q function",
+                test_utils.get_model,
+                object_log_manager,
+                q="illegal",
+            )
+
+        qfunctions.choices["illegal"] = "illegal"
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR
+        ) as object_log_manager:
+            self.assertRaisesRegex(
+                ValueError,
+                "Provided q function not supported",
+                test_utils.get_model,
+                object_log_manager,
+                q="illegal",
+            )
+
+    @parameterized.expand(
+        [
+            ("CNN no change", builder_trainer.Q_CNN, 0, 0),
+            # The value 442 is determined empirically. The primary
+            # goal is showing that the number is greater than 1, ie
+            # that many parameters change.
+            ("CNN has change", builder_trainer.Q_CNN, 1, 442),
+            ("Tabular no change", builder_trainer.Q_TABULAR, 0, 0),
+            ("Tabular has change", builder_trainer.Q_TABULAR, 1, 1),
+        ]
+    )
+    def test_q_manager_backprop_smoke_test(
+        self, name: str, q: str, training_steps: int, expected_change_count: int
+    ):
+        with object_logging.ObjectLogManager(
+            dirname=_OBJECT_LOGGING_DIR
+        ) as object_log_manager:
+            model = test_utils.get_model(
+                object_log_manager=object_log_manager,
+                initial_memories_count=1,
+                q=q,
+            )
+
+            model_params_0 = copy.deepcopy(model.q_manager.q.state_dict())
+            test_utils.get_trainer(max_steps=training_steps).fit(model)
+            model_params_1 = model.q_manager.q.state_dict()
+
+            change_count = 0
+            self.assertEqual(len(model_params_0), len(model_params_1))
+            for key in model_params_0:
+                self.assertIn(key, model_params_1)
+                change_count += torch.sum(model_params_0[key] != model_params_1[key])
+
+            self.assertEqual(change_count, expected_change_count)
 
 
 class StateActionCacheTest(unittest.TestCase):

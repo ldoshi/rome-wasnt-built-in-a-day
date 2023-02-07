@@ -40,6 +40,8 @@ def get_model(
     max_episode_length=1,
     batch_size=5,
     initial_memories_count=1000,
+    q=builder_trainer.Q_CNN,
+    tabular_q_initialization_brick_count=3,
 ) -> builder_trainer.BridgeBuilderModel:
     return builder_trainer.BridgeBuilderModel(
         object_log_manager,
@@ -54,6 +56,8 @@ def get_model(
         debug=debug,
         debug_action_inversion_checker=debug_action_inversion_checker,
         debug_td_error=debug_td_error,
+        q=q,
+        tabular_q_initialization_brick_count=tabular_q_initialization_brick_count,
     )
 
 

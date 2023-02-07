@@ -28,6 +28,9 @@ from bridger.logging_utils import log_entry
 # override it proves to be desirable.
 _FREQUENTLY_VISITED_STATE_COUNT = 100
 
+Q_CNN = "cnn"
+Q_TABULAR = "tabular"
+
 
 def get_hyperparam_parser(parser=None) -> argparse.ArgumentParser:
     """Hyperparameter parser for the BridgeBuilderTrainer Model.
@@ -285,9 +288,23 @@ class BridgeBuilderModel(pl.LightningModule):
             debug=self.hparams.debug,
         )
 
-        self.q_manager = qfunctions.CNNQManager(
-            *self.env.shape, self.env.nA, self.hparams.tau
-        )
+        if self.hparams.q == Q_CNN:
+            self.q_manager = qfunctions.CNNQManager(
+                *self.env.shape, self.env.nA, self.hparams.tau
+            )
+        elif self.hparams.q == Q_TABULAR:
+            self.q_manager = qfunctions.TabularQManager(
+                env=self._validation_env,
+                brick_count=self.hparams.tabular_q_initialization_brick_count,
+                tau=self.hparams.tau,
+            )
+        else:
+            if self.hparams.q in qfunctions.choices:
+                raise ValueError(
+                    f"Provided q function not supported in trainer: {self.hparams.q}"
+                )
+            else:
+                raise ValueError(f"Unrecognized q function: {self.hparams.q}")
 
         # TODO(lyric): Consider specifying the policy as a hyperparam
         self.policy = policies.EpsilonGreedyPolicy(self.q_manager.q)

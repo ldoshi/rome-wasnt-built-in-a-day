@@ -1,8 +1,24 @@
+from bridger import qfunctions
+
 hparam_dict = dict()
 
 key = "tau"
 hparam_dict[key] = {"type": float, "default": 0.01}
 help_str = "The fraction of the step (from target Q to real Q) taken when updating target Q's parameters."
+hparam_dict[key]["help"] = help_str
+
+key = "q"
+hparam_dict[key] = {
+    "type": str,
+    "default": "cnn",
+    "choices": qfunctions.choices.keys(),
+}
+help_str = "The type of q function to use."
+hparam_dict[key]["help"] = help_str
+
+key = "tabular_q_initialization_brick_count"
+hparam_dict[key] = {"type": int, "default": 7}
+help_str = "The number of bricks to use when initializing the state set for tabular q learning."
 hparam_dict[key]["help"] = help_str
 
 key = "gamma"
