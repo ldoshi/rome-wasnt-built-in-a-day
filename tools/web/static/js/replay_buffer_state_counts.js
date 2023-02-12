@@ -75,16 +75,12 @@ let _DATA = null;
 function update_plots() {
   let start_batch_idx = $("#start-batch-idx").val();
   let end_batch_idx = $("#end-batch-idx").val();
-  let max_points_per_series = $("#max-points-per-series").val();
-  let number_of_states = $("#number-of-states").val();
 
   $.get(
-    `${_ROOT_URL}replay_buffer_state_counts`,
+    `${_ROOT_URL}replay_buffer_state_counts_plot_data`,
     {
       start_batch_idx: start_batch_idx,
       end_batch_idx: end_batch_idx,
-      max_points_per_series: max_points_per_series,
-      number_of_states: number_of_states,
     },
     function (data, response) {
       _DATA = data;
@@ -93,37 +89,117 @@ function update_plots() {
   );
 }
 
+function generate_histogram() {
+  let x_vals = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5];
+  let y_vals = [5, 8, 24, 16, 32, 42, 30, 17, 11];
+  const data = x_vals.map((k, i) => ({ x: k, y: y_vals[i] }));
+
+  const backgroundColor = Array(x_vals.length).fill("rgba(255, 99, 132, 0.6)");
+  const borderColor = Array(x_vals.length).fill("rgba(255, 99, 132, 1)");
+
+  const ctx = document.getElementById("histogram").getContext("2d");
+  const histogram = new Chart(ctx, {
+    type: "bar",
+    data: {
+      datasets: [
+        {
+          label: "Number of instances of states in replay buffer",
+          data: data,
+          backgroundColor: backgroundColor,
+          borderColor: borderColor,
+          borderWidth: 1,
+          barPercentage: 1,
+          categoryPercentage: 1,
+          borderRadius: 5,
+        },
+      ],
+    },
+    options: {
+      scales: {
+        x: {
+          type: "linear",
+          offset: false,
+          grid: {
+            offset: false,
+          },
+          ticks: {
+            stepSize: 1,
+          },
+          title: {
+            display: true,
+            text: "Hours",
+            font: {
+              size: 14,
+            },
+          },
+        },
+        y: {
+          // beginAtZero: true
+          title: {
+            display: true,
+            text: "Visitors",
+            font: {
+              size: 14,
+            },
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              if (!items.length) {
+                return "";
+              }
+              const item = items[0];
+              const x = item.parsed.x;
+              const min = x - 0.5;
+              const max = x + 0.5;
+              return `Hours: ${min} - ${max}`;
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
 function render_plots() {
   if (_DATA == null) {
     return;
   }
 
-  let plot_data = _DATA["plot_data"];
+  let plot_data = _DATA["plot_data"][1];
+
   if (plot_data.length == 0) {
     return;
   }
 
-  create_plot_div_structure(plot_data.length, plot_data[0]["metrics"].length);
+  // create_plot_div_structure(1, 1);
 
-  for (let i = 0; i < plot_data.length; i++) {
-    let row_data = plot_data[i];
-    render_state_plot(i, row_data);
-    for (
-      let metric_index = 0;
-      metric_index < row_data["metrics"].length;
-      metric_index++
-    ) {
-      let metric_entry = row_data["metrics"][metric_index];
-      render_training_plot(
-        metric_entry["metric"],
-        i,
-        metric_index,
-        _DATA["labels"],
-        metric_entry["series_data"],
-        metric_entry["series_labels"]
-      );
-    }
-  }
+  // for (let i = 0; i < plot_data.length; i++) {
+  //   let row_data = plot_data[i];
+  //   render_histogram_plot(i, row_data);
+  //   for (
+  //     let metric_index = 0;
+  //     metric_index < row_data["metrics"].length;
+  //     metric_index++
+  //   ) {
+  //     let metric_entry = row_data["metrics"][metric_index];
+  //     render_training_plot(
+  //       metric_entry["metric"],
+  //       i,
+  //       metric_index,
+  //       _DATA["labels"],
+  //       metric_entry["series_data"],
+  //       metric_entry["series_labels"]
+  //     );
+  //   }
+  // }
+  generate_histogram();
 }
 
 function create_plot_div_structure(state_count, metric_count) {
@@ -179,7 +255,7 @@ function render_training_plot(
   });
 }
 
-function render_state_plot(state_index, data) {
+function render_histogram_plot(state_index, data) {
   let canvas_id = `state-plot-state-canvas-${state_index}`;
   let state_plot_html = `<div class="state-plot-info">Visits: ${data["visit_count"]}</div>`;
   state_plot_html += `<div id="state-plot-state-${state_index}" class="state-plot-state"><canvas id="${canvas_id}" class="plot-canvas"></canvas></div>`;

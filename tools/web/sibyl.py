@@ -148,7 +148,7 @@ def training_history_plot_data():
     }
 
 
-@app.route("/replay_buffer_state_counts", methods=["GET"])
+@app.route("/replay_buffer_state_counts_plot_data", methods=["GET"])
 def replay_buffer_state_counts_plot_data():
     """Provides plot data on states and metrics based on filters.
 
@@ -156,8 +156,6 @@ def replay_buffer_state_counts_plot_data():
     start = int(time.time() * 1e3)
     start_batch_idx = _get_int_or_none("start_batch_idx")
     end_batch_idx = _get_int_or_none("end_batch_idx")
-    max_points_per_series = _get_int_or_none("max_points_per_series")
-    number_of_states = _get_int_or_none("number_of_states")
 
     training_history_database = _OBJECT_LOG_CACHE.get(
         object_log_cache.TRAINING_HISTORY_DATABASE_KEY
@@ -165,7 +163,6 @@ def replay_buffer_state_counts_plot_data():
 
     min_batch_idx = start_batch_idx
     max_batch_idx = end_batch_idx if end_batch_idx is not None else start_batch_idx
-    print(min_batch_idx, max_batch_idx)
 
     replay_buffer_state_counts = (
         training_history_database.get_replay_buffer_state_counts(
@@ -176,12 +173,6 @@ def replay_buffer_state_counts_plot_data():
 
     end = int(time.time() * 1e3)
     print(f"Sibyl training_history_plot_data took {end-start} ms.")
-    print(
-        {
-            "plot_data": replay_buffer_state_counts,
-            "labels": list(range(min_batch_idx, max_batch_idx + 1)),
-        }
-    )
     return {
         "plot_data": replay_buffer_state_counts,
         "labels": list(range(min_batch_idx, max_batch_idx + 1)),

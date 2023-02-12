@@ -317,11 +317,14 @@ class TrainingHistoryDatabase:
         self._td_errors.finalize()
 
         self._replay_buffer_state_counts = MetricMap()
+        self._min_replay_buffer_state_count = 0
+        self._max_replay_buffer_state_count = 0
         for entry in _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY):
             self._replay_buffer_state_counts.add(
                 batch_idx=entry.batch_idx,
                 metric_value=entry.replay_buffer_state_counts,
             )
+
         self._replay_buffer_state_counts.finalize()
 
         self.nA = max(self._q_values.nA, self._q_target_values.nA, self._td_errors.nA)
@@ -470,7 +473,6 @@ class TrainingHistoryDatabase:
             batch_idxs and the second contains corresponding replay buffer state counts.
 
         """
-        print("test")
         return self._replay_buffer_state_counts.get(
             start_batch_idx=start_batch_idx,
             end_batch_idx=end_batch_idx,
