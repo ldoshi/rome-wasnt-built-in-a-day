@@ -459,7 +459,7 @@ class TrainingHistoryDatabase:
         self,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[List[int], List[List[tuple[int, int]]]]:
+    ) -> Tuple[List[int], List[float]]:
         """Retrieves replay buffer state counts for the requested interval of start and end batch idxs.
 
         Args:
