@@ -103,7 +103,15 @@ function generate_histogram() {
   const backgroundColor = Array(x_vals.length).fill("rgba(255, 99, 132, 0.6)");
   const borderColor = Array(x_vals.length).fill("rgba(255, 99, 132, 1)");
 
+  // Remove existing canvas histogram element if one exists.
+  const existing_ctx = document.getElementById("histogram");
+  if (existing_ctx) {
+    existing_ctx.remove();
+  }
+
+  $(`#histogram-holder`).append(`<canvas id="histogram"></canvas>`);
   const ctx = document.getElementById("histogram").getContext("2d");
+
   const histogram = new Chart(ctx, {
     type: "bar",
     data: {
@@ -140,7 +148,6 @@ function generate_histogram() {
           },
         },
         y: {
-          // beginAtZero: true
           title: {
             display: true,
             text: "Visits",
@@ -162,9 +169,7 @@ function generate_histogram() {
               }
               const item = items[0];
               const x = item.parsed.x;
-              const min = x - 0.5;
-              const max = x + 0.5;
-              return `State id: ${min}`;
+              return `State id: ${x}`;
             },
           },
         },
@@ -184,27 +189,6 @@ function render_plots() {
     return;
   }
 
-  // create_plot_div_structure(1, 1);
-
-  // for (let i = 0; i < plot_data.length; i++) {
-  //   let row_data = plot_data[i];
-  //   render_histogram_plot(i, row_data);
-  //   for (
-  //     let metric_index = 0;
-  //     metric_index < row_data["metrics"].length;
-  //     metric_index++
-  //   ) {
-  //     let metric_entry = row_data["metrics"][metric_index];
-  //     render_training_plot(
-  //       metric_entry["metric"],
-  //       i,
-  //       metric_index,
-  //       _DATA["labels"],
-  //       metric_entry["series_data"],
-  //       metric_entry["series_labels"]
-  //     );
-  //   }
-  // }
   generate_histogram();
 }
 
