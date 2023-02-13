@@ -27,18 +27,9 @@
 	</button>
       </div>
       <div class="control">
-	<div class="control-label">Start Batch Index</div>
-	<input id="start-batch-idx" class="control-input" size="2" value="-1">
+	<div class="control-label">Current Batch Index</div>
+	<input id="current-batch-idx" class="control-input" size="2" value="0">
       </div>
-      <div class="control">
-	<div class="control-label">End Batch Index</div>
-	<input id="end-batch-idx" class="control-input" size="2">
-      </div>
-      <div class="control">
-	<div class="control-label">Max Points Per Series</div>
-	<input id="max-points-per-series" class="control-input" size="2" value="200">
-      </div>
-      <div class="control">
 
     <div class="interactive-tools">
       <div class="control">
@@ -49,7 +40,9 @@
     </div>
 
     <div id="plots-holder"></div>
-    <canvas id="histogram"></canvas>
+    <div id="histogram-holder" width="800px">
+      <canvas id="histogram"></canvas>
+    </div>
 
     <script>
       $( document ).ready(function() {

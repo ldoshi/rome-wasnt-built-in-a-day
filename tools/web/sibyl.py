@@ -154,20 +154,15 @@ def replay_buffer_state_counts_plot_data():
 
     This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
-    start_batch_idx = _get_int_or_none("start_batch_idx")
-    end_batch_idx = _get_int_or_none("end_batch_idx")
+    current_batch_idx = _get_int_or_none("current_batch_idx")
 
     training_history_database = _OBJECT_LOG_CACHE.get(
         object_log_cache.TRAINING_HISTORY_DATABASE_KEY
     )
 
-    min_batch_idx = start_batch_idx
-    max_batch_idx = end_batch_idx if end_batch_idx is not None else start_batch_idx
-
     replay_buffer_state_counts = (
         training_history_database.get_replay_buffer_state_counts(
-            start_batch_idx=min_batch_idx,
-            end_batch_idx=max_batch_idx,
+            start_batch_idx=current_batch_idx, end_batch_idx=current_batch_idx
         )
     )
 
@@ -175,7 +170,7 @@ def replay_buffer_state_counts_plot_data():
     print(f"Sibyl training_history_plot_data took {end-start} ms.")
     return {
         "plot_data": replay_buffer_state_counts,
-        "labels": list(range(min_batch_idx, max_batch_idx + 1)),
+        "labels": list(range(current_batch_idx, current_batch_idx + 1)),
     }
 
 

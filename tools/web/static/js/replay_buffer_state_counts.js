@@ -73,18 +73,17 @@ let _COLORS = [
 let _DATA = null;
 
 function update_plots() {
-  let start_batch_idx = $("#start-batch-idx").val();
-  let end_batch_idx = $("#end-batch-idx").val();
+  let current_batch_idx = $("#current-batch-idx").val();
 
   $.get(
     `${_ROOT_URL}replay_buffer_state_counts_plot_data`,
     {
-      start_batch_idx: start_batch_idx,
-      end_batch_idx: end_batch_idx,
+      current_batch_idx: current_batch_idx,
     },
     function (data, response) {
       _DATA = data;
       render_plots();
+      console.log(_DATA);
     }
   );
 }
@@ -127,7 +126,7 @@ function generate_histogram() {
           },
           title: {
             display: true,
-            text: "Hours",
+            text: "State id",
             font: {
               size: 14,
             },
@@ -137,7 +136,7 @@ function generate_histogram() {
           // beginAtZero: true
           title: {
             display: true,
-            text: "Visitors",
+            text: "Visits",
             font: {
               size: 14,
             },
@@ -158,7 +157,7 @@ function generate_histogram() {
               const x = item.parsed.x;
               const min = x - 0.5;
               const max = x + 0.5;
-              return `Hours: ${min} - ${max}`;
+              return `State id: ${min}`;
             },
           },
         },
@@ -173,6 +172,7 @@ function render_plots() {
   }
 
   let plot_data = _DATA["plot_data"][1];
+  console.log(plot_data);
 
   if (plot_data.length == 0) {
     return;
