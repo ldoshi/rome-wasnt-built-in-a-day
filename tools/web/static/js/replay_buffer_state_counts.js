@@ -83,14 +83,21 @@ function update_plots() {
     function (data, response) {
       _DATA = data;
       render_plots();
-      console.log(_DATA);
     }
   );
 }
 
 function generate_histogram() {
-  let x_vals = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5];
-  let y_vals = [5, 8, 24, 16, 32, 42, 30, 17, 11];
+  let x_vals = [];
+  let y_vals = [];
+
+  const orig_data = _DATA["plot_data"][1][0];
+
+  for (let i = 0; i < orig_data.length; i++) {
+    x_vals.push(orig_data[i][0]);
+    y_vals.push(orig_data[i][1]);
+  }
+
   const data = x_vals.map((k, i) => ({ x: k, y: y_vals[i] }));
 
   const backgroundColor = Array(x_vals.length).fill("rgba(255, 99, 132, 0.6)");
@@ -172,7 +179,6 @@ function render_plots() {
   }
 
   let plot_data = _DATA["plot_data"][1];
-  console.log(plot_data);
 
   if (plot_data.length == 0) {
     return;
