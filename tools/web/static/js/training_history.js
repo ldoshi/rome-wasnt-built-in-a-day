@@ -72,33 +72,20 @@ let _COLORS = [
 
 let _DATA = null;
 
-let _STATE_FILTER = function (state) {
-    return true;
-}
+let _STATE_FILTER = null;
 
 function update_plots() {
-    let experiment_name = $("#experiment-name").val();
-    let start_batch_idx = $("#start-batch-idx").val();
-    let end_batch_idx = $("#end-batch-idx").val();
-    let max_points_per_series = $("#max-points-per-series").val();
-    let number_of_states = $("#number-of-states").val();
+    let plot_params = get_plot_params();
 
     remove_load_error_indicator();
     add_loading_indicator();
 
     $.get(`${_ROOT_URL}training_history_plot_data`,
-	  {
-	      "experiment_name" : experiment_name,
-	      "start_batch_idx" : start_batch_idx,
-	      "end_batch_idx" : end_batch_idx,
-	      "max_points_per_series" : max_points_per_series,
-	      "number_of_states" : number_of_states
-	  },
+	  plot_params,
 	  function(data, response) {
 	      _DATA = data;
 	      render_plots();
-	      $("#current-experiment-name").html(experiment_name);
-
+	      $("#current-experiment-name").html(plot_params['experiment_name']);
     }).fail(function() {
 	add_load_error_indicator();
     }).always(function() {
@@ -111,7 +98,31 @@ function update_state_filter() {
     render_plots();
 }
 
+function get_plot_params() {
+    let experiment_name = $("#experiment-name").val();
+    let start_batch_idx = $("#start-batch-idx").val();
+    let end_batch_idx = $("#end-batch-idx").val();
+    let max_points_per_series = $("#max-points-per-series").val();
+    let number_of_states = $("#number-of-states").val();
+
+    return {
+	"experiment_name" : experiment_name,
+	"start_batch_idx" : start_batch_idx,
+	"end_batch_idx" : end_batch_idx,
+	"max_points_per_series" : max_points_per_series,
+	"number_of_states" : number_of_states,
+    }
+}
+
+function update_url() {
+    let url_params = get_plot_params();
+    url_params["state_filter_function_body"] = $("#state-filter-function-body").val();   
+    window.history.pushState(null, null, _ROOT_URL + "?" + $.param(url_params));
+}
+
 function render_plots() {
+    update_url();
+    
     if (_DATA == null) {
 	return;
     }

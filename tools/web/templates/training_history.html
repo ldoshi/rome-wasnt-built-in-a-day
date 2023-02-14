@@ -31,27 +31,26 @@
       <div class="control">
 	<div class="control-label">Experiment Name</div>
 	<select id="experiment-name" class="control-select">
-	  <option value="{{experiment_names[0]}}" selected>{{experiment_names[0]}}</option>
-	  {% for experiment_name in experiment_names[1:] %}
-	  <option value="{{experiment_name}}">{{experiment_name}}</option>
+	  {% for experiment_name in experiment_names %}
+	  <option value="{{experiment_name}}" {{'selected' if experiment_name == selected_experiment_name else ''}} >{{experiment_name}}</option>
 	  {% endfor %}
 	</select>
       </div>
       <div class="control">
 	<div class="control-label">Start Batch Index</div>
-	<input id="start-batch-idx" class="control-input" size="2" value="-1">
+	<input id="start-batch-idx" class="control-input" size="2" value="{{start_batch_idx}}">
       </div>
       <div class="control">
 	<div class="control-label">End Batch Index</div>
-	<input id="end-batch-idx" class="control-input" size="2">
+	<input id="end-batch-idx" class="control-input" size="2" value="{{end_batch_idx if end_batch_idx else ''}}">
       </div>
       <div class="control">
 	<div class="control-label">Max Points Per Series</div>
-	<input id="max-points-per-series" class="control-input" size="2" value="200">
+	<input id="max-points-per-series" class="control-input" size="2" value="{{max_points_per_series}}">
       </div>
       <div class="control">
 	<div class="control-label">Number of States</div>
-	<input id="number-of-states" class="control-input" size="2" value="10">
+	<input id="number-of-states" class="control-input" size="2" value="{{number_of_states}}">
       </div>
     </div>
 
@@ -61,16 +60,7 @@
 	<button class="control-label" onclick="update_state_filter()">
 	  Apply
 	</button>
-	<textarea id="state-filter-function-body" class="control-function-body-input">
-// Compose the body of a state filter function here. Feel free to delete these comments.
-//
-// Assume a function with Args:
-//   state: A 2D array representing the state. The row index comes first and 0 is the top row.
-//
-// Returns:
-//   True if the state should be displayed here, false otherwise.
-
-return true;</textarea>
+	<textarea id="state-filter-function-body" class="control-function-body-input">{{state_filter_function_body}}</textarea>
       </div>
     </div>
 
@@ -86,6 +76,7 @@ return true;</textarea>
 
     <script>
       $( document ).ready(function() {
+	  update_state_filter();
 	  update_plots();
       });
     </script>
