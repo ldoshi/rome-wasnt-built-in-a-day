@@ -20,7 +20,7 @@ import shutil
 import torch
 
 from collections.abc import Hashable
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict
 import torch
 
 from bridger.logging_utils import log_entry
@@ -111,7 +111,7 @@ class MetricMap:
 
     def get(
         self, start_batch_idx: Optional[int], end_batch_idx: Optional[int]
-    ) -> Tuple[List[int], List[float]]:
+    ) -> Tuple[List[int], List[Union[float, Dict[int, int]]]]:
         """Retrieves batch_idx and metric values for the requested range.
 
         Args:
@@ -204,7 +204,7 @@ class StateActionMetricMap:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[List[int], List[float]]:
+    ) -> Tuple[List[int], List[Union[float, Dict[int, int]]]]:
         """Retrieves batch_idx and metric values for the requested range.
 
         Args:
@@ -459,7 +459,7 @@ class TrainingHistoryDatabase:
         self,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[List[int], List[float]]:
+    ) -> Tuple[List[int], List[Dict[int, int]]]:
         """Retrieves replay buffer state counts for the requested interval of start and end batch idxs.
 
         Args:
