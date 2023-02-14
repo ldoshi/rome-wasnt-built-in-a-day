@@ -20,7 +20,7 @@ import shutil
 import torch
 
 from collections.abc import Hashable
-from typing import List, Optional, Tuple, Union, Dict
+from typing import List, Optional, Tuple, Union, Dict, TypeVar, Generic
 import torch
 
 from bridger.logging_utils import log_entry
@@ -44,7 +44,10 @@ def _read_object_log(dirname: str, log_filename: str):
     yield from read_object_log(log_filepath=os.path.join(dirname, log_filename))
 
 
-class MetricMap:
+MetricMapValue = TypeVar("MetricMapValue", float, Dict[int, int])
+
+
+class MetricMap(Generic[MetricMapValue]):
     """Stores batch_idx and metric values for efficient access.
 
     For efficiency, the map operates in 'add' mode until it is
@@ -58,9 +61,7 @@ class MetricMap:
         self._map = {}
         self._finalized = False
 
-    def add(
-        self, batch_idx: int, metric_value: Union[float, dict[torch.tensor, int]]
-    ) -> None:
+    def add(self, batch_idx: int, metric_value: MetricMapValue) -> None:
         """Adds a batch_idx and metric_value pair.
 
         Repeated calls to add must provide the batch_idxs in
@@ -111,7 +112,7 @@ class MetricMap:
 
     def get(
         self, start_batch_idx: Optional[int], end_batch_idx: Optional[int]
-    ) -> Tuple[List[int], List[Union[float, Dict[int, int]]]]:
+    ) -> Tuple[List[int], List[MetricMapValue]]:
         """Retrieves batch_idx and metric values for the requested range.
 
         Args:
@@ -194,7 +195,7 @@ class StateActionMetricMap:
             pair.
         """
         assert not self._finalized
-        self._map.setdefault(state_id, {}).setdefault(action, MetricMap()).add(
+        self._map.setdefault(state_id, {}).setdefault(action, MetricMap[float]()).add(
             batch_idx=batch_idx, metric_value=metric_value
         )
 
@@ -204,7 +205,7 @@ class StateActionMetricMap:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[List[int], List[Union[float, Dict[int, int]]]]:
+    ) -> Tuple[List[int], List[float]]:
         """Retrieves batch_idx and metric values for the requested range.
 
         Args:
@@ -316,7 +317,7 @@ class TrainingHistoryDatabase:
             )
         self._td_errors.finalize()
 
-        self._replay_buffer_state_counts = MetricMap()
+        self._replay_buffer_state_counts = MetricMap[Dict[int, int]]()
         self._min_replay_buffer_state_count = 0
         self._max_replay_buffer_state_count = 0
         for entry in _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY):
