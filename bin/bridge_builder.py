@@ -17,6 +17,7 @@ import datetime
 import os
 
 from pytorch_lightning import Trainer
+from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import EarlyStopping
 
@@ -27,11 +28,27 @@ from pathlib import Path
 from bridger.logging_utils import object_logging
 
 
-def _get_logging_dir(object_logging_base_dir: str, experiment_name: str):
-    return os.path.join(
-        object_logging_base_dir,
-        f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}{'_' if experiment_name else ''}{experiment_name}",
+def _get_full_experiment_name(experiment_name: str) -> str:
+    """Returns the full experiment name.
+
+    The user-provided experiment name is appended to a prefix of the
+    current datetime.
+
+    Args:
+      experiment_name: The user-provided experiment name.
+
+    Returns:
+      The full experiment name to use as a unique label for this run.
+
+    """
+    return (
+        f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        f"{'_' if experiment_name else ''}{experiment_name}"
     )
+
+
+def _get_logging_dir(object_logging_base_dir: str, full_experiment_name: str) -> str:
+    return os.path.join(object_logging_base_dir, full_experiment_name)
 
 
 _DEMO_CALLBACK_FREQUENCY = 100
@@ -43,8 +60,10 @@ def run():
     #               and those relevant for the Trainer/Callbacks
     parser = builder_trainer.get_hyperparam_parser()
     hparams = parser.parse_args()
+
+    full_experiment_name = _get_full_experiment_name(hparams.experiment_name)
     with object_logging.ObjectLogManager(
-        _get_logging_dir(hparams.object_logging_base_dir, hparams.experiment_name)
+        _get_logging_dir(hparams.object_logging_base_dir, full_experiment_name)
     ) as object_log_manager:
         if hparams.load_checkpoint_path:
             # TODO(arvind): Decide on and implement the functionality we'd like to
@@ -89,7 +108,9 @@ def run():
             # The validation batch size can be adjusted via a config, but
             # we only need a single batch.
             limit_val_batches=1,
-            default_root_dir=hparams.checkpoint_model_dir,
+            logger=TensorBoardLogger(
+                save_dir=hparams.checkpoint_model_dir, name=full_experiment_name
+            ),
             max_steps=hparams.max_training_batches,
             callbacks=callbacks,
         )
