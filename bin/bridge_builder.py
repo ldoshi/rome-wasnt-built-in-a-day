@@ -109,7 +109,9 @@ def run():
             # we only need a single batch.
             limit_val_batches=1,
             logger=TensorBoardLogger(
-                save_dir=hparams.checkpoint_model_dir, name=full_experiment_name
+                save_dir=hparams.checkpoint_model_dir,
+                name=full_experiment_name,
+                version="",
             ),
             max_steps=hparams.max_training_batches,
             callbacks=callbacks,
