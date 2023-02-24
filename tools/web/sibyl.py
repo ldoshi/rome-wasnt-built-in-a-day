@@ -154,7 +154,7 @@ def replay_buffer_state_counts_plot_data():
 
     This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
-    current_batch_idx = _get_int_or_none("current_batch_idx")
+    current_batch_idx = _get_int_or_default("current_batch_idx")
 
     training_history_database = _OBJECT_LOG_CACHE.get(
         object_log_cache.TRAINING_HISTORY_DATABASE_KEY
