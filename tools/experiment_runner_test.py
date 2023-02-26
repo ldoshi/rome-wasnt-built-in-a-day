@@ -12,6 +12,7 @@ from tools import experiment_runner
 _TEST_DATA_DIR = "test_data"
 _BASIC_CONFIG = "basic_config.json"
 _BASIC_CONFIG_REORDERED = "basic_config_reordered.json"
+_NAMELESS_CONFIG = "nameless_config.json"
 
 def _load_config(filename: str) -> Any:
     with open(os.path.join(_TEST_DATA_DIR, filename)) as f:
@@ -32,26 +33,20 @@ class ExperimentRunnerTest(unittest.TestCase):
              ("basic config different flag order", _BASIC_CONFIG_REORDERED)
          ]
     )
-    def test_execution_args(self, name: str, config_filename: str):
+    def test_execution_args_basic(self, name: str, config_filename: str):
         """Verifies execution args are built correctly."""
         
         config = _load_config(config_filename)
         experiment_runner.run_experiments(config=config, execute_fn=self._execute_fn)
         self.assertEqual(self._args, ['--experiment-name', 'basic_config', '--initial-memories-count', 101, '--val-check-interval', 12])
-        
 
-    # @parameterized.expand(
-    #     [
-    #         ("Single config", 1)
-    #         ("Multiple config", 2)
-    #     ]
-    # )
-    # def test_early_stopping(
-    #     self,
-    #     name: str,
-    #     early_stopping_callback: list[Callback],
-    # ):
-    # Multi COUNT. and ordering for 2x sweeps.
+    def test_execution_args_nameless(self): 
+        config = _load_config(_NAMELESS_CONFIG)
+        experiment_runner.run_experiments(config=config, execute_fn=self._execute_fn)
+        self.assertEqual(self._args, ['--env-width', 3, '--val-check-interval', 13])
+       
+    
+
 
 
 if __name__ == "__main__":
