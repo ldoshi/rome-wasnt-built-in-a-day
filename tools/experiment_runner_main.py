@@ -28,56 +28,43 @@
    "initial-memories-count" is determined by sorting the keys.
 
    Usage:
-   $ python -m tools.experiment_runner --config example_config.json
+   $ python -m tools.experiment_runner_main --config example_config.json
 
 """
 
-from typing import Any
+from typing import List
 
 import argparse
-import itertools
 import json
+import subprocess
 
-_EXPERIMENT_NAME_PREFIX = "experiment_name_prefix"
+from tools import experiment_runner
 
-def _execute_experiment(expected_log: str, test_log: str) -> bool:
-    """
-
-    """
-    return True
-
-def _extract_sweep_keys_and_values(config: dict[str, Any]) -> tuple[list[str], list[list[Any]]]:
-    keys = []
-    value_lists = []
-    for key,value in config.items():
-        if type(value) == list:
-            keys.append(key)
-            value_lists.append(value)
-
-    for key in keys:
-        del config[key]
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Execute a series of experiments."
+    parser = argparse.ArgumentParser(description="Execute a series of experiments.")
+    parser.add_argument(
+        "--binary",
+        help="The binary to execute with the arguments provided in the config.",
+        default="bridge_builder.py",
+        type=str,
     )
     parser.add_argument(
         "--config",
         help="The filepath to the json file describing the experimental config.",
+        type=str,
         required=True,
     )
-    args = parser.parse_args()
+    parsed_args = parser.parse_args()
 
-    with open(args.config) as f:
+    with open(parsed_args.config) as f:
         config = json.load(f)
-    
-    experiment_name_prefix = config[_EXPERIMENT_NAME_PREFIX] if _EXPERIMENT_NAME_PREFIX in config else ''
-    del config[_EXPERIMENT_NAME_PREFIX]
 
-    sweep_keys, sweep_values = _extract_sweep_keys_and_values(config)
+    def execute_fn(args: List[str]) -> None:
+        command = [parsed_args.binary] + args
+        subprocess.run(command, check=True)
 
-    print(sweep_values)
-    print(sweep_keys)
+    experiment_runner.run_experiments(config=config, execute_fn=execute_fn)
 
 
 if __name__ == "__main__":

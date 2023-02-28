@@ -1,5 +1,7 @@
 {
     "val-check-interval" : 12,
+    "debug" : true,
+    "epsilon-decay-rule": "geometric",
     "experiment-name-prefix" : "basic_config",
     "initial-memories-count" : 101
 }
