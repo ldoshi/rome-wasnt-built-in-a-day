@@ -10,7 +10,7 @@ from parameterized import parameterized
 
 from tools import experiment_runner
 
-_TEST_DATA_DIR = "test_data"
+_TEST_DATA_DIR = "tools/test_data"
 _BASIC_CONFIG = "basic_config.json"
 _BASIC_CONFIG_REORDERED = "basic_config_reordered.json"
 _NAMELESS_CONFIG = "nameless_config.json"
