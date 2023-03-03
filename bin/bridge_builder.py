@@ -113,7 +113,7 @@ def run():
         # Longer episodes than the tabular q table size will fail.
         if hparams.q == "tabular":
             demo_episode_length = min(
-                tabular_q_initialization_brick_count, demo_episode_length
+                hparams.tabular_q_initialization_brick_count, demo_episode_length
             )
 
         build_evaluator = builder.BuildEvaluator(
