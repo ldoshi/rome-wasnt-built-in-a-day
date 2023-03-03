@@ -154,23 +154,21 @@ def replay_buffer_state_counts_plot_data():
 
     This endpoint is intended to respond to an AJAX call."""
     start = int(time.time() * 1e3)
-    current_batch_idx = _get_int_or_default("current_batch_idx")
+    experiment_name = _get_string_or_default(_EXPERIMENT_NAME)
 
     training_history_database = _OBJECT_LOG_CACHE.get(
-        object_log_cache.TRAINING_HISTORY_DATABASE_KEY
+        experiment_name=experiment_name,
+        data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
     )
 
     replay_buffer_state_counts = (
-        training_history_database.get_replay_buffer_state_counts(
-            start_batch_idx=current_batch_idx, end_batch_idx=current_batch_idx
-        )
+        training_history_database.get_replay_buffer_state_counts()
     )
 
     end = int(time.time() * 1e3)
     print(f"Sibyl training_history_plot_data took {end-start} ms.")
     return {
         "plot_data": replay_buffer_state_counts,
-        "labels": list(range(current_batch_idx, current_batch_idx + 1)),
     }
 
 
@@ -306,10 +304,17 @@ def _contains_action_inversion_report(experiment_name: str) -> bool:
     )
 
 
-@app.route("/")
 @app.route("/replay_buffer_state_counts")
 def replay_buffer_state_counts():
-    return flask.render_template("replay_buffer_state_counts.html")
+    experiment_names = sorted(os.listdir(_LOG_DIR))
+    selected_experiment_name = _get_string_or_default(
+        name=_EXPERIMENT_NAME, default=experiment_names[0]
+    )
+    return flask.render_template(
+        "replay_buffer_state_counts.html",
+        experiment_names=experiment_names,
+        selected_experiment_name=selected_experiment_name,
+    )
 
 
 @app.route("/action_inversion")

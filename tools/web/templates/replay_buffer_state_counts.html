@@ -27,17 +27,12 @@
 	</button>
       </div>
       <div class="control">
-	<div class="control-label">Current Batch Index</div>
-	<input id="current-batch-idx" class="control-input" size="2" value="0">
+    <select id="experiment-name" class="control-select">
+	  {% for experiment_name in experiment_names %}
+	  <option value="{{experiment_name}}" {{'selected' if experiment_name == selected_experiment_name else ''}} >{{experiment_name}}</option>
+	  {% endfor %}
+	</select>
       </div>
-
-    <div class="interactive-tools">
-      <div class="control">
-	<div class="control-label">Plot Zoom</div>
-	<button id="zoom-button-default" class="control-label button-selected" onclick="zoom_default_charts()">Default</button>
-	<button id="zoom-button-full" class="control-label button-unselected" onclick="zoom_in_charts()">Full Width</button>
-      </div>
-    </div>
 
     <div id="plots-holder"></div>
     <div id="histogram-holder" width="700px"></div>
