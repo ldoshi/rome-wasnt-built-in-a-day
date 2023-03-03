@@ -108,11 +108,19 @@ def run():
             force_standard_config=hparams.env_force_standard_config,
             seed=seed,
         )
+
+        demo_episode_length = MAX_DEMO_EPISODE_LENGTH
+        # Longer episodes than the tabular q table size will fail.
+        if hparams.q == "tabular":
+            demo_episode_length = min(
+                tabular_q_initialization_brick_count, demo_episode_length
+            )
+
         build_evaluator = builder.BuildEvaluator(
             env=evaluation_env,
             policy=model.trained_policy,
             build_count=build_count,
-            episode_length=MAX_DEMO_EPISODE_LENGTH,
+            episode_length=demo_episode_length,
         )
         build_evaluator.print_report()
 
