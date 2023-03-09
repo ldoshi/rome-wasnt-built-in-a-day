@@ -31,7 +31,7 @@ def _extract_sweep_keys_and_values(
     return keys, value_lists
 
 
-def _add_args(args: List[str], flag_name: str, flag_value: str) -> None:
+def _add_args(args: list[str], flag_name: str, flag_value: str) -> None:
     """Appends the flag name and value to the args list.
 
     Boolean flags require special treatment. Only the flag name is
