@@ -15,7 +15,7 @@ _EXPERIMENT_NAME_0 = "experiment_name_0"
 _EXPERIMENT_NAME_1 = "experiment_name_1"
 
 
-def _generate_logs(experiment_name: str, max_steps: int) -> None:
+def _generate_logs(experiment_name: str, max_steps: int, debug_action_inversion_checker: bool = False) -> None:
     with object_logging.ObjectLogManager(
         dirname=object_log_cache.get_experiment_data_dir(
             log_dir=_OBJECT_LOGGING_DIR, experiment_name=experiment_name
@@ -25,6 +25,7 @@ def _generate_logs(experiment_name: str, max_steps: int) -> None:
             test_utils.get_model(
                 object_log_manager=object_log_manager,
                 debug=True,
+                debug_action_inversion_checker=debug_action_inversion_checker,
                 env_width=4,
                 max_episode_length=1,
                 initial_memories_count=1,
@@ -165,7 +166,7 @@ class ObjectLogCacheTest(unittest.TestCase):
                     debug_action_inversion_checker=True,
                     debug=True,
                     env_width=4,
-                    max_episode_length=10,
+                    max_episode_length=1,
                     initial_memories_count=1,
                 )
             )
@@ -182,18 +183,22 @@ class ObjectLogCacheTest(unittest.TestCase):
         )
         self.assertEqual(len(training_history_database.get_states_by_visit_count()), 2)
 
-    def test_warm_simple(self):
+    def test_warm(self):
         """Verifies cache loads files once."""
+        max_steps = 10
+        _generate_logs(experiment_name=_EXPERIMENT_NAME_0, max_steps=max_steps,debug_action_inversion_checker=True)
 
-        _generate_logs(experiment_name=_EXPERIMENT_NAME_0, max_steps=max_steps)
-
-
-        cache_keys = [(_EXPERIMENT_NAME_0, data_key) in object_log_cache._loaders.keys()]
+        cache_keys = [(_EXPERIMENT_NAME_0, data_key) for data_key in object_log_cache._LOADERS.keys()]
         for cache_key in cache_keys:
-            self.assertEqual(cache.miss_counts[cache_key], 0)
-            self.assertEqual(cache.hit_counts[cache_key], 0)
+            self.assertEqual(self._cache.miss_counts[cache_key], 0)
+            self.assertEqual(self._cache.hit_counts[cache_key], 0)
 
-        
+        self._cache.warm([_EXPERIMENT_NAME_0])
+
+        for cache_key in cache_keys:
+            self.assertEqual(self._cache.miss_counts[cache_key], 0)
+            self.assertEqual(self._cache.hit_counts[cache_key], 0)
+
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ any race conditions to get/load data.
 """
 
 import collections
+import functools
 import multiprocessing
 import os
 import time
@@ -86,9 +87,11 @@ class ObjectLogCache:
         All data loading is done using multiprocessing.
         """
         for data_key in self._loaders.keys():
+            loader = functools.partial(self._loaders[data_key], self._log_dir)
             with multiprocessing.Pool(processes=2) as pool:
-                for data in pool.map(self._loaders[data_key],  experiment_names)
+                for data in pool.map(loader, experiment_names):
                 # JUST PUT DATA into the cache!
+                    pass
                     
                 
 
