@@ -35,6 +35,9 @@ def _generate_logs(experiment_name: str, max_steps: int) -> None:
 class ObjectLogCacheTest(unittest.TestCase):
     """Verifies cache loading behavior."""
 
+    def setUp(self):
+        self._cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
+
     def tearDown(self):
         # TODO: Make a more coherent plan for writing test output to a
         # temp dir and retaining it on failure.
@@ -42,55 +45,52 @@ class ObjectLogCacheTest(unittest.TestCase):
         shutil.rmtree(_OBJECT_LOGGING_DIR, ignore_errors=True)
 
     def test_get_file_does_not_exist(self):
-        cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
 
         self.assertRaisesRegex(
             FileNotFoundError,
             "action_inversion_report",
-            cache.get,
+            self._cache.get,
             experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
         )
 
         cache_key = (_EXPERIMENT_NAME_0, object_log_cache.ACTION_INVERSION_DATABASE_KEY)
         self.assertEqual(
-            cache.miss_counts[cache_key],
+            self._cache.miss_counts[cache_key],
             1,
         )
         self.assertEqual(
-            cache.hit_counts[cache_key],
+            self._cache.hit_counts[cache_key],
             0,
         )
 
         self.assertRaisesRegex(
             FileNotFoundError,
             "action_inversion_report",
-            cache.get,
+            self._cache.get,
             experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
         )
 
         self.assertEqual(
-            cache.miss_counts[cache_key],
+            self._cache.miss_counts[cache_key],
             2,
         )
         self.assertEqual(
-            cache.hit_counts[cache_key],
+            self._cache.hit_counts[cache_key],
             0,
         )
 
     def test_get_illegal_key_and_experiment_name_data_is_different(self):
-        cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
-
         self.assertRaises(
             FileNotFoundError,
-            cache.get,
+            self._cache.get,
             experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
         )
         self.assertRaises(
             FileNotFoundError,
-            cache.get,
+            self._cache.get,
             experiment_name=_EXPERIMENT_NAME_1,
             data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
         )
@@ -101,20 +101,20 @@ class ObjectLogCacheTest(unittest.TestCase):
         # By not raising, we know _EXPERIMENT_NAME_0 now
         # exists. _EXPERIMENT_NAME_1 still does not exist and does
         # raise.
-        cache.get(
+        self._cache.get(
             experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
         )
         self.assertRaises(
             FileNotFoundError,
-            cache.get,
+            self._cache.get,
             experiment_name=_EXPERIMENT_NAME_1,
             data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
         )
         self.assertRaisesRegex(
             ValueError,
             "Unsupported",
-            cache.get,
+            self._cache.get,
             experiment_name=_EXPERIMENT_NAME_0,
             data_key="illegal",
         )
@@ -122,7 +122,7 @@ class ObjectLogCacheTest(unittest.TestCase):
         _generate_logs(experiment_name=_EXPERIMENT_NAME_1, max_steps=max_steps)
 
         # By not raising, we know _EXPERIMENT_NAME_1 now exists.
-        cache.get(
+        self._cache.get(
             experiment_name=_EXPERIMENT_NAME_1,
             data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
         )
@@ -132,26 +132,24 @@ class ObjectLogCacheTest(unittest.TestCase):
 
         _generate_logs(experiment_name=_EXPERIMENT_NAME_0, max_steps=1)
 
-        cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
-
         self.assertIsNotNone(
-            cache.get(
+            self._cache.get(
                 experiment_name=_EXPERIMENT_NAME_0,
                 data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
             )
         )
         cache_key = (_EXPERIMENT_NAME_0, object_log_cache.TRAINING_HISTORY_DATABASE_KEY)
-        self.assertEqual(cache.miss_counts[cache_key], 1)
-        self.assertEqual(cache.hit_counts[cache_key], 0)
+        self.assertEqual(self._cache.miss_counts[cache_key], 1)
+        self.assertEqual(self._cache.hit_counts[cache_key], 0)
 
         self.assertIsNotNone(
-            cache.get(
+            self._cache.get(
                 experiment_name=_EXPERIMENT_NAME_0,
                 data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
             )
         )
-        self.assertEqual(cache.miss_counts[cache_key], 1)
-        self.assertEqual(cache.hit_counts[cache_key], 1)
+        self.assertEqual(self._cache.miss_counts[cache_key], 1)
+        self.assertEqual(self._cache.hit_counts[cache_key], 1)
 
     def test_loaders_smoke_test(self):
         """Verifies each loader produces a reasonably shaped result."""
@@ -172,15 +170,13 @@ class ObjectLogCacheTest(unittest.TestCase):
                 )
             )
 
-        cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
-
-        action_inversion_database = cache.get(
+        action_inversion_database = self._cache.get(
             experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
         )
         self.assertEqual(len(action_inversion_database.get_incidence_rate()), 2)
 
-        training_history_database = cache.get(
+        training_history_database = self._cache.get(
             experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
         )
