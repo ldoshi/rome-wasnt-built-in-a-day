@@ -15,6 +15,23 @@ _EXPERIMENT_NAME_0 = "experiment_name_0"
 _EXPERIMENT_NAME_1 = "experiment_name_1"
 
 
+def _generate_logs(experiment_name: str, max_steps: int) -> None:
+    with object_logging.ObjectLogManager(
+        dirname=object_log_cache.get_experiment_data_dir(
+            log_dir=_OBJECT_LOGGING_DIR, experiment_name=experiment_name
+        )
+    ) as object_log_manager:
+        test_utils.get_trainer(max_steps=max_steps).fit(
+            test_utils.get_model(
+                object_log_manager=object_log_manager,
+                debug=True,
+                env_width=4,
+                max_episode_length=1,
+                initial_memories_count=1,
+            )
+        )
+
+
 class ObjectLogCacheTest(unittest.TestCase):
     """Verifies cache loading behavior."""
 
@@ -79,20 +96,7 @@ class ObjectLogCacheTest(unittest.TestCase):
         )
 
         max_steps = 1
-        with object_logging.ObjectLogManager(
-            dirname=object_log_cache.get_experiment_data_dir(
-                log_dir=_OBJECT_LOGGING_DIR, experiment_name=_EXPERIMENT_NAME_0
-            )
-        ) as object_log_manager:
-            test_utils.get_trainer(max_steps=max_steps).fit(
-                test_utils.get_model(
-                    object_log_manager=object_log_manager,
-                    debug=True,
-                    env_width=4,
-                    max_episode_length=1,
-                    initial_memories_count=1,
-                )
-            )
+        _generate_logs(experiment_name=_EXPERIMENT_NAME_0, max_steps=max_steps)
 
         # By not raising, we know _EXPERIMENT_NAME_0 now
         # exists. _EXPERIMENT_NAME_1 still does not exist and does
@@ -115,20 +119,7 @@ class ObjectLogCacheTest(unittest.TestCase):
             data_key="illegal",
         )
 
-        with object_logging.ObjectLogManager(
-            dirname=object_log_cache.get_experiment_data_dir(
-                log_dir=_OBJECT_LOGGING_DIR, experiment_name=_EXPERIMENT_NAME_1
-            )
-        ) as object_log_manager:
-            test_utils.get_trainer(max_steps=max_steps).fit(
-                test_utils.get_model(
-                    object_log_manager=object_log_manager,
-                    debug=True,
-                    env_width=4,
-                    max_episode_length=1,
-                    initial_memories_count=1,
-                )
-            )
+        _generate_logs(experiment_name=_EXPERIMENT_NAME_1, max_steps=max_steps)
 
         # By not raising, we know _EXPERIMENT_NAME_1 now exists.
         cache.get(
@@ -139,21 +130,7 @@ class ObjectLogCacheTest(unittest.TestCase):
     def test_get_and_load(self):
         """Verifies cache loads files once."""
 
-        max_steps = 1
-        with object_logging.ObjectLogManager(
-            dirname=object_log_cache.get_experiment_data_dir(
-                log_dir=_OBJECT_LOGGING_DIR, experiment_name=_EXPERIMENT_NAME_0
-            )
-        ) as object_log_manager:
-            test_utils.get_trainer(max_steps=max_steps).fit(
-                test_utils.get_model(
-                    object_log_manager=object_log_manager,
-                    debug=True,
-                    env_width=4,
-                    max_episode_length=1,
-                    initial_memories_count=1,
-                )
-            )
+        _generate_logs(experiment_name=_EXPERIMENT_NAME_0, max_steps=1)
 
         cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
 
