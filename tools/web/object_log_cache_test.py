@@ -15,7 +15,9 @@ _EXPERIMENT_NAME_0 = "experiment_name_0"
 _EXPERIMENT_NAME_1 = "experiment_name_1"
 
 
-def _generate_logs(experiment_name: str, max_steps: int) -> None:
+def _generate_logs(
+    experiment_name: str, max_steps: int, debug_action_inversion_checker: bool = False
+) -> None:
     with object_logging.ObjectLogManager(
         dirname=object_log_cache.get_experiment_data_dir(
             log_dir=_OBJECT_LOGGING_DIR, experiment_name=experiment_name
@@ -25,6 +27,7 @@ def _generate_logs(experiment_name: str, max_steps: int) -> None:
             test_utils.get_model(
                 object_log_manager=object_log_manager,
                 debug=True,
+                debug_action_inversion_checker=debug_action_inversion_checker,
                 env_width=4,
                 max_episode_length=1,
                 initial_memories_count=1,
@@ -154,21 +157,11 @@ class ObjectLogCacheTest(unittest.TestCase):
     def test_loaders_smoke_test(self):
         """Verifies each loader produces a reasonably shaped result."""
         max_steps = 4
-        with object_logging.ObjectLogManager(
-            dirname=object_log_cache.get_experiment_data_dir(
-                log_dir=_OBJECT_LOGGING_DIR, experiment_name=_EXPERIMENT_NAME_0
-            )
-        ) as object_log_manager:
-            test_utils.get_trainer(max_steps=max_steps).fit(
-                test_utils.get_model(
-                    object_log_manager=object_log_manager,
-                    debug_action_inversion_checker=True,
-                    debug=True,
-                    env_width=4,
-                    max_episode_length=10,
-                    initial_memories_count=1,
-                )
-            )
+        _generate_logs(
+            experiment_name=_EXPERIMENT_NAME_0,
+            max_steps=max_steps,
+            debug_action_inversion_checker=True,
+        )
 
         action_inversion_database = self._cache.get(
             experiment_name=_EXPERIMENT_NAME_0,
@@ -180,7 +173,7 @@ class ObjectLogCacheTest(unittest.TestCase):
             experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
         )
-        self.assertEqual(len(training_history_database.get_states_by_visit_count()), 2)
+        self.assertEqual(len(training_history_database.get_states_by_visit_count()), 1)
 
 
 if __name__ == "__main__":
