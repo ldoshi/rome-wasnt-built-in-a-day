@@ -290,6 +290,15 @@ def action_inversion():
     )
 
 
+import threading
+import time
+
+def fun(n):
+    print(n)
+    time.sleep(1)
+    print(n, ' end')
+    
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Load Sibyl debugger.")
     parser.add_argument(
@@ -301,5 +310,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
     _LOG_DIR = args.log_dir
     _OBJECT_LOG_CACHE = object_log_cache.ObjectLogCache(log_dir=_LOG_DIR)
+
+    print(threading.active_count(), " active")
+    x = threading.Thread(target=fun, args=('bob',))
+    x.start()
+    print(threading.active_count(), " active")
+    time.sleep(.5)
+    print(threading.active_count(), " active")
+    time.sleep(3)
+    print(threading.active_count(), " active")
+
 
     app.run(host="0.0.0.0", port=5001)

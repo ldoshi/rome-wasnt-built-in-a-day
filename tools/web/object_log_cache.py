@@ -7,6 +7,7 @@ any race conditions to get/load data.
 """
 
 import collections
+import multiprocessing
 import os
 import time
 import torch
@@ -18,7 +19,6 @@ from bridger.logging_utils import object_log_readers
 
 ACTION_INVERSION_DATABASE_KEY = "action_inversion_database_key"
 TRAINING_HISTORY_DATABASE_KEY = "training_history_database_key"
-
 
 def get_experiment_data_dir(log_dir: str, experiment_name: str) -> str:
     return os.path.join(log_dir, experiment_name)
@@ -51,7 +51,6 @@ _LOADERS = {
     TRAINING_HISTORY_DATABASE_KEY: _load_training_history_database,
 }
 
-
 class ObjectLogCache:
     """Loads and caches logged objects for efficient re-access.
 
@@ -81,6 +80,19 @@ class ObjectLogCache:
         self.hit_counts = collections.defaultdict(int)
         self.miss_counts = collections.defaultdict(int)
 
+    def warm(self, experiment_names: List[str]) -> None:
+        """Warms the cache by loading all data keys for all experiments.
+
+        All data loading is done using multiprocessing.
+        """
+        for data_key in self._loaders.keys():
+            with multiprocessing.Pool(processes=2) as pool:
+                for data in pool.map(self._loaders[data_key],  experiment_names)
+                # JUST PUT DATA into the cache!
+                    
+                
+
+        
     def get(self, experiment_name: str, data_key: str) -> Any:
         """Retrieves the requested data constructed from log entries.
 

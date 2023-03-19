@@ -209,6 +209,46 @@ class ObjectLogCacheTest(unittest.TestCase):
         )
         self.assertEqual(len(training_history_database.get_states_by_visit_count()), 2)
 
+    def test_warm_simple(self):
+        """Verifies cache loads files once."""
+
+        max_steps = 1
+        with object_logging.ObjectLogManager(
+            dirname=object_log_cache.get_experiment_data_dir(
+                log_dir=_OBJECT_LOGGING_DIR, experiment_name=_EXPERIMENT_NAME_0
+            )
+        ) as object_log_manager:
+            test_utils.get_trainer(max_steps=max_steps).fit(
+                test_utils.get_model(
+                    object_log_manager=object_log_manager,
+                    debug=True,
+                    env_width=4,
+                    max_episode_length=1,
+                    initial_memories_count=1,
+                )
+            )
+
+        cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
+
+        self.assertIsNotNone(
+            cache.get(
+                experiment_name=_EXPERIMENT_NAME_0,
+                data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
+            )
+        )
+        cache_key = (_EXPERIMENT_NAME_0, object_log_cache.TRAINING_HISTORY_DATABASE_KEY)
+        self.assertEqual(cache.miss_counts[cache_key], 1)
+        self.assertEqual(cache.hit_counts[cache_key], 0)
+
+        self.assertIsNotNone(
+            cache.get(
+                experiment_name=_EXPERIMENT_NAME_0,
+                data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
+            )
+        )
+        self.assertEqual(cache.miss_counts[cache_key], 1)
+        self.assertEqual(cache.hit_counts[cache_key], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
