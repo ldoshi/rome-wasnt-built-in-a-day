@@ -1,55 +1,57 @@
 let _DATA = null;
 
 let _CHART_OPTIONS_TEMPLATE = {
-  type: "bar",
-  data: {
-    dataset: {
-      label: "Replay Buffer State Counts",
-      borderWidth: 1,
-      barPercentage: 1,
-      categoryPercentage: 1,
-      borderRadius: 5,
-    },
-  },
-  options: {
-    scales: {
-      x: {
-        type: "linear",
-        offset: false,
-        grid: {
-          offset: false,
-        },
-        ticks: {
-          stepSize: 1,
-        },
-        title: {
-          display: true,
-          text: "state id",
-          font: {
-            size: 14,
-          },
-        },
-      },
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: "state counts",
-          font: {
-            size: 14,
-          },
-        },
-      },
-    },
-    plugins: {
-      legend: {
-        display: false,
-      },
-      tooltip: {
-        callbacks: {},
-      },
-    },
-  },
+  // type: "bar",
+  // data: {
+  //   datasets: [
+  //     {
+  //       label: "Replay Buffer State Counts",
+  //       borderWidth: 1,
+  //       barPercentage: 1,
+  //       categoryPercentage: 1,
+  //       borderRadius: 5,
+  //     },
+  //   ],
+  // },
+  // options: {
+  //   scales: {
+  //     x: {
+  //       type: "linear",
+  //       offset: false,
+  //       grid: {
+  //         offset: false,
+  //       },
+  //       ticks: {
+  //         stepSize: 1,
+  //       },
+  //       title: {
+  //         display: true,
+  //         text: "state id",
+  //         font: {
+  //           size: 14,
+  //         },
+  //       },
+  //     },
+  //     y: {
+  //       beginAtZero: true,
+  //       title: {
+  //         display: true,
+  //         text: "state counts",
+  //         font: {
+  //           size: 14,
+  //         },
+  //       },
+  //     },
+  //   },
+  //   plugins: {
+  //     legend: {
+  //       display: false,
+  //     },
+  //     tooltip: {
+  //       callbacks: {},
+  //     },
+  //   },
+  // },
 };
 
 function update_plots() {
@@ -82,8 +84,6 @@ function render_plots() {
   let xs = [];
   let ys = [];
 
-  console.log(xs);
-
   const original_data = _DATA["plot_data"][1][0];
 
   for (let i = 0; i < original_data.length; i++) {
@@ -96,13 +96,15 @@ function render_plots() {
   const background_color = Array(xs.length).fill("rgba(255, 99, 132, 0.6)");
   const border_color = Array(xs.length).fill("rgba(255, 99, 132, 1)");
 
-  $(`#histogram-holder`).html(`<canvas id="histogram"></canvas>`);
-  const ctx = document.getElementById("histogram").getContext("2d");
+  histogram_html = "<canvas id=histogram></canvas>";
+  $("#histogram-holder").html(histogram_html);
 
+  console.log("test");
   let chart_options = structuredClone(_CHART_OPTIONS_TEMPLATE);
-  chart_options["data"]["dataset"]["data"] = data;
-  chart_options["data"]["dataset"]["backgroundColor"] = background_color;
-  chart_options["data"]["dataset"]["borderColor"] = border_color;
+  // chart_options["data"]["datasets"][0]["data"] = data;
+  // chart_options["data"]["datasets"][0]["backgroundColor"] = background_color;
+  // chart_options["data"]["datasets"][0]["borderColor"] = border_color;
+  console.log(_CHART_OPTIONS_TEMPLATE);
   // chart_options["options"]["plugins"]["tooltip"]["callbacks"]["title"] = (
   //   items
   // ) => {
@@ -113,7 +115,7 @@ function render_plots() {
   //   const x = item.parsed.x;
   //   const min = x - 0.5;
   //   const max = x + 0.5;
-  //   return `Hours: ${min} - ${max}`;
+  //   return `State id: ${min} - ${max}`;
   // };
-  const histogram = new Chart(ctx, _CHART_OPTIONS_TEMPLATE);
+  new Chart($("#histogram"), chart_options);
 }
