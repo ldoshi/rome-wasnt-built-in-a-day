@@ -57,7 +57,9 @@ class ObjectLogCacheTest(unittest.TestCase):
             data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
         )
 
-        cache_key = (_EXPERIMENT_NAME_0, object_log_cache.ACTION_INVERSION_DATABASE_KEY)
+        cache_key = object_log_cache._make_cache_key(
+            _EXPERIMENT_NAME_0, object_log_cache.ACTION_INVERSION_DATABASE_KEY
+        )
         self.assertEqual(
             self._cache.miss_counts[cache_key],
             1,
@@ -141,7 +143,9 @@ class ObjectLogCacheTest(unittest.TestCase):
                 data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
             )
         )
-        cache_key = (_EXPERIMENT_NAME_0, object_log_cache.TRAINING_HISTORY_DATABASE_KEY)
+        cache_key = object_log_cache._make_cache_key(
+            _EXPERIMENT_NAME_0, object_log_cache.TRAINING_HISTORY_DATABASE_KEY
+        )
         self.assertEqual(self._cache.miss_counts[cache_key], 1)
         self.assertEqual(self._cache.hit_counts[cache_key], 0)
 
@@ -178,9 +182,16 @@ class ObjectLogCacheTest(unittest.TestCase):
     def test_warm(self):
         """Verifies cache loads files once."""
         max_steps = 4
-        _generate_logs(experiment_name=_EXPERIMENT_NAME_0, max_steps=max_steps,debug_action_inversion_checker=True)
+        _generate_logs(
+            experiment_name=_EXPERIMENT_NAME_0,
+            max_steps=max_steps,
+            debug_action_inversion_checker=True,
+        )
 
-        cache_keys = [(_EXPERIMENT_NAME_0, data_key) for data_key in object_log_cache._LOADERS.keys()]
+        cache_keys = [
+            object_log_cache._make_cache_key(_EXPERIMENT_NAME_0, data_key)
+            for data_key in object_log_cache._LOADERS.keys()
+        ]
         for cache_key in cache_keys:
             self.assertEqual(self._cache.miss_counts[cache_key], 0)
             self.assertEqual(self._cache.hit_counts[cache_key], 0)
@@ -188,15 +199,11 @@ class ObjectLogCacheTest(unittest.TestCase):
         self._cache.warm([_EXPERIMENT_NAME_0])
 
         for cache_key in cache_keys:
-            self._cache.get(
-                experiment_name=cache_key[0],
-                data_key=cache_key[1]
-            )
+            self._cache.get(experiment_name=cache_key[0], data_key=cache_key[1])
 
         for cache_key in cache_keys:
             self.assertEqual(self._cache.miss_counts[cache_key], 0)
-            self.assertEqual(self._cache.hit_counts[cache_key], 0)
-
+            self.assertEqual(self._cache.hit_counts[cache_key], 1)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ import os
 import time
 import torch
 
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Tuple
 
 from bridger.logging_utils import log_entry
 from bridger.logging_utils import object_log_readers
@@ -21,8 +21,13 @@ from bridger.logging_utils import object_log_readers
 ACTION_INVERSION_DATABASE_KEY = "action_inversion_database_key"
 TRAINING_HISTORY_DATABASE_KEY = "training_history_database_key"
 
+
 def get_experiment_data_dir(log_dir: str, experiment_name: str) -> str:
     return os.path.join(log_dir, experiment_name)
+
+
+def _make_cache_key(experiment_name: str, data_key: str) -> Tuple[str, str]:
+    return (experiment_name, data_key)
 
 
 def _load_action_inversion_database(
@@ -51,6 +56,7 @@ _LOADERS = {
     ACTION_INVERSION_DATABASE_KEY: _load_action_inversion_database,
     TRAINING_HISTORY_DATABASE_KEY: _load_training_history_database,
 }
+
 
 class ObjectLogCache:
     """Loads and caches logged objects for efficient re-access.
@@ -89,13 +95,11 @@ class ObjectLogCache:
         for data_key in self._loaders.keys():
             loader = functools.partial(self._loaders[data_key], self._log_dir)
             with multiprocessing.Pool(processes=2) as pool:
-                for data in pool.map(loader, experiment_names):
-                # JUST PUT DATA into the cache!
-                    pass
-                    
-                
+                for i, data in enumerate(pool.map(loader, experiment_names)):
+                    cache_key = _make_cache_key(experiment_names[i], data_key)
+                    assert cache_key not in self._cache
+                    self._cache[cache_key] = data
 
-        
     def get(self, experiment_name: str, data_key: str) -> Any:
         """Retrieves the requested data constructed from log entries.
 
@@ -121,7 +125,7 @@ class ObjectLogCache:
         if data_key not in self._loaders:
             raise ValueError(f"Unsupported data_key: {data_key}")
 
-        cache_key = (experiment_name, data_key)
+        cache_key = _make_cache_key(experiment_name, data_key)
         if cache_key not in self._cache:
             self.miss_counts[cache_key] += 1
             start = int(time.time() * 1e3)
