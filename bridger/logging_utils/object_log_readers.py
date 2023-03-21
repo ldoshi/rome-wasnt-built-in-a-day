@@ -20,7 +20,7 @@ import shutil
 import torch
 
 from collections.abc import Hashable
-from typing import List, Optional, Tuple, Union, Dict, TypeVar, Generic
+from typing import List, Optional, Tuple, Dict, TypeVar, Generic
 import torch
 
 from bridger.logging_utils import log_entry
@@ -318,8 +318,6 @@ class TrainingHistoryDatabase:
         self._td_errors.finalize()
 
         self._replay_buffer_state_counts = MetricMap[Dict[int, int]]()
-        self._min_replay_buffer_state_count = 0
-        self._max_replay_buffer_state_count = 0
         for entry in _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY):
             self._replay_buffer_state_counts.add(
                 batch_idx=entry.batch_idx,

@@ -1,5 +1,57 @@
 let _DATA = null;
 
+let _CHART_OPTIONS_TEMPLATE = {
+  type: "bar",
+  data: {
+    dataset: {
+      label: "Replay Buffer State Counts",
+      borderWidth: 1,
+      barPercentage: 1,
+      categoryPercentage: 1,
+      borderRadius: 5,
+    },
+  },
+  options: {
+    scales: {
+      x: {
+        type: "linear",
+        offset: false,
+        grid: {
+          offset: false,
+        },
+        ticks: {
+          stepSize: 1,
+        },
+        title: {
+          display: true,
+          text: "state id",
+          font: {
+            size: 14,
+          },
+        },
+      },
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: "state counts",
+          font: {
+            size: 14,
+          },
+        },
+      },
+    },
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        callbacks: {},
+      },
+    },
+  },
+};
+
 function update_plots() {
   let experiment_name = $("#experiment-name").val();
 
@@ -16,97 +68,6 @@ function update_plots() {
   );
 }
 
-function generate_histogram() {
-  let x_vals = [];
-  let y_vals = [];
-
-  const orig_data = _DATA["plot_data"][1][0];
-
-  for (let i = 0; i < orig_data.length; i++) {
-    x_vals.push(orig_data[i][0]);
-    y_vals.push(orig_data[i][1]);
-  }
-
-  const data = x_vals.map((k, i) => ({ x: k, y: y_vals[i] }));
-
-  const backgroundColor = Array(x_vals.length).fill("rgba(255, 99, 132, 0.6)");
-  const borderColor = Array(x_vals.length).fill("rgba(255, 99, 132, 1)");
-
-  // Remove existing canvas histogram element if one exists.
-  const existing_ctx = document.getElementById("histogram");
-  if (existing_ctx) {
-    existing_ctx.remove();
-  }
-
-  $(`#histogram-holder`).append(`<canvas id="histogram"></canvas>`);
-  const ctx = document.getElementById("histogram").getContext("2d");
-
-  const histogram = new Chart(ctx, {
-    type: "bar",
-    data: {
-      datasets: [
-        {
-          label: "Number of instances of states in replay buffer",
-          data: data,
-          backgroundColor: backgroundColor,
-          borderColor: borderColor,
-          borderWidth: 1,
-          barPercentage: 1,
-          categoryPercentage: 1,
-          borderRadius: 5,
-        },
-      ],
-    },
-    options: {
-      scales: {
-        x: {
-          type: "linear",
-          offset: false,
-          grid: {
-            offset: false,
-          },
-          ticks: {
-            stepSize: 1,
-          },
-          title: {
-            display: true,
-            text: "State id",
-            font: {
-              size: 14,
-            },
-          },
-        },
-        y: {
-          title: {
-            display: true,
-            text: "Visits",
-            font: {
-              size: 14,
-            },
-          },
-        },
-      },
-      plugins: {
-        legend: {
-          display: false,
-        },
-        tooltip: {
-          callbacks: {
-            title: (items) => {
-              if (!items.length) {
-                return "";
-              }
-              const item = items[0];
-              const x = item.parsed.x;
-              return `State id: ${x}`;
-            },
-          },
-        },
-      },
-    },
-  });
-}
-
 function render_plots() {
   if (_DATA == null) {
     return;
@@ -118,5 +79,41 @@ function render_plots() {
     return;
   }
 
-  generate_histogram();
+  let xs = [];
+  let ys = [];
+
+  console.log(xs);
+
+  const original_data = _DATA["plot_data"][1][0];
+
+  for (let i = 0; i < original_data.length; i++) {
+    xs.push(original_data[i][0]);
+    ys.push(original_data[i][1]);
+  }
+
+  const data = xs.map((k, i) => ({ x: k, y: ys[i] }));
+
+  const background_color = Array(xs.length).fill("rgba(255, 99, 132, 0.6)");
+  const border_color = Array(xs.length).fill("rgba(255, 99, 132, 1)");
+
+  $(`#histogram-holder`).html(`<canvas id="histogram"></canvas>`);
+  const ctx = document.getElementById("histogram").getContext("2d");
+
+  let chart_options = structuredClone(_CHART_OPTIONS_TEMPLATE);
+  chart_options["data"]["dataset"]["data"] = data;
+  chart_options["data"]["dataset"]["backgroundColor"] = background_color;
+  chart_options["data"]["dataset"]["borderColor"] = border_color;
+  // chart_options["options"]["plugins"]["tooltip"]["callbacks"]["title"] = (
+  //   items
+  // ) => {
+  //   if (!items.length) {
+  //     return "";
+  //   }
+  //   const item = items[0];
+  //   const x = item.parsed.x;
+  //   const min = x - 0.5;
+  //   const max = x + 0.5;
+  //   return `Hours: ${min} - ${max}`;
+  // };
+  const histogram = new Chart(ctx, _CHART_OPTIONS_TEMPLATE);
 }

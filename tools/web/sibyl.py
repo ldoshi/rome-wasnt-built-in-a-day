@@ -166,7 +166,7 @@ def replay_buffer_state_counts_plot_data():
     )
 
     end = int(time.time() * 1e3)
-    print(f"Sibyl training_history_plot_data took {end-start} ms.")
+    print(f"Sibyl replay buffer state counts took {end-start} ms.")
     return {
         "plot_data": replay_buffer_state_counts,
     }
