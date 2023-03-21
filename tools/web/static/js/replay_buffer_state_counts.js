@@ -1,57 +1,57 @@
 let _DATA = null;
 
 let _CHART_OPTIONS_TEMPLATE = {
-  // type: "bar",
-  // data: {
-  //   datasets: [
-  //     {
-  //       label: "Replay Buffer State Counts",
-  //       borderWidth: 1,
-  //       barPercentage: 1,
-  //       categoryPercentage: 1,
-  //       borderRadius: 5,
-  //     },
-  //   ],
-  // },
-  // options: {
-  //   scales: {
-  //     x: {
-  //       type: "linear",
-  //       offset: false,
-  //       grid: {
-  //         offset: false,
-  //       },
-  //       ticks: {
-  //         stepSize: 1,
-  //       },
-  //       title: {
-  //         display: true,
-  //         text: "state id",
-  //         font: {
-  //           size: 14,
-  //         },
-  //       },
-  //     },
-  //     y: {
-  //       beginAtZero: true,
-  //       title: {
-  //         display: true,
-  //         text: "state counts",
-  //         font: {
-  //           size: 14,
-  //         },
-  //       },
-  //     },
-  //   },
-  //   plugins: {
-  //     legend: {
-  //       display: false,
-  //     },
-  //     tooltip: {
-  //       callbacks: {},
-  //     },
-  //   },
-  // },
+  type: "bar",
+  data: {
+    datasets: [
+      {
+        label: "Replay Buffer State Counts",
+        borderWidth: 1,
+        barPercentage: 1,
+        categoryPercentage: 1,
+        borderRadius: 5,
+      },
+    ],
+  },
+  options: {
+    scales: {
+      x: {
+        type: "linear",
+        offset: false,
+        grid: {
+          offset: false,
+        },
+        ticks: {
+          stepSize: 1,
+        },
+        title: {
+          display: true,
+          text: "state id",
+          font: {
+            size: 14,
+          },
+        },
+      },
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: "state counts",
+          font: {
+            size: 14,
+          },
+        },
+      },
+    },
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        callbacks: {},
+      },
+    },
+  },
 };
 
 function update_plots() {
@@ -99,23 +99,19 @@ function render_plots() {
   histogram_html = "<canvas id=histogram></canvas>";
   $("#histogram-holder").html(histogram_html);
 
-  console.log("test");
   let chart_options = structuredClone(_CHART_OPTIONS_TEMPLATE);
-  // chart_options["data"]["datasets"][0]["data"] = data;
-  // chart_options["data"]["datasets"][0]["backgroundColor"] = background_color;
-  // chart_options["data"]["datasets"][0]["borderColor"] = border_color;
-  console.log(_CHART_OPTIONS_TEMPLATE);
-  // chart_options["options"]["plugins"]["tooltip"]["callbacks"]["title"] = (
-  //   items
-  // ) => {
-  //   if (!items.length) {
-  //     return "";
-  //   }
-  //   const item = items[0];
-  //   const x = item.parsed.x;
-  //   const min = x - 0.5;
-  //   const max = x + 0.5;
-  //   return `State id: ${min} - ${max}`;
-  // };
+  chart_options["data"]["datasets"][0]["data"] = data;
+  chart_options["data"]["datasets"][0]["backgroundColor"] = background_color;
+  chart_options["data"]["datasets"][0]["borderColor"] = border_color;
+  chart_options["options"]["plugins"]["tooltip"]["callbacks"]["title"] = (
+    items
+  ) => {
+    if (!items.length) {
+      return "";
+    }
+    const item = items[0];
+    const state_id = item.parsed.x;
+    return `State id: ${state_id}`;
+  };
   new Chart($("#histogram"), chart_options);
 }
