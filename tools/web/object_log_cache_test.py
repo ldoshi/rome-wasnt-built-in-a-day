@@ -188,6 +188,12 @@ class ObjectLogCacheTest(unittest.TestCase):
         self._cache.warm([_EXPERIMENT_NAME_0])
 
         for cache_key in cache_keys:
+            self._cache.get(
+                experiment_name=cache_key[0],
+                data_key=cache_key[1]
+            )
+
+        for cache_key in cache_keys:
             self.assertEqual(self._cache.miss_counts[cache_key], 0)
             self.assertEqual(self._cache.hit_counts[cache_key], 0)
 
