@@ -8,6 +8,7 @@ from typing import Any, Optional
 from bridger.logging_utils import log_entry
 from tools.web import object_log_cache
 from tools.web import plot_utils
+from collections import Counter
 
 app = flask.Flask(__name__)
 
@@ -161,14 +162,21 @@ def replay_buffer_state_counts_plot_data():
         data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
     )
 
-    replay_buffer_state_counts = (
-        training_history_database.get_replay_buffer_state_counts()
-    )
+    (
+        _,
+        replay_buffer_state_counts_by_batch,
+    ) = training_history_database.get_replay_buffer_state_counts()
+    # Sum the replay buffer_state_counts.
+    total_replay_buffer_state_counts = Counter()
+    for batch_replay_buffer_state_counts in replay_buffer_state_counts_by_batch:
+        total_replay_buffer_state_counts += Counter(
+            {batch: count for batch, count in batch_replay_buffer_state_counts}
+        )
 
     end = int(time.time() * 1e3)
     print(f"Sibyl replay buffer state counts took {end-start} ms.")
     return {
-        "plot_data": replay_buffer_state_counts,
+        "total_replay_buffer_state_counts": total_replay_buffer_state_counts,
     }
 
 

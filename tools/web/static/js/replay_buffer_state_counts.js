@@ -17,7 +17,7 @@ let _CHART_OPTIONS_TEMPLATE = {
     scales: {
       x: {
         type: "linear",
-        offset: false,
+        offset: true,
         grid: {
           offset: false,
         },
@@ -71,30 +71,33 @@ function update_plots() {
 }
 
 function render_plots() {
+  // Grab the data from the global _DATA object.
   if (_DATA == null) {
     return;
   }
 
-  let plot_data = _DATA["plot_data"][1];
+  let state_ids = [];
+  let total_counts = [];
 
-  if (plot_data.length == 0) {
-    return;
+  const total_replay_buffer_state_counts =
+    _DATA["total_replay_buffer_state_counts"];
+
+  for (let [state_id, total_count] of Object.entries(
+    total_replay_buffer_state_counts
+  )) {
+    state_ids.push(state_id);
+    total_counts.push(total_count);
   }
 
-  let xs = [];
-  let ys = [];
+  const data = state_ids.map((id, count) => ({
+    x: count,
+    y: total_counts[id],
+  }));
 
-  const original_data = _DATA["plot_data"][1][0];
-
-  for (let i = 0; i < original_data.length; i++) {
-    xs.push(original_data[i][0]);
-    ys.push(original_data[i][1]);
-  }
-
-  const data = xs.map((k, i) => ({ x: k, y: ys[i] }));
-
-  const background_color = Array(xs.length).fill("rgba(255, 99, 132, 0.6)");
-  const border_color = Array(xs.length).fill("rgba(255, 99, 132, 1)");
+  const background_color = Array(state_ids.length).fill(
+    "rgba(255, 99, 132, 0.6)"
+  );
+  const border_color = Array(state_ids.length).fill("rgba(255, 99, 132, 1)");
 
   histogram_html = "<canvas id=histogram></canvas>";
   $("#histogram-holder").html(histogram_html);
