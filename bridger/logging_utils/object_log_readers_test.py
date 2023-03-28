@@ -312,7 +312,9 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         previous_replay_buffer_total_states = 0
         for replay_buffer_batch_state_count in replay_buffer_state_counts:
             # Check that the previous replay buffer total states is incremented by one when the replay buffer is not at capacity.
-            total_states = sum(count for _, count in replay_buffer_batch_state_count)
+            total_states = sum(
+                count for _, count in replay_buffer_batch_state_count.items()
+            )
             if previous_replay_buffer_total_states:
                 self.assertEqual(previous_replay_buffer_total_states + 1, total_states)
             previous_replay_buffer_total_states = total_states
