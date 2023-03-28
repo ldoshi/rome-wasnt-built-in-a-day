@@ -9,6 +9,8 @@ any race conditions to get/load data.
 import collections
 import functools
 import multiprocessing
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
 import os
 import time
 import torch
@@ -34,17 +36,21 @@ def _load_action_inversion_database(
     log_dir: str,
     experiment_name: str,
 ) -> object_log_readers.ActionInversionDatabase:
-    return object_log_readers.ActionInversionDatabase(
-        dirname=get_experiment_data_dir(
-            log_dir=log_dir, experiment_name=experiment_name
+    try:
+        return object_log_readers.ActionInversionDatabase(
+            dirname=get_experiment_data_dir(
+                log_dir=log_dir, experiment_name=experiment_name
+            )
         )
-    )
+    except:
+        return None
 
 
 def _load_training_history_database(
     log_dir: str,
     experiment_name: str,
 ) -> object_log_readers.TrainingHistoryDatabase:
+    print("load staart " , experiment_name, flush=True)
     return object_log_readers.TrainingHistoryDatabase(
         dirname=get_experiment_data_dir(
             log_dir=log_dir, experiment_name=experiment_name
@@ -95,10 +101,19 @@ class ObjectLogCache:
         for data_key in self._loaders.keys():
             loader = functools.partial(self._loaders[data_key], self._log_dir)
             with multiprocessing.Pool(processes=2) as pool:
-                for i, data in enumerate(pool.map(loader, experiment_names)):
+                for i, data in enumerate(pool.map_async(loader, experiment_names)):
+                    if data is None:
+                        print("skip " , experiment_names[i], data_key)
+                        continue
                     cache_key = _make_cache_key(experiment_names[i], data_key)
+                    print("------------------------------------")
+                    print(int(time.time() * 1e3))
+                    print("cached: " , cache_key)
+                    print("------------------------------------")
                     assert cache_key not in self._cache
                     self._cache[cache_key] = data
+
+                pool.join()
 
     def get(self, experiment_name: str, data_key: str) -> Any:
         """Retrieves the requested data constructed from log entries.

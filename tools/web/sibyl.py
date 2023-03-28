@@ -1,9 +1,10 @@
 import argparse
 import flask
 import os
+import threading
 import time
 
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from bridger.logging_utils import log_entry
 from tools.web import object_log_cache
@@ -52,6 +53,8 @@ def _get_int_or_default(name: str, default: Optional[int] = None) -> Optional[in
     except:
         return default
 
+def _get_experiment_names() -> List[str]:
+    return sorted(os.listdir(_LOG_DIR))
 
 @app.route("/training_history_plot_data", methods=["GET"])
 def training_history_plot_data():
@@ -65,10 +68,19 @@ def training_history_plot_data():
     max_points_per_series = _get_int_or_default(_MAX_POINTS_PER_SERIES)
     number_of_states = _get_int_or_default(_NUMBER_OF_STATES)
 
+    print("before")
+    print("hIt: ", _OBJECT_LOG_CACHE.hit_counts)
+    print("mis: " , _OBJECT_LOG_CACHE.miss_counts)
+    
     training_history_database = _OBJECT_LOG_CACHE.get(
         experiment_name=experiment_name,
         data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
     )
+
+    print("after")
+    print("hIt: ", _OBJECT_LOG_CACHE.hit_counts)
+    print("mis: " , _OBJECT_LOG_CACHE.miss_counts)
+    
 
     states = training_history_database.get_states_by_visit_count(
         n=number_of_states,
@@ -243,7 +255,7 @@ def action_inversion_batch_reports():
 @app.route("/", methods=["GET"])
 @app.route("/training_history", methods=["GET"])
 def training_history():
-    experiment_names = sorted(os.listdir(_LOG_DIR))
+    experiment_names = _get_experiment_names()
     selected_experiment_name = _get_string_or_default(
         name=_EXPERIMENT_NAME, default=experiment_names[0]
     )
@@ -282,9 +294,7 @@ def _contains_action_inversion_report(experiment_name: str) -> bool:
 
 @app.route("/action_inversion")
 def action_inversion():
-    experiment_names = sorted(
-        filter(_contains_action_inversion_report, os.listdir(_LOG_DIR))
-    )
+    experiment_names = list(filter(_contains_action_inversion_report, _get_experiment_names()))
     return flask.render_template(
         "action_inversion.html", experiment_names=experiment_names
     )
@@ -302,4 +312,7 @@ if __name__ == "__main__":
     _LOG_DIR = args.log_dir
     _OBJECT_LOG_CACHE = object_log_cache.ObjectLogCache(log_dir=_LOG_DIR)
 
+    warm_cache_background_thread = threading.Thread(target=_OBJECT_LOG_CACHE.warm, args=(_get_experiment_names(),))
+    warm_cache_background_thread.start()
+    
     app.run(host="0.0.0.0", port=5001)
