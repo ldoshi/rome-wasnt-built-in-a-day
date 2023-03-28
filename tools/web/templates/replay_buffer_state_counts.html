@@ -1,0 +1,46 @@
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+<script>
+  var _ROOT_URL = '{{ request.url_root }}';
+</script>
+
+<script src= {{ url_for('static',filename='js/common.js') }}></script>
+<script src= {{ url_for('static',filename='js/replay_buffer_state_counts.js') }}></script>
+
+<link rel= "stylesheet" type= "text/css" href= {{ url_for('static',filename='css/common.css') }}>
+
+
+<html>
+  <head>
+    <title>Sibyl: Replay Buffer State Counts Viewer</title>
+  </head>
+  <body>
+
+    <div id="welcome">Replay Buffer State Counts</div>
+
+    <div class="interactive-tools">
+      <div class="control">
+	<button class="control-label" onclick="update_plots()">
+	  Update Plots
+	</button>
+      </div>
+      <div class="control">
+    <select id="experiment-name" class="control-select">
+	  {% for experiment_name in experiment_names %}
+	  <option value="{{experiment_name}}" {{'selected' if experiment_name == selected_experiment_name else ''}} >{{experiment_name}}</option>
+	  {% endfor %}
+	</select>
+      </div>
+
+    <div id="plots-holder"></div>
+    <div id="histogram-holder" width="700px"></div>
+
+    <script>
+      $( document ).ready(function() {
+	  update_plots();
+      });
+    </script>
+
+  </body>
+</html>

@@ -286,6 +286,37 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
                 all([isinstance(td_error, float) for td_error in td_errors])
             )
 
+    @parameterized.expand(
+        [
+            (None, None, 5),
+            (0, 3, 4),
+            (3, 4, 2),
+        ]
+    )
+    def test_get_replay_buffer_state_counts(
+        self,
+        start_batch_idx: Optional[int],
+        end_batch_idx: Optional[int],
+        length_of_replay_buffer_state_counts,
+    ):
+        """Ensure that for different batch ranges, the replay buffer state counts will be logged."""
+        (
+            _,
+            replay_buffer_state_counts,
+        ) = self.training_history_database.get_replay_buffer_state_counts(
+            start_batch_idx, end_batch_idx
+        )
+        self.assertEqual(
+            len(replay_buffer_state_counts), length_of_replay_buffer_state_counts
+        )
+        previous_replay_buffer_total_states = 0
+        for replay_buffer_batch_state_count in replay_buffer_state_counts:
+            # Check that the previous replay buffer total states is incremented by one when the replay buffer is not at capacity.
+            total_states = sum(count for _, count in replay_buffer_batch_state_count)
+            if previous_replay_buffer_total_states:
+                self.assertEqual(previous_replay_buffer_total_states + 1, total_states)
+            previous_replay_buffer_total_states = total_states
+
     def test_get_q_values_and_q_target_values(self):
         """Spot check a few state/action pairs to verify the shape of the response."""
 
