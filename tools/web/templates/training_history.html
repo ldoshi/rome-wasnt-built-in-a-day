@@ -1,21 +1,13 @@
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-
-<script>
-  var _ROOT_URL = '{{ request.url_root }}';
-</script>
-
-<script src= {{ url_for('static',filename='js/common.js') }}></script>
 <script src= {{ url_for('static',filename='js/training_history.js') }}></script>
+<link rel= "stylesheet" type= "text/css" href= {{ url_for('static',filename='css/training_history.css') }}>
 
-<link rel= "stylesheet" type= "text/css" href= {{ url_for('static',filename='css/common.css') }}>
+{% extends 'base.html' %}
 
+{% block title %}Sibyl: Training History Viewer{% endblock %}
 
-<html>
-  <head>
-    <title>Sibyl: Training History Viewer</title>
-  </head>
-  <body>
+{% block navigation_training_history %}navigation-active{% endblock %}
+
+{% block content %}
     <div id="loading" class="message-banner hidden">Loading...</div>
     <div id="load-error" class="message-banner hidden">Load Error</div>
     <div id="welcome">Training History Viewer</div>
@@ -80,5 +72,4 @@
       });
     </script>
 
-  </body>
-</html>
+{% endblock %}

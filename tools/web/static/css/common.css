@@ -3,7 +3,28 @@ body {
     color: white;
 }
 
+#navigation-bar {
+    clear: both;
+    font-size: 20px;
+    width: 100%;
+}
+
+.navigation {
+    border: solid grey 2px;
+    float: left;
+    margin: 2px;
+    border-radius: 25px;
+    background-color: lightgray;
+    color: black;
+    padding: 15px;
+}
+
+.navigation-active {
+    background-color: darkgray;
+}
+
 #welcome {
+    clear: both;
     padding: 10px;
     font-size: 28px;
     font-weight: bold;
