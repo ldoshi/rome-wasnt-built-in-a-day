@@ -57,6 +57,9 @@ let _CHART_OPTIONS_TEMPLATE = {
 function update_plots() {
   let experiment_name = $("#experiment-name").val();
 
+  remove_load_error_indicator();
+  add_loading_indicator();
+
   $.get(
     `${_ROOT_URL}replay_buffer_state_counts_plot_data`,
     {
@@ -66,8 +69,11 @@ function update_plots() {
       _DATA = data;
       render_plots();
       $("#current-experiment-name").html(experiment_name);
-    }
-  );
+    }).fail(function() {
+	add_load_error_indicator();
+    }).always(function() {
+	remove_loading_indicator();
+    });    
 }
 
 function render_plots() {
