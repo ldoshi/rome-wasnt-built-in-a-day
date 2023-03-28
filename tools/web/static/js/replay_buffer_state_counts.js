@@ -76,28 +76,19 @@ function render_plots() {
     return;
   }
 
-  let state_ids = [];
-  let total_counts = [];
-
   const total_replay_buffer_state_counts =
     _DATA["total_replay_buffer_state_counts"];
+
+  let data = [];
 
   for (let [state_id, total_count] of Object.entries(
     total_replay_buffer_state_counts
   )) {
-    state_ids.push(state_id);
-    total_counts.push(total_count);
+    data.push({ x: state_id, y: total_count });
   }
 
-  const data = state_ids.map((id, count) => ({
-    x: count,
-    y: total_counts[id],
-  }));
-
-  const background_color = Array(state_ids.length).fill(
-    "rgba(255, 99, 132, 0.6)"
-  );
-  const border_color = Array(state_ids.length).fill("rgba(255, 99, 132, 1)");
+  const background_color = "rgba(255, 99, 132, 0.6)";
+  const border_color = "rgba(255, 99, 132, 1)";
 
   histogram_html = "<canvas id=histogram></canvas>";
   $("#histogram-holder").html(histogram_html);

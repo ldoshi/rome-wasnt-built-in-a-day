@@ -321,7 +321,9 @@ class TrainingHistoryDatabase:
         for entry in _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY):
             self._replay_buffer_state_counts.add(
                 batch_idx=entry.batch_idx,
-                metric_value=entry.replay_buffer_state_counts,
+                metric_value={
+                    id: count for id, count in entry.replay_buffer_state_counts
+                },
             )
 
         self._replay_buffer_state_counts.finalize()

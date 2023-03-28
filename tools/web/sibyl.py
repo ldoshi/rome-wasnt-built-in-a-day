@@ -169,9 +169,7 @@ def replay_buffer_state_counts_plot_data():
     # Sum the replay buffer_state_counts.
     total_replay_buffer_state_counts = Counter()
     for batch_replay_buffer_state_counts in replay_buffer_state_counts_by_batch:
-        total_replay_buffer_state_counts += Counter(
-            {batch: count for batch, count in batch_replay_buffer_state_counts}
-        )
+        total_replay_buffer_state_counts += Counter(batch_replay_buffer_state_counts)
 
     end = int(time.time() * 1e3)
     print(f"Sibyl replay buffer state counts took {end-start} ms.")
