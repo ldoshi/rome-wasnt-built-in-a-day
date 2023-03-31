@@ -105,7 +105,6 @@ function update_url(updates) {
     current_url_params = get_url_params();
 
     for (const [key, value] of Object.entries(updates)) {
-	console.log(`${key}: ${value}`);
 	current_url_params.set(key, value);
     }
     
