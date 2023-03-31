@@ -22,19 +22,18 @@
       <div class="control">
 	<div class="control-label">Experiment Name</div>
 	<select id="experiment-name" class="control-select">
-	  <option value="{{experiment_names[0]}}" selected>{{experiment_names[0]}}</option>
-	  {% for experiment_name in experiment_names[1:] %}
-	  <option value="{{experiment_name}}">{{experiment_name}}</option>
+	  {% for experiment_name in experiment_names %}
+	  <option value="{{experiment_name}}" {{'selected' if experiment_name == selected_experiment_name else ''}} >{{experiment_name}}</option>
 	  {% endfor %}
 	</select>
       </div>
       <div class="control">
 	<div class="control-label">Start Batch Index</div>
-	<input id="start-batch-idx" class="control-input" size="2" value="-1">
+	<input id="start-batch-idx" class="control-input" size="2" value="{{start_batch_idx}}">
       </div>
       <div class="control">
 	<div class="control-label">End Batch Index</div>
-	<input id="end-batch-idx" class="control-input" size="2">
+	<input id="end-batch-idx" class="control-input" size="2" value="{{end_batch_idx if end_batch_idx else ''}}">
       </div>
     </div>
     

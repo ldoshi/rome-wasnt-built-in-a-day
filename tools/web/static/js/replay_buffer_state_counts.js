@@ -65,19 +65,18 @@ function update_plots() {
     function (data, response) {
       _DATA = data;
       render_plots();
+      update_url_params();
       $("#current-experiment-name").html(experiment_name);
     }
   );
 }
 
 function update_url_params() {
-    let url_param_updates = {'experiment_name' : $("#experiment-name").val() };
-    update_url(url_param_updates);    
+  let url_param_updates = {'experiment_name' : $("#experiment-name").val() };
+  update_url(url_param_updates);    
 }
 
-function render_plots() {
-    update_url_params();
-    
+function render_plots() {   
   // Grab the data from the global _DATA object.
   if (_DATA == null) {
     return;
