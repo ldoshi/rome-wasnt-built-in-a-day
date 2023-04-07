@@ -68,6 +68,7 @@ function update_plots() {
     function (data, response) {
       _DATA = data;
       render_plots();
+      update_url_params();
       $("#current-experiment-name").html(experiment_name);
     }).fail(function() {
 	add_load_error_indicator();
@@ -76,7 +77,12 @@ function update_plots() {
     });    
 }
 
-function render_plots() {
+function update_url_params() {
+  let url_param_updates = {'experiment_name' : $("#experiment-name").val() };
+  update_url(url_param_updates);    
+}
+
+function render_plots() {   
   // Grab the data from the global _DATA object.
   if (_DATA == null) {
     return;

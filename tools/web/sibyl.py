@@ -304,12 +304,6 @@ def training_history():
     )
 
 
-def _contains_action_inversion_report(experiment_name: str) -> bool:
-    return log_entry.ACTION_INVERSION_REPORT_ENTRY in os.listdir(
-        os.path.join(_LOG_DIR, experiment_name)
-    )
-
-
 @app.route("/replay_buffer_state_counts")
 def replay_buffer_state_counts():
     experiment_names = sorted(os.listdir(_LOG_DIR))
@@ -325,11 +319,21 @@ def replay_buffer_state_counts():
 
 @app.route("/action_inversion")
 def action_inversion():
-    experiment_names = sorted(
-        filter(_contains_action_inversion_report, os.listdir(_LOG_DIR))
+    experiment_names = sorted(os.listdir(_LOG_DIR))
+    selected_experiment_name = _get_string_or_default(
+        name=_EXPERIMENT_NAME, default=experiment_names[0]
     )
+    start_batch_idx = _get_int_or_default(
+        name=_START_BATCH_IDX, default=_START_BATCH_IDX_DEFAULT_VALUE
+    )
+    end_batch_idx = _get_int_or_default(_END_BATCH_IDX)
+
     return flask.render_template(
-        "action_inversion.html", experiment_names=experiment_names
+        "action_inversion.html",
+        experiment_names=experiment_names,
+        selected_experiment_name=selected_experiment_name,
+        start_batch_idx=start_batch_idx,
+        end_batch_idx=end_batch_idx,
     )
 
 

@@ -14,9 +14,9 @@
   </head>
   <body>
     <div id="navigation-bar">
-      <div onclick="location.href='training_history'" class="navigation {% block navigation_training_history %}{% endblock %}">Training History Viewer</div>
-      <div onclick="location.href='replay_buffer_state_counts'" class="navigation {% block navigation_replay_buffer_state_counts %}{% endblock %}">Replay Buffer State Counts</div>
-      <div onclick="location.href='action_inversion'" class="navigation {% block navigation_action_inversion %}{% endblock %}">Action Inversion Analysis</div>
+      <div onclick="navigate('training_history')" class="navigation {% block navigation_training_history %}{% endblock %}">Training History Viewer</div>
+      <div onclick="navigate('replay_buffer_state_counts')" class="navigation {% block navigation_replay_buffer_state_counts %}{% endblock %}">Replay Buffer State Counts</div>
+      <div onclick="navigate('action_inversion')" class="navigation {% block navigation_action_inversion %}{% endblock %}">Action Inversion Analysis</div>
     </div>
     
     {% block content %}{% endblock %}

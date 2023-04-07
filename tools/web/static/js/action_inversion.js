@@ -68,28 +68,40 @@ let _DATASET_TEMPLATE = {
     hoverBorderWidth: 2
 };
 
-function update_plots() {
+function get_plot_params() {
     let experiment_name = $("#experiment-name").val();
     let start_batch_idx = $("#start-batch-idx").val();
     let end_batch_idx = $("#end-batch-idx").val();
+
+    return {
+	"experiment_name" : experiment_name,
+	"start_batch_idx" : start_batch_idx,
+	"end_batch_idx" : end_batch_idx,
+    }
+}
+
+function update_plots() {
+    let plot_params = get_plot_params();
 
     remove_load_error_indicator();
     add_loading_indicator();
 
     $.get(`${_ROOT_URL}action_inversion_plot_data`,
-	  {
-	      "experiment_name" : experiment_name,
-	      "start_batch_idx": start_batch_idx,
-	      "end_batch_idx" : end_batch_idx
-	  },
+	  plot_params,
 	  function(data, response) {
 	      render_action_inversion_plot(data);
-	      $("#current-experiment-name").html(experiment_name);
+	      update_url_params();
+	      $("#current-experiment-name").html(plot_params['experiment_name']);
     }).fail(function() {
 	add_load_error_indicator();
     }).always(function() {
 	remove_loading_indicator();
     });    
+}
+
+function update_url_params() {
+  let url_param_updates = get_plot_params();
+  update_url(url_param_updates);    
 }
 
 function update_batch_reports() {
