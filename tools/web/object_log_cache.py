@@ -33,19 +33,22 @@ def _make_cache_key(experiment_name: str, data_key: str) -> Tuple[str, str]:
 def _load_action_inversion_database(
     log_dir: str,
     experiment_name: str,
-) -> object_log_readers.ActionInversionDatabase:
-    return object_log_readers.ActionInversionDatabase(
-        dirname=get_experiment_data_dir(
-            log_dir=log_dir, experiment_name=experiment_name
-        )
-    )
+) -> Tuple[str, object_log_readers.ActionInversionDatabase]:
+    if log_entry.ACTION_INVERSION_REPORT_ENTRY not in os.listdir(
+    os.path.join(log_dir, experiment_name)):
+        return None, experiment_name
 
+    return experiment_name, object_log_readers.ActionInversionDatabase(
+            dirname=get_experiment_data_dir(
+                log_dir=log_dir, experiment_name=experiment_name
+            )
+        )
 
 def _load_training_history_database(
     log_dir: str,
     experiment_name: str,
-) -> object_log_readers.TrainingHistoryDatabase:
-    return object_log_readers.TrainingHistoryDatabase(
+) -> Tuple[str, object_log_readers.TrainingHistoryDatabase]:
+    return experiment_name, object_log_readers.TrainingHistoryDatabase(
         dirname=get_experiment_data_dir(
             log_dir=log_dir, experiment_name=experiment_name
         )
@@ -94,11 +97,15 @@ class ObjectLogCache:
         """
         for data_key in self._loaders.keys():
             loader = functools.partial(self._loaders[data_key], self._log_dir)
+
             with multiprocessing.Pool(processes=2) as pool:
-                for i, data in enumerate(pool.map(loader, experiment_names)):
-                    cache_key = _make_cache_key(experiment_names[i], data_key)
-                    assert cache_key not in self._cache
-                    self._cache[cache_key] = data
+                for experiment_name, data in pool.imap_unordered(loader, experiment_names):
+                    if data is None:
+                        continue
+                    cache_key = _make_cache_key(experiment_name, data_key)
+                    if cache_key not in self._cache:
+                        self._cache[cache_key] = data
+
 
     def get(self, experiment_name: str, data_key: str) -> Any:
         """Retrieves the requested data constructed from log entries.
@@ -129,7 +136,7 @@ class ObjectLogCache:
         if cache_key not in self._cache:
             self.miss_counts[cache_key] += 1
             start = int(time.time() * 1e3)
-            self._cache[cache_key] = self._loaders[data_key](
+            _, self._cache[cache_key] = self._loaders[data_key](
                 self._log_dir, experiment_name
             )
             end = int(time.time() * 1e3)
