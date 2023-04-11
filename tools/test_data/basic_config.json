@@ -1,0 +1,7 @@
+{
+    "experiment-name-prefix" : "basic_config",
+    "initial-memories-count" : 101,
+    "val-check-interval" : 12,
+    "epsilon-decay-rule": "geometric",
+    "debug" : true
+}
