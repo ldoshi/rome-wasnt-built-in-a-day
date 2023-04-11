@@ -63,7 +63,7 @@ def _get_experiment_name(experiment_name_prefix: str, values: Sequence) -> str:
     )
 
 
-def run_experiments(config: Any, execute_fn: Callable[[List[str]], None]) -> None:
+def run_experiments(config: dict[str, Any], execute_fn: Callable[[List[str]], None]) -> None:
     """Calls execute_fn for argument combinations described in config.
 
     Args:
