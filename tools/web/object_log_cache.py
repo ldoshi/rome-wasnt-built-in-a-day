@@ -98,6 +98,11 @@ class ObjectLogCache:
         for data_key in self._loaders.keys():
             loader = functools.partial(self._loaders[data_key], self._log_dir)
 
+            # Chose only 2 background processes since most of the
+            # processing time is related to reading data from disk. If
+            # I understand correctly, multiple processes don't speed
+            # this up too much unless there's corresponding hardware
+            # support with multiple disk heds.
             with multiprocessing.Pool(processes=2) as pool:
                 for experiment_name, data in pool.imap_unordered(loader, experiment_names):
                     if data is None:
