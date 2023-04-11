@@ -17,7 +17,7 @@ _NAMELESS_CONFIG = "nameless_config.json"
 _TWO_SWEEPS_CONFIG = "two_sweeps_config.json"
 _TWO_SWEEPS_NAMELESS_REORDERED_CONFIG = "two_sweeps_nameless_reordered_config.json"
 
-_EPSILON_DECAY_RULE = "--epsilon-decay-rule"
+_EPSILON_DECAY_RULE_KEY = "--epsilon-decay-rule"
 _INITIAL_MEMORIES_COUNT_KEY = "--initial-memories-count"
 _EXPERIMENT_NAME_KEY = "--experiment-name"
 
