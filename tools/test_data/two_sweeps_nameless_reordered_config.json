@@ -1,0 +1,6 @@
+{
+    "epsilon-decay-rule": ["geometric", "arithmetic"],
+    "debug": [true, false],
+    "val-check-interval" : 10,
+    "initial-memories-count" : [0, 100, 10000]
+}
