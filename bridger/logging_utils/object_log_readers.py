@@ -291,9 +291,19 @@ class TrainingHistoryDatabase:
         Args:
           dirname: The directory containing the training history log files.
         """
+<<<<<<< HEAD
         self._states = {}
         for entry in _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY):
             self._states[entry.id] = entry.object
+=======
+        # States are read in from the parent directory.
+        self._states = pd.DataFrame(
+            _read_object_log(
+                os.path.dirname(dirname), log_entry.STATE_NORMALIZED_LOG_ENTRY
+            )
+        )
+        self._states.set_index("id")
+>>>>>>> 7be433e (Updated changes)
 
         # Store visited states sorted by visit count.
         visit_counts = collections.defaultdict(int)

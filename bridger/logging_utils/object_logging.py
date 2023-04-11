@@ -28,7 +28,7 @@ from bridger.logging_utils import log_entry
 class ObjectLogManager:
     """Provides a unified interface to log pickle-able objects."""
 
-    def __init__(self, dirname: str):
+    def __init__(self, object_logging_base_dir: str, experiment_name: str):
         """Creates directory dirname to store logs.
 
         Clears the contents of the directory if the dirname existed previously.
@@ -36,7 +36,11 @@ class ObjectLogManager:
         Args:
           dirname: The name of the directory to create.
         """
-        self._dirname = dirname
+        self._object_logging_base_dir = object_logging_base_dir
+        self._experiment_name = experiment_name
+        self._dirname = os.path.join(
+            self._object_logging_base_dir, self._experiment_name
+        )
         shutil.rmtree(self._dirname, ignore_errors=True)
         path = pathlib.Path(self._dirname)
         path.mkdir(parents=True, exist_ok=True)
@@ -50,18 +54,30 @@ class ObjectLogManager:
         for object_logger in self._object_loggers.values():
             object_logger.close()
 
-    def log(self, log_filename: str, log_entry: Any) -> None:
+    def log(
+        self, log_filename: str, log_entry: Any, log_in_parent_dir: bool = False
+    ) -> None:
         """Logs the provided entry to a log file named log_filename.
 
         Args:
           log_filename: A unique label describing the log in which to place
             log_entry. This label is also the actual log filename.
           log_entry: The object to be logged.
+          log_in_parent_dir: A boolean describing whether to use the full dir
         """
         if log_filename not in self._object_loggers:
-            self._object_loggers[log_filename] = ObjectLogger(
-                dirname=self._dirname, log_filename=log_filename
-            )
+            if log_in_parent_dir:
+                self._object_loggers[log_filename] = ObjectLogger(
+                    dirname=self._object_logging_base_dir,
+                    log_filename=log_filename,
+                )
+            else:
+                self._object_loggers[log_filename] = ObjectLogger(
+                    dirname=os.path.join(
+                        self._object_logging_base_dir, self._experiment_name
+                    ),
+                    log_filename=log_filename,
+                )
 
         self._object_loggers[log_filename].log(log_entry)
 
@@ -161,6 +177,7 @@ class LoggerAndNormalizer:
         self._object_log_manager.log(
             self._log_filename,
             log_entry.NormalizedLogEntry(id=object_id, object=object_copy),
+            log_in_parent_dir=True,
         )
         self._normalizer[hashable_object] = object_id
         assert len(self._normalizer_reverse_lookup) == object_id
@@ -312,7 +329,7 @@ class ObjectLogger:
     def __init__(self, dirname: str, log_filename: str, buffer_size=1000):
         self._buffer_size = buffer_size
         self._buffer = []
-        self._log_file = open(os.path.join(dirname, log_filename), "wb")
+        self._log_file = open(os.path.join(dirname, log_filename), "ab+")
 
     def _flush_buffer(self):
         if self._buffer:
