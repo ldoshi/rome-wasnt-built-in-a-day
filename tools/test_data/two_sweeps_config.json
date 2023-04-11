@@ -1,0 +1,7 @@
+{
+    "experiment-name-prefix" : "two_sweeps",
+    "initial-memories-count" : [0, 100, 10000],
+    "epsilon-decay-rule": ["geometric", "arithmetic"],
+    "debug": [true, false],
+    "val-check-interval" : 10
+}
