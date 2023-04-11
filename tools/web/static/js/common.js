@@ -96,3 +96,25 @@ function add_load_error_indicator() {
 function remove_load_error_indicator() {
     $("#load-error").addClass("hidden");
 }
+
+function get_url_params() {
+    return new URLSearchParams(window.location.search);
+}
+
+function update_url(updates) {
+    current_url_params = get_url_params();
+
+    for (const [key, value] of Object.entries(updates)) {
+	current_url_params.set(key, value);
+    }
+    
+    window.history.pushState(null, null, make_url(_ROOT_URL, current_url_params.toString()));
+}
+
+function make_url(root, params) {
+    return root + "?" + params.toString();
+}
+
+function navigate(page) {
+    location.href = make_url(page, get_url_params());
+}
