@@ -100,7 +100,7 @@ class ExperimentRunnerTest(unittest.TestCase):
         for args, expected_value_tuple in zip(self._args, expected_value_tuples):
             self.assertEqual(args[2], expected_value_tuple[0])
             self.assertEqual(
-                _get_value(args, _EPSILON_DECAY_RULE), expected_value_tuple[1]
+                _get_value(args, _EPSILON_DECAY_RULE_KEY), expected_value_tuple[1]
             )
             self.assertEqual(
                 _get_value(args, _INITIAL_MEMORIES_COUNT_KEY), expected_value_tuple[2]

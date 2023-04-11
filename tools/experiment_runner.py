@@ -31,7 +31,9 @@ def _extract_sweep_keys_and_values(
     return keys, value_lists
 
 
-def _add_args(args: list[str], flag_name: str, flag_value: str) -> None:
+def _add_args(
+    args: list[str], flag_name: str, flag_value: Union[bool, int, float, str]
+) -> None:
     """Appends the flag name and value to the args list.
 
     Boolean flags require special treatment. Only the flag name is
@@ -63,7 +65,9 @@ def _get_experiment_name(experiment_name_prefix: str, values: Sequence) -> str:
     )
 
 
-def run_experiments(config: dict[str, Any], execute_fn: Callable[[List[str]], None]) -> None:
+def run_experiments(
+    config: dict[str, Any], execute_fn: Callable[[List[str]], None]
+) -> None:
     """Calls execute_fn for argument combinations described in config.
 
     Args:
