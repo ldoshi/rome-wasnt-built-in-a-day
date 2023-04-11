@@ -35,23 +35,22 @@ def _make_cache_key(experiment_name: str, data_key: str) -> Tuple[str, str]:
 def _load_action_inversion_database(
     log_dir: str,
     experiment_name: str,
-) -> object_log_readers.ActionInversionDatabase:
-    try:
-        return object_log_readers.ActionInversionDatabase(
+) -> Tuple[str, object_log_readers.ActionInversionDatabase]:
+    if log_entry.ACTION_INVERSION_REPORT_ENTRY not in os.listdir(
+    os.path.join(log_dir, experiment_name)):
+        return None, experiment_name
+
+    return experiment_name, object_log_readers.ActionInversionDatabase(
             dirname=get_experiment_data_dir(
                 log_dir=log_dir, experiment_name=experiment_name
             )
         )
-    except:
-        return None
-
 
 def _load_training_history_database(
     log_dir: str,
     experiment_name: str,
-) -> object_log_readers.TrainingHistoryDatabase:
-    print("load staart " , experiment_name, flush=True)
-    return object_log_readers.TrainingHistoryDatabase(
+) -> Tuple[str, object_log_readers.TrainingHistoryDatabase]:
+    return experiment_name, object_log_readers.TrainingHistoryDatabase(
         dirname=get_experiment_data_dir(
             log_dir=log_dir, experiment_name=experiment_name
         )
@@ -100,18 +99,19 @@ class ObjectLogCache:
         """
         for data_key in self._loaders.keys():
             loader = functools.partial(self._loaders[data_key], self._log_dir)
+
+            # Chose only 2 background processes since most of the
+            # processing time is related to reading data from disk. If
+            # I understand correctly, multiple processes don't speed
+            # this up too much unless there's corresponding hardware
+            # support with multiple disk heds.
             with multiprocessing.Pool(processes=2) as pool:
-                for i, data in enumerate(pool.map_async(loader, experiment_names)):
+                for experiment_name, data in pool.imap_unordered(loader, experiment_names):
                     if data is None:
-                        print("skip " , experiment_names[i], data_key)
                         continue
-                    cache_key = _make_cache_key(experiment_names[i], data_key)
-                    print("------------------------------------")
-                    print(int(time.time() * 1e3))
-                    print("cached: " , cache_key)
-                    print("------------------------------------")
-                    assert cache_key not in self._cache
-                    self._cache[cache_key] = data
+                    cache_key = _make_cache_key(experiment_name, data_key)
+                    if cache_key not in self._cache:
+                        self._cache[cache_key] = data
 
                 pool.join()
 
@@ -144,7 +144,7 @@ class ObjectLogCache:
         if cache_key not in self._cache:
             self.miss_counts[cache_key] += 1
             start = int(time.time() * 1e3)
-            self._cache[cache_key] = self._loaders[data_key](
+            _, self._cache[cache_key] = self._loaders[data_key](
                 self._log_dir, experiment_name
             )
             end = int(time.time() * 1e3)

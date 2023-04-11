@@ -3,7 +3,28 @@ body {
     color: white;
 }
 
+#navigation-bar {
+    clear: both;
+    font-size: 20px;
+    width: 100%;
+}
+
+.navigation {
+    border: solid grey 2px;
+    float: left;
+    margin: 2px;
+    border-radius: 25px;
+    background-color: lightgray;
+    color: black;
+    padding: 15px;
+}
+
+.navigation-active {
+    background-color: darkgray;
+}
+
 #welcome {
+    clear: both;
     padding: 10px;
     font-size: 28px;
     font-weight: bold;
@@ -114,3 +135,40 @@ body {
 .hidden {
     display: none;
 }
+
+.plot-holder-metric {
+    float: left;
+}
+
+.plot-holder-metric-default-width {
+    width: 30%;
+}
+
+.plot-holder-metric-full-width {
+    width: 100%;
+}
+
+.plot-holder-state {
+    float: left;
+    width: 10%;
+}
+
+.state-plot-info {
+    clear: both;
+    float: left;
+    width: 100%;
+    font-weight: bold;
+    font-size: 20px;
+    text-align: center;
+}
+
+.state-plot-state {
+    clear: both;
+    float: left;
+}
+
+.plot-canvas {
+    float: left;
+    width: 100%;
+}
+

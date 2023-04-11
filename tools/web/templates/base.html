@@ -1,0 +1,24 @@
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+<script>
+  var _ROOT_URL = '{{ request.url_root }}';
+</script>
+
+<script src= {{ url_for('static',filename='js/common.js') }}></script>
+<link rel= "stylesheet" type= "text/css" href= {{ url_for('static',filename='css/common.css') }}>
+
+<html>
+  <head>
+    <title>{% block title %}{% endblock %}</title>
+  </head>
+  <body>
+    <div id="navigation-bar">
+      <div onclick="navigate('training_history')" class="navigation {% block navigation_training_history %}{% endblock %}">Training History Viewer</div>
+      <div onclick="navigate('replay_buffer_state_counts')" class="navigation {% block navigation_replay_buffer_state_counts %}{% endblock %}">Replay Buffer State Counts</div>
+      <div onclick="navigate('action_inversion')" class="navigation {% block navigation_action_inversion %}{% endblock %}">Action Inversion Analysis</div>
+    </div>
+    
+    {% block content %}{% endblock %}
+  </body>
+</html>
