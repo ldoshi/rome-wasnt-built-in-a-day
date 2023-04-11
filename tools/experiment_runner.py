@@ -1,6 +1,6 @@
 """Iterates a series of experiments described by a config file."""
 
-from typing import Any, Callable, List, Sequence
+from typing import Any, Callable, List, Sequence, Union
 
 import argparse
 import copy
