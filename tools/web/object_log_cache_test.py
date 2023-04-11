@@ -51,7 +51,7 @@ class ObjectLogCacheTest(unittest.TestCase):
 
         self.assertRaisesRegex(
             FileNotFoundError,
-            "action_inversion_report",
+            "No such file or directory",
             self._cache.get,
             experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
@@ -71,7 +71,7 @@ class ObjectLogCacheTest(unittest.TestCase):
 
         self.assertRaisesRegex(
             FileNotFoundError,
-            "action_inversion_report",
+            "No such file or directory",
             self._cache.get,
             experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
