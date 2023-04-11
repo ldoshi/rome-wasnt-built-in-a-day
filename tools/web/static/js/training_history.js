@@ -114,14 +114,14 @@ function get_plot_params() {
     }
 }
 
-function update_url() {
-    let url_params = get_plot_params();
-    url_params["state_filter_function_body"] = $("#state-filter-function-body").val();   
-    window.history.pushState(null, null, _ROOT_URL + "?" + $.param(url_params));
+function update_url_params() {
+    let url_param_updates = get_plot_params();
+    url_param_updates["state_filter_function_body"] = $("#state-filter-function-body").val();
+    update_url(url_param_updates);
 }
 
 function render_plots() {
-    update_url();
+    update_url_params();
     
     if (_DATA == null) {
 	return;

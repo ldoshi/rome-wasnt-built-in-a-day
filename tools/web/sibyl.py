@@ -8,6 +8,7 @@ from typing import Any, Optional
 from bridger.logging_utils import log_entry
 from tools.web import object_log_cache
 from tools.web import plot_utils
+from collections import Counter
 
 app = flask.Flask(__name__)
 
@@ -148,6 +149,35 @@ def training_history_plot_data():
     }
 
 
+@app.route("/replay_buffer_state_counts_plot_data", methods=["GET"])
+def replay_buffer_state_counts_plot_data():
+    """Provides plot data on states and metrics based on filters.
+
+    This endpoint is intended to respond to an AJAX call."""
+    start = int(time.time() * 1e3)
+    experiment_name = _get_string_or_default(_EXPERIMENT_NAME)
+
+    training_history_database = _OBJECT_LOG_CACHE.get(
+        experiment_name=experiment_name,
+        data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
+    )
+
+    (
+        _,
+        replay_buffer_state_counts_by_batch,
+    ) = training_history_database.get_replay_buffer_state_counts()
+    # Sum the replay buffer_state_counts.
+    total_replay_buffer_state_counts = Counter()
+    for batch_replay_buffer_state_counts in replay_buffer_state_counts_by_batch:
+        total_replay_buffer_state_counts += Counter(batch_replay_buffer_state_counts)
+
+    end = int(time.time() * 1e3)
+    print(f"Sibyl replay buffer state counts took {end-start} ms.")
+    return {
+        "total_replay_buffer_state_counts": total_replay_buffer_state_counts,
+    }
+
+
 @app.route("/action_inversion_plot_data", methods=["GET"])
 def action_inversion_plot_data():
     """Provides summary plot data based on filters.
@@ -274,19 +304,36 @@ def training_history():
     )
 
 
-def _contains_action_inversion_report(experiment_name: str) -> bool:
-    return log_entry.ACTION_INVERSION_REPORT_ENTRY in os.listdir(
-        os.path.join(_LOG_DIR, experiment_name)
+@app.route("/replay_buffer_state_counts")
+def replay_buffer_state_counts():
+    experiment_names = sorted(os.listdir(_LOG_DIR))
+    selected_experiment_name = _get_string_or_default(
+        name=_EXPERIMENT_NAME, default=experiment_names[0]
+    )
+    return flask.render_template(
+        "replay_buffer_state_counts.html",
+        experiment_names=experiment_names,
+        selected_experiment_name=selected_experiment_name,
     )
 
 
 @app.route("/action_inversion")
 def action_inversion():
-    experiment_names = sorted(
-        filter(_contains_action_inversion_report, os.listdir(_LOG_DIR))
+    experiment_names = sorted(os.listdir(_LOG_DIR))
+    selected_experiment_name = _get_string_or_default(
+        name=_EXPERIMENT_NAME, default=experiment_names[0]
     )
+    start_batch_idx = _get_int_or_default(
+        name=_START_BATCH_IDX, default=_START_BATCH_IDX_DEFAULT_VALUE
+    )
+    end_batch_idx = _get_int_or_default(_END_BATCH_IDX)
+
     return flask.render_template(
-        "action_inversion.html", experiment_names=experiment_names
+        "action_inversion.html",
+        experiment_names=experiment_names,
+        selected_experiment_name=selected_experiment_name,
+        start_batch_idx=start_batch_idx,
+        end_batch_idx=end_batch_idx,
     )
 
 
