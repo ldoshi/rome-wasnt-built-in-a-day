@@ -10,7 +10,8 @@ import collections
 import functools
 import multiprocessing
 import torch.multiprocessing
-torch.multiprocessing.set_sharing_strategy('file_system')
+
+torch.multiprocessing.set_sharing_strategy("file_system")
 import os
 import time
 import torch

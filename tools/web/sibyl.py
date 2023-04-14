@@ -54,8 +54,10 @@ def _get_int_or_default(name: str, default: Optional[int] = None) -> Optional[in
     except:
         return default
 
+
 def _get_experiment_names() -> List[str]:
     return sorted(os.listdir(_LOG_DIR))
+
 
 @app.route("/training_history_plot_data", methods=["GET"])
 def training_history_plot_data():
@@ -352,7 +354,9 @@ if __name__ == "__main__":
     _LOG_DIR = args.log_dir
     _OBJECT_LOG_CACHE = object_log_cache.ObjectLogCache(log_dir=_LOG_DIR)
 
-    warm_cache_background_thread = threading.Thread(target=_OBJECT_LOG_CACHE.warm, args=(_get_experiment_names(),))
+    warm_cache_background_thread = threading.Thread(
+        target=_OBJECT_LOG_CACHE.warm, args=(_get_experiment_names(),)
+    )
     warm_cache_background_thread.start()
-    
+
     app.run(host="0.0.0.0", port=5001)
