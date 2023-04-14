@@ -69,19 +69,10 @@ def training_history_plot_data():
     max_points_per_series = _get_int_or_default(_MAX_POINTS_PER_SERIES)
     number_of_states = _get_int_or_default(_NUMBER_OF_STATES)
 
-    print("before")
-    print("hIt: ", _OBJECT_LOG_CACHE.hit_counts)
-    print("mis: " , _OBJECT_LOG_CACHE.miss_counts)
-    
     training_history_database = _OBJECT_LOG_CACHE.get(
         experiment_name=experiment_name,
         data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
     )
-
-    print("after")
-    print("hIt: ", _OBJECT_LOG_CACHE.hit_counts)
-    print("mis: " , _OBJECT_LOG_CACHE.miss_counts)
-    
 
     states = training_history_database.get_states_by_visit_count(
         n=number_of_states,
