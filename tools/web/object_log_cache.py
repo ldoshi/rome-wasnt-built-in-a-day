@@ -13,7 +13,7 @@ import os
 import time
 import torch
 
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from bridger.logging_utils import log_entry
 from bridger.logging_utils import object_log_readers
