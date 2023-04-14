@@ -113,7 +113,6 @@ class ObjectLogCache:
                     if cache_key not in self._cache:
                         self._cache[cache_key] = data
 
-                pool.join()
 
     def get(self, experiment_name: str, data_key: str) -> Any:
         """Retrieves the requested data constructed from log entries.
