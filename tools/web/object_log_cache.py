@@ -37,14 +37,16 @@ def _load_action_inversion_database(
     experiment_name: str,
 ) -> Tuple[str, object_log_readers.ActionInversionDatabase]:
     if log_entry.ACTION_INVERSION_REPORT_ENTRY not in os.listdir(
-    os.path.join(log_dir, experiment_name)):
+        os.path.join(log_dir, experiment_name)
+    ):
         return None, experiment_name
 
     return experiment_name, object_log_readers.ActionInversionDatabase(
-            dirname=get_experiment_data_dir(
-                log_dir=log_dir, experiment_name=experiment_name
-            )
+        dirname=get_experiment_data_dir(
+            log_dir=log_dir, experiment_name=experiment_name
         )
+    )
+
 
 def _load_training_history_database(
     log_dir: str,
@@ -106,13 +108,14 @@ class ObjectLogCache:
             # this up too much unless there's corresponding hardware
             # support with multiple disk heds.
             with multiprocessing.Pool(processes=2) as pool:
-                for experiment_name, data in pool.imap_unordered(loader, experiment_names):
+                for experiment_name, data in pool.imap_unordered(
+                    loader, experiment_names
+                ):
                     if data is None:
                         continue
                     cache_key = _make_cache_key(experiment_name, data_key)
                     if cache_key not in self._cache:
                         self._cache[cache_key] = data
-
 
     def get(self, experiment_name: str, data_key: str) -> Any:
         """Retrieves the requested data constructed from log entries.
