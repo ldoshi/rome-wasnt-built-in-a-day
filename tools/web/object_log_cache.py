@@ -36,11 +36,11 @@ def _make_cache_key(experiment_name: str, data_key: str) -> Tuple[str, str]:
 def _load_action_inversion_database(
     log_dir: str,
     experiment_name: str,
-) -> Tuple[Optional[str], object_log_readers.ActionInversionDatabase]:
+) -> Tuple[str, Optional[object_log_readers.ActionInversionDatabase]]:
     if log_entry.ACTION_INVERSION_REPORT_ENTRY not in os.listdir(
         os.path.join(log_dir, experiment_name)
     ):
-        return None, experiment_name
+        return experiment_name, None
 
     return experiment_name, object_log_readers.ActionInversionDatabase(
         dirname=get_experiment_data_dir(
