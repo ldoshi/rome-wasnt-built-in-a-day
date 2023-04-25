@@ -43,14 +43,16 @@ class ToolsSmokeTest(unittest.TestCase):
         """Verifies comparison two training batches that match."""
 
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR_0
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR_0),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR_0),
         ) as object_log_manager:
             test_utils.get_trainer().fit(
                 test_utils.get_model(object_log_manager=object_log_manager, debug=True)
             )
 
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR_1
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR_0),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR_0),
         ) as object_log_manager:
             test_utils.get_trainer().fit(
                 test_utils.get_model(object_log_manager=object_log_manager, debug=True)
@@ -67,14 +69,16 @@ class ToolsSmokeTest(unittest.TestCase):
         """Verifies comparison two training batches that differ."""
 
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR_0
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR_0),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR_0),
         ) as object_log_manager:
             test_utils.get_trainer().fit(
                 test_utils.get_model(object_log_manager=object_log_manager, debug=True)
             )
 
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR_1
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR_0),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR_0),
         ) as object_log_manager:
             test_utils.get_trainer().fit(
                 test_utils.get_model(
