@@ -23,6 +23,7 @@ import torch
 from collections.abc import Hashable
 
 from bridger.logging_utils import log_entry
+from bridger.logging_utils.object_log_readers import read_object_log
 
 
 class ObjectLogManager:
@@ -81,6 +82,18 @@ class ObjectLogManager:
 
         self._object_loggers[log_filename].log(log_entry)
 
+    def read_log_entry_file(self, experiment_name: str) -> list[Any]:
+        """Reads a log entry file and returns a list of log entries.
+
+        Args:
+            experiment_name:
+        """
+        return list(
+            read_object_log(
+                os.path.join(self._object_logging_base_dir, experiment_name)
+            )
+        )
+
 
 # TODO(arvind): Refactor out common code shared between
 # LoggerAndNormalizer and OccurrenceLogger.
@@ -99,6 +112,7 @@ class LoggerAndNormalizer:
         object_log_manager: ObjectLogManager,
         log_entry_object_class: Any,
         make_hashable_fn: Optional[Callable[[Any], Hashable]] = None,
+        read_existing_log_entry: bool = False,
     ):
         """Store logging directives.
 
@@ -135,10 +149,27 @@ class LoggerAndNormalizer:
         else:
             self._make_hashable_fn = lambda x: x
 
-        self._normalizer = {}
-        # Object ids are assigned sequentially so they can be used
-        # directly as indices for the reverse lookup.
-        self._normalizer_reverse_lookup = []
+        if read_existing_log_entry:
+            # Object ids are assigned sequentially so they can be used
+            # directly as indices for the reverse lookup.
+            self._normalizer = {}
+            self._normalizer_reverse_lookup = []
+
+            for log_entry in object_log_manager.read_log_entry_file(
+                experiment_name=log_filename
+            ):
+                # Object IDs should be presented in sequential order.
+                assert len(self._normalizer_reverse_lookup) == log_entry.id
+
+                hashable_object = self._make_hashable_fn(log_entry.object)
+                self._normalizer[hashable_object] = log_entry.id
+                self._normalizer_reverse_lookup.append(log_entry.object)
+
+        else:
+            self._normalizer = {}
+            # Object ids are assigned sequentially so they can be used
+            # directly as indices for the reverse lookup.
+            self._normalizer_reverse_lookup = []
 
     def get_logged_object_id(self, object: Any) -> int:
         """Returns the unique id for the provided object.
