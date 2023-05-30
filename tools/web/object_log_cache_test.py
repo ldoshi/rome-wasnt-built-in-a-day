@@ -19,8 +19,7 @@ def _generate_logs(
     experiment_name: str, max_steps: int, debug_action_inversion_checker: bool = False
 ) -> None:
     with object_logging.ObjectLogManager(
-        object_logging_base_dir=_OBJECT_LOGGING_DIR,
-        experiment_name=experiment_name        
+        object_logging_base_dir=_OBJECT_LOGGING_DIR, experiment_name=experiment_name
     ) as object_log_manager:
         test_utils.get_trainer(max_steps=max_steps).fit(
             test_utils.get_model(
@@ -47,7 +46,6 @@ class ObjectLogCacheTest(unittest.TestCase):
         shutil.rmtree(_OBJECT_LOGGING_DIR, ignore_errors=True)
 
     def test_get_file_does_not_exist(self):
-
         self.assertRaisesRegex(
             FileNotFoundError,
             "action_inversion_report",
