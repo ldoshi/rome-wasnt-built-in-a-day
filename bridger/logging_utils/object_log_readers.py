@@ -535,7 +535,9 @@ class ActionInversionDatabase:
             self._reports[entry.batch_idx].append(entry)
 
         self._states = {}
-        for entry in _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY):
+        for entry in _read_object_log(
+            os.path.dirname(dirname), log_entry.STATE_NORMALIZED_LOG_ENTRY
+        ):
             self._states[entry.id] = entry.object
 
         self._divergences = self._summarize_divergences()
