@@ -36,8 +36,8 @@ class ToolsSmokeTest(unittest.TestCase):
         # TODO: Make a more coherent plan for writing test output to a temp dir
         #       and retaining it on failure
         shutil.rmtree("lightning_logs", ignore_errors=True)
-        # shutil.rmtree(_OBJECT_LOGGING_DIR_0, ignore_errors=True)
-        # shutil.rmtree(_OBJECT_LOGGING_DIR_1, ignore_errors=True)
+        shutil.rmtree(_OBJECT_LOGGING_DIR_0, ignore_errors=True)
+        shutil.rmtree(_OBJECT_LOGGING_DIR_1, ignore_errors=True)
 
     def test_training_batch_comparison_tool_matching(self):
         """Verifies comparison two training batches that match."""
