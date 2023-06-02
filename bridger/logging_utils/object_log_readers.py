@@ -302,14 +302,17 @@ class TrainingHistoryDatabase:
             dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY
         ):
             visit_counts[entry.object] += 1
-        self._sorted_visits = sorted(
-            visit_counts.items(), key=lambda x: x[1], reverse=True
-        )
-        for i in range(len(self._sorted_visits)):
-            state_id = self._sorted_visits[i][0]
-            visit_count = self._sorted_visits[i][1]
-            self._sorted_visits[i] = VisitEntry(
-                state_id=state_id, state=self._states[state_id], visit_count=visit_count
+        sorted_visits = sorted(visit_counts.items(), key=lambda x: x[1], reverse=True)
+        self._state_visits = []
+        for visit in sorted_visits:
+            state_id = visit[0]
+            visit_count = visit[1]
+            self._state_visits.append(
+                VisitEntry(
+                    state_id=state_id,
+                    state=self._states[state_id],
+                    visit_count=visit_count,
+                )
             )
 
         self._q_values = StateActionMetricMap()
@@ -372,7 +375,7 @@ class TrainingHistoryDatabase:
           included.
 
         """
-        return self._sorted_visits[:n]
+        return self._state_visits[:n]
 
     def get_td_errors(
         self,
