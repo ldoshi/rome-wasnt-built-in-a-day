@@ -249,20 +249,21 @@ class StateActionMetricMap:
         assert self._finalized
         return max([max(entry) for entry in self._map.values()]) + 1
 
+
 @dataclasses.dataclass
 class VisitEntry:
     """Describes a state and how often it was visited.
-        
+
     Attributes:
       state_id: The id of the state described.
-      state: The full state tensor. 
+      state: The full state tensor.
       visit_count: The number of times the state was visited.
 
     """
 
     state_id: int
     state: torch.Tensor
-    visit_count: int 
+    visit_count: int
 
 
 # TODO(lyric): Consider adding batch_idx_min and batch_idx_max
@@ -297,13 +298,19 @@ class TrainingHistoryDatabase:
 
         # Store visited states sorted by visit count.
         visit_counts = collections.defaultdict(int)
-        for entry in _read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY):
+        for entry in _read_object_log(
+            dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY
+        ):
             visit_counts[entry.object] += 1
-        self._sorted_visits = sorted(visit_counts.items(), key=lambda x:x[1], reverse=True)
+        self._sorted_visits = sorted(
+            visit_counts.items(), key=lambda x: x[1], reverse=True
+        )
         for i in range(len(self._sorted_visits)):
             state_id = self._sorted_visits[i][0]
             visit_count = self._sorted_visits[i][1]
-            self._sorted_visits[i] = VisitEntry(state_id=state_id, state=self._states[state_id], visit_count=visit_count)
+            self._sorted_visits[i] = VisitEntry(
+                state_id=state_id, state=self._states[state_id], visit_count=visit_count
+            )
 
         self._q_values = StateActionMetricMap()
         self._q_target_values = StateActionMetricMap()
@@ -323,7 +330,7 @@ class TrainingHistoryDatabase:
                 metric_value=entry.q_target_value,
             )
         self._q_values.finalize()
-        self._q_target_values.finalize()            
+        self._q_target_values.finalize()
 
         self._td_errors = StateActionMetricMap()
         for entry in _read_object_log(
@@ -362,7 +369,7 @@ class TrainingHistoryDatabase:
         Returns:
           The top-n states sorted descending by visit count. The
           corresponding state id and visit count are also
-          included. 
+          included.
 
         """
         return self._sorted_visits[:n]

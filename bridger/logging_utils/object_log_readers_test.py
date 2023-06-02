@@ -250,7 +250,6 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
             self.assertEqual(visited_states[i].state.tolist(), expected_state)
             self.assertEqual(visited_states[i].visit_count, expected_visit_count)
 
-
     def test_get_td_errors(self):
         """Ensure that for all batches, certain states will log td errors for all actions to verify the shape of the response."""
 
