@@ -71,7 +71,7 @@ def training_history_plot_data():
         data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
     )
 
-    states = training_history_database.get_states_by_visit_count(
+    state_visits = training_history_database.get_states_by_visit_count(
         n=number_of_states,
     )
     plot_data = []
@@ -84,10 +84,10 @@ def training_history_plot_data():
         ("q_value", "Q", training_history_database.get_q_values),
         ("q_target_value", "Q Target", training_history_database.get_q_target_values),
     ]
-    for index, row in states.iterrows():
+    for visit_entry in state_visits:
         state_plot_data = {
-            "visit_count": row["visit_count"],
-            "state": row["state"].tolist(),
+            "visit_count": visit_entry.visit_count,
+            "state": visit_entry.state.tolist(),
             "metrics": [],
         }
 
@@ -96,7 +96,7 @@ def training_history_plot_data():
             series_labels = []
             for action in range(training_history_database.nA):
                 batch_idxs, values = data_fn(
-                    state_id=row["state_id"],
+                    state_id=visit_entry.state_id,
                     action=action,
                     start_batch_idx=start_batch_idx,
                     end_batch_idx=end_batch_idx,
