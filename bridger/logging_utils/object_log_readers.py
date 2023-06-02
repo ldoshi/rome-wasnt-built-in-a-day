@@ -291,19 +291,9 @@ class TrainingHistoryDatabase:
         Args:
           dirname: The directory containing the training history log files.
         """
-<<<<<<< HEAD
         self._states = {}
         for entry in _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY):
             self._states[entry.id] = entry.object
-=======
-        # States are read in from the parent directory.
-        self._states = pd.DataFrame(
-            _read_object_log(
-                os.path.dirname(dirname), log_entry.STATE_NORMALIZED_LOG_ENTRY
-            )
-        )
-        self._states.set_index("id")
->>>>>>> 7be433e (Updated changes)
 
         # Store visited states sorted by visit count.
         visit_counts = collections.defaultdict(int)
@@ -561,7 +551,7 @@ class ActionInversionDatabase:
         # we're still using this tool with much larger log files.
         divergences = []
         last_batch_with_reports = 0
-        for (batch_idx, reports) in self._reports.items():
+        for batch_idx, reports in self._reports.items():
             if len(reports):
                 convergence_run_length = batch_idx - last_batch_with_reports - 1
                 if convergence_run_length:
@@ -631,7 +621,7 @@ class ActionInversionDatabase:
         """
         batch_idxs = []
         incidence_rate = []
-        for (batch_idx, reports) in self._reports.items():
+        for batch_idx, reports in self._reports.items():
             if start_batch_idx is not None and batch_idx < start_batch_idx:
                 continue
             if end_batch_idx is not None and batch_idx > end_batch_idx:
