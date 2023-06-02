@@ -36,8 +36,8 @@ class ToolsSmokeTest(unittest.TestCase):
         # TODO: Make a more coherent plan for writing test output to a temp dir
         #       and retaining it on failure
         shutil.rmtree("lightning_logs", ignore_errors=True)
-        shutil.rmtree(_OBJECT_LOGGING_DIR_0, ignore_errors=True)
-        shutil.rmtree(_OBJECT_LOGGING_DIR_1, ignore_errors=True)
+        # shutil.rmtree(_OBJECT_LOGGING_DIR_0, ignore_errors=True)
+        # shutil.rmtree(_OBJECT_LOGGING_DIR_1, ignore_errors=True)
 
     def test_training_batch_comparison_tool_matching(self):
         """Verifies comparison two training batches that match."""
@@ -51,8 +51,8 @@ class ToolsSmokeTest(unittest.TestCase):
             )
 
         with object_logging.ObjectLogManager(
-            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR_0),
-            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR_0),
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR_1),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR_1),
         ) as object_log_manager:
             test_utils.get_trainer().fit(
                 test_utils.get_model(object_log_manager=object_log_manager, debug=True)
@@ -77,8 +77,8 @@ class ToolsSmokeTest(unittest.TestCase):
             )
 
         with object_logging.ObjectLogManager(
-            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR_0),
-            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR_0),
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR_1),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR_1),
         ) as object_log_manager:
             test_utils.get_trainer().fit(
                 test_utils.get_model(
