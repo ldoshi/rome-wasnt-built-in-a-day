@@ -14,7 +14,6 @@ import math
 import numpy as np
 import os
 import pathlib
-import pandas as pd
 import pickle
 import shutil
 import torch
@@ -287,7 +286,7 @@ class TrainingHistoryDatabase:
     """
 
     def __init__(self, dirname: str):
-        """Loads in training history data in dataframes for querying.
+        """Loads in training history data for querying.
 
         Args:
           dirname: The directory containing the training history log files.
