@@ -292,7 +292,9 @@ class TrainingHistoryDatabase:
           dirname: The directory containing the training history log files.
         """
         self._states = {}
-        for entry in _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY):
+        for entry in _read_object_log(
+            os.path.dirname(dirname), log_entry.STATE_NORMALIZED_LOG_ENTRY
+        ):
             self._states[entry.id] = entry.object
 
         # Store visited states sorted by visit count.
