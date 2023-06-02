@@ -14,7 +14,6 @@ import math
 import numpy as np
 import os
 import pathlib
-import pandas as pd
 import pickle
 import shutil
 import torch
@@ -250,6 +249,22 @@ class StateActionMetricMap:
         return max([max(entry) for entry in self._map.values()]) + 1
 
 
+@dataclasses.dataclass
+class VisitEntry:
+    """Describes a state and how often it was visited.
+
+    Attributes:
+      state_id: The id of the state described.
+      state: The full state tensor.
+      visit_count: The number of times the state was visited.
+
+    """
+
+    state_id: int
+    state: torch.Tensor
+    visit_count: int
+
+
 # TODO(lyric): Consider adding batch_idx_min and batch_idx_max
 # parameters to the data retrieval functions when the data volume
 # grows enough such that debugging would benefit from a defined
@@ -271,19 +286,33 @@ class TrainingHistoryDatabase:
     """
 
     def __init__(self, dirname: str):
-        """Loads in training history data in dataframes for querying.
+        """Loads in training history data for querying.
 
         Args:
           dirname: The directory containing the training history log files.
         """
-        self._states = pd.DataFrame(
-            _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY)
-        )
-        self._states.set_index("id")
+        self._states = {}
+        for entry in _read_object_log(dirname, log_entry.STATE_NORMALIZED_LOG_ENTRY):
+            self._states[entry.id] = entry.object
 
-        self._visits = pd.DataFrame(
-            _read_object_log(dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY)
-        )
+        # Store visited states sorted by visit count.
+        visit_counts = collections.defaultdict(int)
+        for entry in _read_object_log(
+            dirname, log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY
+        ):
+            visit_counts[entry.object] += 1
+        sorted_visits = sorted(visit_counts.items(), key=lambda x: x[1], reverse=True)
+        self._state_visits = []
+        for visit in sorted_visits:
+            state_id = visit[0]
+            visit_count = visit[1]
+            self._state_visits.append(
+                VisitEntry(
+                    state_id=state_id,
+                    state=self._states[state_id],
+                    visit_count=visit_count,
+                )
+            )
 
         self._q_values = StateActionMetricMap()
         self._q_target_values = StateActionMetricMap()
@@ -328,46 +357,24 @@ class TrainingHistoryDatabase:
 
         self._replay_buffer_state_counts.finalize()
 
-        self.nA = max(self._q_values.nA, self._q_target_values.nA, self._td_errors.nA)
+        self.nA = self._td_errors.nA
 
     def get_states_by_visit_count(
         self,
         n: Optional[int] = None,
-        start_batch_idx: Optional[int] = None,
-        end_batch_idx: Optional[int] = None,
-    ) -> pd.DataFrame:
+    ) -> List[VisitEntry]:
         """Retrieves the top-n states by visit count.
 
         Args:
           n: The number of states to return.
-          start_batch_idx: The first batch index (inclusive) to consider
-            when computing the states by visit count.
-          end_batch_idx: The last batch index (inclusive) to consider
-            when computing the states by visit count.
 
         Returns:
           The top-n states sorted descending by visit count. The
-          corresponding id and visit count are also included. The
-          columns of the dataframe are state_id, state, and
-          visit_count.
+          corresponding state id and visit count are also
+          included.
 
         """
-        visits = self._visits
-        if start_batch_idx is not None:
-            visits = visits[(visits["batch_idx"] >= start_batch_idx)]
-        if end_batch_idx is not None:
-            visits = visits[(visits["batch_idx"] <= end_batch_idx)]
-
-        return (
-            visits.groupby(["object"], sort=False)["batch_idx"]
-            .count()
-            .reset_index(name="visit_count")
-            .sort_values(["visit_count"], ascending=False)
-            .head(n)
-            .set_index("object")
-            .join(self._states)
-            .rename(columns={"object": "state", "id": "state_id"})
-        )
+        return self._state_visits[:n]
 
     def get_td_errors(
         self,

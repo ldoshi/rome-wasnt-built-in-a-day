@@ -246,28 +246,9 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         for i, (expected_state_id, expected_state, expected_visit_count) in enumerate(
             zip(expected_state_ids[:n], expected_states[:n], expected_visit_counts[:n])
         ):
-            self.assertEqual(visited_states["state_id"].iloc[i], expected_state_id)
-            self.assertEqual(visited_states["state"].iloc[i].tolist(), expected_state)
-            self.assertEqual(
-                visited_states["visit_count"].iloc[i], expected_visit_count
-            )
-
-    @parameterized.expand(
-        [
-            ("start filter", 2, None, [0, 1]),
-            ("end filter", None, 3, [0, 1, 2]),
-            ("both filters", 2, 3, [0]),
-        ]
-    )
-    def test_get_states_by_visit_count_with_batch_idx_filters(
-        self, name, start_batch_idx, end_batch_idx, expected_state_ids
-    ):
-        """Verifies batch filter indices prune states considered."""
-        visited_states = self.training_history_database.get_states_by_visit_count(
-            start_batch_idx=start_batch_idx, end_batch_idx=end_batch_idx
-        )
-
-        self.assertEqual(list(visited_states["state_id"]), expected_state_ids)
+            self.assertEqual(visited_states[i].state_id, expected_state_id)
+            self.assertEqual(visited_states[i].state.tolist(), expected_state)
+            self.assertEqual(visited_states[i].visit_count, expected_visit_count)
 
     def test_get_td_errors(self):
         """Ensure that for all batches, certain states will log td errors for all actions to verify the shape of the response."""
