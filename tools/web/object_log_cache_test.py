@@ -15,6 +15,7 @@ _EXPERIMENT_NAME_0 = "experiment_name_0"
 _EXPERIMENT_NAME_1 = "experiment_name_1"
 _SIBYL_TEMP_DIR = "tmp_sibyl_test"
 
+
 def _generate_logs(
     experiment_name: str, max_steps: int, debug_action_inversion_checker: bool = False
 ) -> None:
@@ -39,7 +40,9 @@ class ObjectLogCacheTest(unittest.TestCase):
     """Verifies cache loading behavior."""
 
     def setUp(self):
-        self._cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR, temp_dir=_SIBYL_TEMP_DIR)
+        self._cache = object_log_cache.ObjectLogCache(
+            log_dir=_OBJECT_LOGGING_DIR, temp_dir=_SIBYL_TEMP_DIR
+        )
 
     def tearDown(self):
         # TODO: Make a more coherent plan for writing test output to a
@@ -58,7 +61,10 @@ class ObjectLogCacheTest(unittest.TestCase):
             data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
         )
 
-        cache_key = object_log_cache._make_cache_key(experiment_name=_EXPERIMENT_NAME_0, data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY)
+        cache_key = object_log_cache._make_cache_key(
+            experiment_name=_EXPERIMENT_NAME_0,
+            data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
+        )
         self.assertEqual(
             self._cache.miss_counts[cache_key],
             1,
@@ -142,7 +148,10 @@ class ObjectLogCacheTest(unittest.TestCase):
                 data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
             )
         )
-        cache_key = object_log_cache._make_cache_key(experiment_name=_EXPERIMENT_NAME_0, data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY)
+        cache_key = object_log_cache._make_cache_key(
+            experiment_name=_EXPERIMENT_NAME_0,
+            data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
+        )
         self.assertEqual(self._cache.miss_counts[cache_key], 1)
         self.assertEqual(self._cache.hit_counts[cache_key], 0)
         self.assertEqual(self._cache.load_database_miss_counts[cache_key], 1)
@@ -164,7 +173,10 @@ class ObjectLogCacheTest(unittest.TestCase):
 
         _generate_logs(experiment_name=_EXPERIMENT_NAME_0, max_steps=1)
 
-        cache_key = object_log_cache._make_cache_key(experiment_name=_EXPERIMENT_NAME_0, data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY)
+        cache_key = object_log_cache._make_cache_key(
+            experiment_name=_EXPERIMENT_NAME_0,
+            data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
+        )
 
         self.assertIsNotNone(
             self._cache.get(
@@ -175,7 +187,9 @@ class ObjectLogCacheTest(unittest.TestCase):
         self.assertEqual(self._cache.load_database_miss_counts[cache_key], 1)
         self.assertEqual(self._cache.load_database_hit_counts[cache_key], 0)
 
-        cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR, temp_dir=_SIBYL_TEMP_DIR)        
+        cache = object_log_cache.ObjectLogCache(
+            log_dir=_OBJECT_LOGGING_DIR, temp_dir=_SIBYL_TEMP_DIR
+        )
         self.assertIsNotNone(
             cache.get(
                 experiment_name=_EXPERIMENT_NAME_0,
@@ -184,7 +198,6 @@ class ObjectLogCacheTest(unittest.TestCase):
         )
         self.assertEqual(cache.load_database_miss_counts[cache_key], 0)
         self.assertEqual(cache.load_database_hit_counts[cache_key], 1)
-
 
     def test_loaders_smoke_test(self):
         """Verifies each loader produces a reasonably shaped result."""

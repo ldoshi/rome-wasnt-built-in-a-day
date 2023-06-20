@@ -348,6 +348,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     _LOG_DIR = args.log_dir
-    _OBJECT_LOG_CACHE = object_log_cache.ObjectLogCache(log_dir=_LOG_DIR, temp_dir=_SIBYL_TMP_DIR)
+    _OBJECT_LOG_CACHE = object_log_cache.ObjectLogCache(
+        log_dir=_LOG_DIR, temp_dir=_SIBYL_TMP_DIR
+    )
 
     app.run(host="0.0.0.0", port=5001)
