@@ -149,8 +149,8 @@ class LoggerAndNormalizer:
         self._normalizer = {}
         self._normalizer_reverse_lookup = []
         if read_existing_log_entry:
-            for log_entry in object_log_manager.read_log_entry_file(
-                experiment_name=log_filename
+            for log_entry in object_log_manager.read_base_dir_log_file(
+                log_filename=log_filename
             ):
                 # Object IDs should be presented in sequential order.
                 assert len(self._normalizer_reverse_lookup) == log_entry.id
