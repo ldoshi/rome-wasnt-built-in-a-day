@@ -13,7 +13,7 @@ from tools.web import object_log_cache
 _OBJECT_LOGGING_DIR = "tmp_object_logging_dir"
 _EXPERIMENT_NAME_0 = "experiment_name_0"
 _EXPERIMENT_NAME_1 = "experiment_name_1"
-
+_SIBYL_TEMP_DIR = "tmp_sibyl_test"
 
 def _generate_logs(
     experiment_name: str, max_steps: int, debug_action_inversion_checker: bool = False
@@ -39,13 +39,14 @@ class ObjectLogCacheTest(unittest.TestCase):
     """Verifies cache loading behavior."""
 
     def setUp(self):
-        self._cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR)
+        self._cache = object_log_cache.ObjectLogCache(log_dir=_OBJECT_LOGGING_DIR, temp_dir=_SIBYL_TEMP_DIR)
 
     def tearDown(self):
         # TODO: Make a more coherent plan for writing test output to a
         # temp dir and retaining it on failure.
         shutil.rmtree("lightning_logs", ignore_errors=True)
         shutil.rmtree(_OBJECT_LOGGING_DIR, ignore_errors=True)
+        shutil.rmtree(_SIBYL_TEMP_DIR, ignore_errors=True)
 
     def test_get_file_does_not_exist(self):
 
