@@ -169,7 +169,7 @@ class ObjectLogCacheTest(unittest.TestCase):
         self.assertEqual(self._cache.load_database_hit_counts[cache_key], 0)
 
     def test_load(self):
-        """Verifies  loads data from log only once across new cache instances."""
+        """Verifies data is loaded from log only once across new cache instances."""
 
         _generate_logs(experiment_name=_EXPERIMENT_NAME_0, max_steps=1)
 
