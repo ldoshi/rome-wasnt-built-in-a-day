@@ -68,12 +68,12 @@ class ObjectLogManager:
         if log_filename not in self._object_loggers:
             if log_in_parent_dir:
                 self._object_loggers[log_filename] = ObjectLogger(
-                    dirname=self._object_logging_base_dir,
+                    dirname=self._base_dir,
                     log_filename=log_filename,
                 )
             else:
                 self._object_loggers[log_filename] = ObjectLogger(
-                    dirname=self._base_dir,
+                    dirname=self._experiment_dir,
                     log_filename=log_filename,
                 )
 
@@ -85,9 +85,7 @@ class ObjectLogManager:
         Args:
             log_filename: The log filename describing the log to read in the base directory.
         """
-        return list(
-            read_object_log(os.path.join(self._object_logging_base_dir, log_filename))
-        )
+        return list(read_object_log(os.path.join(self._base_dir, log_filename)))
 
 
 # TODO(arvind): Refactor out common code shared between
