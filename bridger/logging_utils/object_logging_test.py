@@ -14,7 +14,6 @@ from bridger.logging_utils import log_entry
 from bridger.logging_utils import object_logging
 from bridger.logging_utils import object_log_readers
 
-_TMP_DIR = "tmp"
 _NESTED_TMP_DIR_0 = "tmp/nested_tmp_0"
 _NESTED_TMP_DIR_1 = "tmp/nested_tmp_1"
 
@@ -37,7 +36,7 @@ _LOG_FILENAME_1 = "log_filename_1"
 
 class TestObjectLogManager(unittest.TestCase):
     def tearDown(self):
-        # The _NESTED_TMP_DIR_0 and _NESTED_TMP_DIR_1 is created by the ObjectLogManager init.
+        # The _NESTED_TMP_DIR_0 and _NESTED_TMP_DIR_1 are created by the ObjectLogManager init.
         delete_temp_dir()
 
     def test_object_log_manager_basic(self):
@@ -121,7 +120,7 @@ class TestLoggerAndNormalizer(unittest.TestCase):
         self, name, log_entry_object_class, make_hashable_fn, object_0, object_1
     ):
         with object_logging.ObjectLogManager(
-            object_logging_base_dir=_TMP_DIR,
+            object_logging_base_dir=os.path.dirname(_NESTED_TMP_DIR_0),
             experiment_name=os.path.basename(_NESTED_TMP_DIR_0),
         ) as logger:
             normalizer = object_logging.LoggerAndNormalizer(
@@ -134,7 +133,7 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             self.assertEqual(normalizer.get_logged_object_id(object_1), 1)
 
         with object_logging.ObjectLogManager(
-            object_logging_base_dir=_TMP_DIR,
+            object_logging_base_dir=os.path.dirname(_NESTED_TMP_DIR_1),
             experiment_name=os.path.basename(_NESTED_TMP_DIR_1),
         ) as logger:
             normalizer = object_logging.LoggerAndNormalizer(

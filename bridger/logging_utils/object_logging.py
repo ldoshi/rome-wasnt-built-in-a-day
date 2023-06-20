@@ -35,15 +35,14 @@ class ObjectLogManager:
         Clears the contents of the directory if the dirname existed previously.
 
         Args:
-          dirname: The name of the directory to create.
+          object_logging_base_dir: The name of the directory to create.
+          experiment_name: The name of the experiment to create.
         """
-        self._object_logging_base_dir = object_logging_base_dir
+        self._base_dir = object_logging_base_dir
         self._experiment_name = experiment_name
-        self._dirname = os.path.join(
-            self._object_logging_base_dir, self._experiment_name
-        )
-        shutil.rmtree(self._dirname, ignore_errors=True)
-        path = pathlib.Path(self._dirname)
+        self._experiment_dir = os.path.join(self._base_dir, self._experiment_name)
+        shutil.rmtree(self._experiment_dir, ignore_errors=True)
+        path = pathlib.Path(self._experiment_dir)
         path.mkdir(parents=True, exist_ok=True)
 
         self._object_loggers = {}
@@ -64,7 +63,7 @@ class ObjectLogManager:
           log_filename: A unique label describing the log in which to place
             log_entry. This label is also the actual log filename.
           log_entry: The object to be logged.
-          log_in_parent_dir: A boolean describing whether to use the full dir
+          log_in_parent_dir: A boolean describing whether to log in the base dir instead of the experiment dir.
         """
         if log_filename not in self._object_loggers:
             if log_in_parent_dir:
@@ -74,24 +73,20 @@ class ObjectLogManager:
                 )
             else:
                 self._object_loggers[log_filename] = ObjectLogger(
-                    dirname=os.path.join(
-                        self._object_logging_base_dir, self._experiment_name
-                    ),
+                    dirname=self._base_dir,
                     log_filename=log_filename,
                 )
 
         self._object_loggers[log_filename].log(log_entry)
 
-    def read_log_entry_file(self, experiment_name: str) -> list[Any]:
-        """Reads a log entry file and returns a list of log entries.
+    def read_base_dir_log_file(self, log_filename: str) -> list[Any]:
+        """Reads a log entry file in the base directory and returns a list of log entries.
 
         Args:
-            experiment_name:
+            log_filename: The log filename describing the log to read in the base directory.
         """
         return list(
-            read_object_log(
-                os.path.join(self._object_logging_base_dir, experiment_name)
-            )
+            read_object_log(os.path.join(self._object_logging_base_dir, log_filename))
         )
 
 
@@ -149,12 +144,11 @@ class LoggerAndNormalizer:
         else:
             self._make_hashable_fn = lambda x: x
 
+        # Object ids are assigned sequentially so they can be used
+        # directly as indices for the reverse lookup.
+        self._normalizer = {}
+        self._normalizer_reverse_lookup = []
         if read_existing_log_entry:
-            # Object ids are assigned sequentially so they can be used
-            # directly as indices for the reverse lookup.
-            self._normalizer = {}
-            self._normalizer_reverse_lookup = []
-
             for log_entry in object_log_manager.read_log_entry_file(
                 experiment_name=log_filename
             ):
@@ -164,12 +158,6 @@ class LoggerAndNormalizer:
                 hashable_object = self._make_hashable_fn(log_entry.object)
                 self._normalizer[hashable_object] = log_entry.id
                 self._normalizer_reverse_lookup.append(log_entry.object)
-
-        else:
-            self._normalizer = {}
-            # Object ids are assigned sequentially so they can be used
-            # directly as indices for the reverse lookup.
-            self._normalizer_reverse_lookup = []
 
     def get_logged_object_id(self, object: Any) -> int:
         """Returns the unique id for the provided object.
@@ -360,7 +348,7 @@ class ObjectLogger:
     def __init__(self, dirname: str, log_filename: str, buffer_size=1000):
         self._buffer_size = buffer_size
         self._buffer = []
-        self._log_file = open(os.path.join(dirname, log_filename), "ab+")
+        self._log_file = open(os.path.join(dirname, log_filename), "ab")
 
     def _flush_buffer(self):
         if self._buffer:
