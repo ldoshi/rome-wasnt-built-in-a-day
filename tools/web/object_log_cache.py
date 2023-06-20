@@ -23,6 +23,8 @@ TRAINING_HISTORY_DATABASE_KEY = "training_history_database_key"
 def get_experiment_data_dir(log_dir: str, experiment_name: str) -> str:
     return os.path.join(log_dir, experiment_name)
 
+def _make_cache_key(experiment_name: str, data_key: str) -> tuple[str, str]:
+    return (experiment_name, data_key)
 
 def _make_temp_subdir_if_necessary(path: str) -> None:
     os.makedirs(path, exist_ok=True)
@@ -69,7 +71,6 @@ _LOADERS = {
 
 
 
-# TODO(lyric): Loaded from log stats. unit test include create two object log caches. move the helpers into the class as members.
 
 class ObjectLogCache:
     """Loads and caches logged objects for efficient re-access.
@@ -77,6 +78,9 @@ class ObjectLogCache:
     Attributes:
       hit_counts: Dict of the number of cache hits per key.
       miss_counts: Dict of the number of cache misses per key.    
+      load_database_hit_counts: Dict of the number of load calls per key that loaded the database directly. 
+      load_database_miss_counts: Dict of the number of load calls per key that loaded the database from log. 
+
       loaded_from_log: Dict describing whether a key was loaded from log. 
     """
 
@@ -98,7 +102,8 @@ class ObjectLogCache:
         self._cache = {}
         self.hit_counts = collections.defaultdict(int)
         self.miss_counts = collections.defaultdict(int)
-        self.loaded_from_log = {}
+        self.load_database_hit_counts = collections.defaultdict(int)
+        self.load_database_miss_counts = collections.defaultdict(int)
 
 
     def _load(
@@ -109,12 +114,16 @@ class ObjectLogCache:
         if data_key not in _LOADERS:
             raise ValueError(f"Unsupported data_key: {data_key}")
 
+        cache_key = _make_cache_key(experiment_name=experiment_name, data_key=data_key)
+        
         temp_dir_path = os.path.join(self._temp_dir, data_key)
         if _database_exists(directory=temp_dir_path, experiment_name=experiment_name):
+            self.load_database_hit_counts[cache_key] += 1
             return _load_database(directory=temp_dir_path, experiment_name=experiment_name)
 
         _make_temp_subdir_if_necessary(temp_dir_path)
         database = _LOADERS[data_key](                log_dir=self._log_dir, experiment_name=experiment_name            )
+        self.load_database_miss_counts[cache_key] += 1
         _save_database(directory=temp_dir_path, experiment_name=experiment_name, database=database)
         return database
 
@@ -140,7 +149,7 @@ class ObjectLogCache:
 
         """
 
-        cache_key = (experiment_name, data_key)
+        cache_key = _make_cache_key(experiment_name=experiment_name, data_key=data_key)
         if cache_key not in self._cache:
             self.miss_counts[cache_key] += 1
             start = int(time.time() * 1e3)
