@@ -12,7 +12,7 @@ import pickle
 import time
 import torch
 
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List
 
 from bridger.logging_utils import log_entry
 from bridger.logging_utils import object_log_readers
@@ -58,10 +58,8 @@ def _load_training_history_database_from_log(
 def _save_database(
     directory: str,
     experiment_name: str,
-    database: Union[
-        object_log_readers.TrainingHistoryDatabase
-        | object_log_readers.TrainingHistoryDatabase
-    ],
+    database: object_log_readers.TrainingHistoryDatabase
+    | object_log_readers.TrainingHistoryDatabase,
 ) -> None:
     with open(os.path.join(directory, experiment_name), "wb") as f:
         pickle.dump(database, f)
@@ -73,10 +71,7 @@ def _database_exists(directory: str, experiment_name: str) -> bool:
 
 def _load_database(
     directory: str, experiment_name: str
-) -> Union[
-    object_log_readers.TrainingHistoryDatabase
-    | object_log_readers.TrainingHistoryDatabase
-]:
+) -> object_log_readers.TrainingHistoryDatabase | object_log_readers.TrainingHistoryDatabase:
     with open(os.path.join(directory, experiment_name), "rb") as f:
         return pickle.load(f)
 
@@ -119,10 +114,7 @@ class ObjectLogCache:
 
     def _load(
         self, experiment_name: str, data_key: str
-    ) -> Union[
-        object_log_readers.TrainingHistoryDatabase
-        | object_log_readers.TrainingHistoryDatabase
-    ]:
+    ) -> object_log_readers.TrainingHistoryDatabase | object_log_readers.TrainingHistoryDatabase:
         if data_key not in _LOADERS:
             raise ValueError(f"Unsupported data_key: {data_key}")
 
