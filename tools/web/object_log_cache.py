@@ -88,8 +88,11 @@ class ObjectLogCache:
     Attributes:
       hit_counts: Dict of the number of cache hits per key.
       miss_counts: Dict of the number of cache misses per key.
-      load_database_hit_counts: Dict of the number of load calls per key that loaded the database directly.
-      load_database_miss_counts: Dict of the number of load calls per key that loaded the database from log.
+      load_database_hit_counts: Dict of the number of load calls per
+        key that loaded the database directly.
+      load_database_miss_counts: Dict of the number of load calls per
+        key that loaded the database from log.
+
     """
 
     def __init__(self, log_dir: str, temp_dir: str):
