@@ -81,6 +81,7 @@ def _convert_log_to_saved_database_if_necessary(loader_fn: Callable[[str], Datab
     print("CALLED WITH " , database_directory, "experiment_name " , experiment_name)
     if _database_exists(directory=database_directory, experiment_name=experiment_name):
         return
+    _make_subdir_if_necessary(database_directory)
     database = loader_fn(experiment_name)
     _save_database(directory=database_directory, experiment_name=experiment_name,database=database)
                                                                      
@@ -124,6 +125,9 @@ class ObjectLogCache:
         self.load_database_hit_counts = collections.defaultdict(int)
         self.load_database_miss_counts = collections.defaultdict(int)
 
+    def _get_temp_dir_path(self, data_key: str) -> str:
+        return os.path.join(self._temp_dir, data_key)
+        
     def convert_logs_to_saved_databases(self, experiment_names: list[str]) -> None:
         """Converts log data into saved databases for all data keys and experiments.
 
@@ -136,7 +140,7 @@ class ObjectLogCache:
         """
         for data_key, loader in _LOADERS.items():
             loader_fn = functools.partial(loader, self._log_dir)
-            convert_log_to_saved_database_if_necessary = functools.partial(_convert_log_to_saved_database_if_necessary, loader_fn, self._temp_dir)
+            convert_log_to_saved_database_if_necessary = functools.partial(_convert_log_to_saved_database_if_necessary, loader_fn, self._get_temp_dir_path(data_key))
 
             # Chose only 2 background processes since most of the
             # processing time is related to reading data from disk. If
@@ -152,7 +156,7 @@ class ObjectLogCache:
 
         cache_key = _make_cache_key(experiment_name=experiment_name, data_key=data_key)
 
-        temp_dir_path = os.path.join(self._temp_dir, data_key)
+        temp_dir_path = self._get_temp_dir_path(data_key)
         if _database_exists(directory=temp_dir_path, experiment_name=experiment_name):
             self.load_database_hit_counts[cache_key] += 1
             return _load_database(
