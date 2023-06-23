@@ -20,7 +20,11 @@ from bridger.logging_utils import object_log_readers
 ACTION_INVERSION_DATABASE_KEY = "action_inversion_database_key"
 TRAINING_HISTORY_DATABASE_KEY = "training_history_database_key"
 
-DatabaseType = object_log_readers.TrainingHistoryDatabase  | object_log_readers.ActionInversionDatabase
+DatabaseType = (
+    object_log_readers.TrainingHistoryDatabase
+    | object_log_readers.ActionInversionDatabase
+)
+
 
 def get_experiment_data_dir(log_dir: str, experiment_name: str) -> str:
     return os.path.join(log_dir, experiment_name)
@@ -56,7 +60,9 @@ def _load_training_history_database_from_log(
     )
 
 
-def _save_database(    directory: str,    experiment_name: str,    database: DatabaseType) -> None:
+def _save_database(
+    directory: str, experiment_name: str, database: DatabaseType
+) -> None:
     with open(os.path.join(directory, experiment_name), "wb") as f:
         pickle.dump(database, f)
 
@@ -65,7 +71,7 @@ def _database_exists(directory: str, experiment_name: str) -> bool:
     return os.path.isfile(os.path.join(directory, experiment_name))
 
 
-def _load_database(    directory: str, experiment_name: str) -> DatabaseType:
+def _load_database(directory: str, experiment_name: str) -> DatabaseType:
     with open(os.path.join(directory, experiment_name), "rb") as f:
         return pickle.load(f)
 
@@ -106,7 +112,7 @@ class ObjectLogCache:
         self.load_database_hit_counts = collections.defaultdict(int)
         self.load_database_miss_counts = collections.defaultdict(int)
 
-    def _load(        self, experiment_name: str, data_key: str    ) -> DatabaseType:
+    def _load(self, experiment_name: str, data_key: str) -> DatabaseType:
         if data_key not in _LOADERS:
             raise ValueError(f"Unsupported data_key: {data_key}")
 
