@@ -76,6 +76,8 @@ def _load_database(
     with open(os.path.join(directory, experiment_name), "rb") as f:
         return pickle.load(f)
 
+def _convert_log_to_saved_database_if_necessary(loader_fn: Callable[[str, str], 
+                                                                     
 
 _LOADERS = {
     ACTION_INVERSION_DATABASE_KEY: _load_action_inversion_database_from_log,
@@ -116,7 +118,7 @@ class ObjectLogCache:
     def convert_logs_to_saved_databases(self, experiment_names: list[str]) -> None:
         """Converts log data into saved databases for all data keys and experiments.
 
-        Loading saved databases into the ObjectLogCache is much faster than loading them from logs. 
+        Loading saved databases into the ObjectLogCache is much faster than constructing them from logs. 
 
         All data loading is done using multiprocessing.
 
@@ -124,11 +126,22 @@ class ObjectLogCache:
           experiment_names: The names of all the experiments to convert.
         """
         for data_key, loader in _LOADERS.items():
+            loader_fn = functools.partial(loader, self._log_dir)
+
             # Chose only 2 background processes since most of the
             # processing time is related to reading data from disk. If
             # I understand correctly, multiple processes don't speed
             # this up too much unless there's corresponding hardware
             # support with multiple disk heads.
+            with multiprocessing.Pool(processes=2) as pool:
+                for experiment_name, data in pool.imap_unordered(
+                    loader, experiment_names
+                ):
+                    if data is None:
+                        continue
+                    cache_key = _make_cache_key(experiment_name, data_key)
+                    if cache_key not in self._cache:
+                        self._cache[cache_key] = data
             
         
     def _load(
