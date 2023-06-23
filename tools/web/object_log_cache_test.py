@@ -234,8 +234,8 @@ class ObjectLogCacheTest(unittest.TestCase):
             for data_key in object_log_cache._LOADERS.keys()
         ]
         for cache_key in cache_keys:
-          self.assertEqual(self._cache.load_database_miss_counts[cache_key], 0)
-          self.assertEqual(self._cache.load_database_hit_counts[cache_key], 0)
+            self.assertEqual(self._cache.load_database_miss_counts[cache_key], 0)
+            self.assertEqual(self._cache.load_database_hit_counts[cache_key], 0)
 
         self._cache.convert_logs_to_saved_databases([_EXPERIMENT_NAME_0])
 
@@ -243,9 +243,9 @@ class ObjectLogCacheTest(unittest.TestCase):
             self._cache.get(experiment_name=cache_key[0], data_key=cache_key[1])
 
         for cache_key in cache_keys:
-          self.assertEqual(self._cache.load_database_miss_counts[cache_key], 0)
-          self.assertEqual(self._cache.load_database_hit_counts[cache_key], 1)
-            
+            self.assertEqual(self._cache.load_database_miss_counts[cache_key], 0)
+            self.assertEqual(self._cache.load_database_hit_counts[cache_key], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

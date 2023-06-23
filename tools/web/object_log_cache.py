@@ -77,14 +77,20 @@ def _load_database(directory: str, experiment_name: str) -> DatabaseType:
     with open(os.path.join(directory, experiment_name), "rb") as f:
         return pickle.load(f)
 
-def _convert_log_to_saved_database_if_necessary(loader_fn: Callable[[str], DatabaseType], database_directory: str, experiment_name: str) -> None:
-    print("CALLED WITH " , database_directory, "experiment_name " , experiment_name)
+
+def _convert_log_to_saved_database_if_necessary(
+    loader_fn: Callable[[str], DatabaseType],
+    database_directory: str,
+    experiment_name: str,
+) -> None:
     if _database_exists(directory=database_directory, experiment_name=experiment_name):
         return
     _make_subdir_if_necessary(database_directory)
     database = loader_fn(experiment_name)
-    _save_database(directory=database_directory, experiment_name=experiment_name,database=database)
-                                                                     
+    _save_database(
+        directory=database_directory, experiment_name=experiment_name, database=database
+    )
+
 
 _LOADERS = {
     ACTION_INVERSION_DATABASE_KEY: _load_action_inversion_database_from_log,
@@ -127,20 +133,26 @@ class ObjectLogCache:
 
     def _get_temp_dir_path(self, data_key: str) -> str:
         return os.path.join(self._temp_dir, data_key)
-        
+
     def convert_logs_to_saved_databases(self, experiment_names: list[str]) -> None:
         """Converts log data into saved databases for all data keys and experiments.
 
-        Loading saved databases into the ObjectLogCache is much faster than constructing them from logs. 
+        Loading saved databases into the ObjectLogCache is much faster
+        than constructing them from logs.
 
         All data loading is done using multiprocessing.
 
         Args:
           experiment_names: The names of all the experiments to convert.
+
         """
         for data_key, loader in _LOADERS.items():
             loader_fn = functools.partial(loader, self._log_dir)
-            convert_log_to_saved_database_if_necessary = functools.partial(_convert_log_to_saved_database_if_necessary, loader_fn, self._get_temp_dir_path(data_key))
+            convert_log_to_saved_database_if_necessary = functools.partial(
+                _convert_log_to_saved_database_if_necessary,
+                loader_fn,
+                self._get_temp_dir_path(data_key),
+            )
 
             # Chose only 2 background processes since most of the
             # processing time is related to reading data from disk. If
@@ -149,7 +161,7 @@ class ObjectLogCache:
             # support with multiple disk heads.
             with multiprocessing.Pool(processes=2) as pool:
                 pool.map(convert_log_to_saved_database_if_necessary, experiment_names)
-        
+
     def _load(self, experiment_name: str, data_key: str) -> DatabaseType:
         if data_key not in _LOADERS:
             raise ValueError(f"Unsupported data_key: {data_key}")
