@@ -77,7 +77,12 @@ def _load_database(directory: str, experiment_name: str) -> DatabaseType:
     with open(os.path.join(directory, experiment_name), "rb") as f:
         return pickle.load(f)
 
-def _convert_log_to_saved_database_if_necessary(loader_fn: Callable[[str, str], 
+def _convert_log_to_saved_database_if_necessary(loader_fn: Callable[[str], DatabaseType], database_directory: str, experiment_name: str) -> None:
+    print("CALLED WITH " , database_directory, "experiment_name " , experiment_name)
+    if _database_exists(directory=database_directory, experiment_name=experiment_name):
+        return
+    database = loader_fn(experiment_name)
+    _save_database(directory=database_directory, experiment_name=experiment_name,database=database)
                                                                      
 
 _LOADERS = {
@@ -128,6 +133,7 @@ class ObjectLogCache:
         """
         for data_key, loader in _LOADERS.items():
             loader_fn = functools.partial(loader, self._log_dir)
+            convert_log_to_saved_database_if_necessary = functools.partial(_convert_log_to_saved_database_if_necessary, loader_fn, self._temp_dir)
 
             # Chose only 2 background processes since most of the
             # processing time is related to reading data from disk. If
@@ -135,15 +141,7 @@ class ObjectLogCache:
             # this up too much unless there's corresponding hardware
             # support with multiple disk heads.
             with multiprocessing.Pool(processes=2) as pool:
-                for experiment_name, data in pool.imap_unordered(
-                    loader, experiment_names
-                ):
-                    if data is None:
-                        continue
-                    cache_key = _make_cache_key(experiment_name, data_key)
-                    if cache_key not in self._cache:
-                        self._cache[cache_key] = data
-            
+                pool.map(convert_log_to_saved_database_if_necessary, experiment_names)
         
     def _load(self, experiment_name: str, data_key: str) -> DatabaseType:
         if data_key not in _LOADERS:
