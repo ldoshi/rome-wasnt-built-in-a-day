@@ -7,6 +7,8 @@ any race conditions to get/load data.
 """
 
 import collections
+import functools
+import multiprocessing
 import os
 import pickle
 import time
@@ -112,6 +114,24 @@ class ObjectLogCache:
         self.load_database_hit_counts = collections.defaultdict(int)
         self.load_database_miss_counts = collections.defaultdict(int)
 
+    def convert_logs_to_saved_databases(self, experiment_names: list[str]) -> None:
+        """Converts log data into saved databases for all data keys and experiments.
+
+        Loading saved databases into the ObjectLogCache is much faster than loading them from logs. 
+
+        All data loading is done using multiprocessing.
+
+        Args:
+          experiment_names: The names of all the experiments to convert.
+        """
+        for data_key, loader in _LOADERS.items():
+            # Chose only 2 background processes since most of the
+            # processing time is related to reading data from disk. If
+            # I understand correctly, multiple processes don't speed
+            # this up too much unless there's corresponding hardware
+            # support with multiple disk heads.
+            
+        
     def _load(
         self, experiment_name: str, data_key: str
     ) -> object_log_readers.TrainingHistoryDatabase | object_log_readers.TrainingHistoryDatabase:
