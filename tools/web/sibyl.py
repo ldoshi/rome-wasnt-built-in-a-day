@@ -14,6 +14,7 @@ app = flask.Flask(__name__)
 
 _OBJECT_LOG_CACHE = None
 _LOG_DIR = None
+_SIBYL_TMP_DIR = "sibyl_tmp"
 
 _START_BATCH_IDX_DEFAULT_VALUE = -1
 _MAX_POINTS_PER_SERIES_DEFAULT_VALUE = 200
@@ -347,6 +348,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     _LOG_DIR = args.log_dir
-    _OBJECT_LOG_CACHE = object_log_cache.ObjectLogCache(log_dir=_LOG_DIR)
+    _OBJECT_LOG_CACHE = object_log_cache.ObjectLogCache(
+        log_dir=_LOG_DIR, temp_dir=_SIBYL_TMP_DIR
+    )
 
     app.run(host="0.0.0.0", port=5001)
