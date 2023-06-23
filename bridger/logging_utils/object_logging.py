@@ -63,7 +63,8 @@ class ObjectLogManager:
           log_filename: A unique label describing the log in which to place
             log_entry. This label is also the actual log filename.
           log_entry: The object to be logged.
-          log_in_parent_dir: A boolean describing whether to log in the base dir instead of the experiment dir.
+          log_in_parent_dir: A boolean describing whether to log in the base dir
+          instead of the experiment dir.
         """
         if log_filename not in self._object_loggers:
             if log_in_parent_dir:
