@@ -31,7 +31,7 @@ def _make_cache_key(experiment_name: str, data_key: str) -> tuple[str, str]:
     return (experiment_name, data_key)
 
 
-def _make_temp_subdir_if_necessary(path: str) -> None:
+def _make_subdir_if_necessary(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
@@ -60,8 +60,7 @@ def _load_training_history_database_from_log(
 def _save_database(
     directory: str,
     experiment_name: str,
-    database: object_log_readers.TrainingHistoryDatabase
-    | object_log_readers.TrainingHistoryDatabase,
+    database: object_log_readers.TrainingHistoryDatabase  | object_log_readers.ActionInversionDatabase,
 ) -> None:
     with open(os.path.join(directory, experiment_name), "wb") as f:
         pickle.dump(database, f)
@@ -73,7 +72,7 @@ def _database_exists(directory: str, experiment_name: str) -> bool:
 
 def _load_database(
     directory: str, experiment_name: str
-) -> object_log_readers.TrainingHistoryDatabase | object_log_readers.TrainingHistoryDatabase:
+) -> object_log_readers.TrainingHistoryDatabase | object_log_readers.ActionInversionDatabase:
     with open(os.path.join(directory, experiment_name), "rb") as f:
         return pickle.load(f)
 
@@ -134,7 +133,7 @@ class ObjectLogCache:
         
     def _load(
         self, experiment_name: str, data_key: str
-    ) -> object_log_readers.TrainingHistoryDatabase | object_log_readers.TrainingHistoryDatabase:
+    ) -> object_log_readers.TrainingHistoryDatabase | object_log_readers.ActionInversionDatabase:
         if data_key not in _LOADERS:
             raise ValueError(f"Unsupported data_key: {data_key}")
 
@@ -147,7 +146,7 @@ class ObjectLogCache:
                 directory=temp_dir_path, experiment_name=experiment_name
             )
 
-        _make_temp_subdir_if_necessary(temp_dir_path)
+        _make_subdir_if_necessary(temp_dir_path)
         database = _LOADERS[data_key](
             log_dir=self._log_dir, experiment_name=experiment_name
         )
