@@ -23,22 +23,26 @@ import torch
 from collections.abc import Hashable
 
 from bridger.logging_utils import log_entry
+from bridger.logging_utils.object_log_readers import read_object_log
 
 
 class ObjectLogManager:
     """Provides a unified interface to log pickle-able objects."""
 
-    def __init__(self, dirname: str):
+    def __init__(self, object_logging_base_dir: str, experiment_name: str):
         """Creates directory dirname to store logs.
 
         Clears the contents of the directory if the dirname existed previously.
 
         Args:
-          dirname: The name of the directory to create.
+          object_logging_base_dir: The name of the directory to create.
+          experiment_name: The name of the experiment to create.
         """
-        self._dirname = dirname
-        shutil.rmtree(self._dirname, ignore_errors=True)
-        path = pathlib.Path(self._dirname)
+        self._base_dir = object_logging_base_dir
+        self._experiment_name = experiment_name
+        self._experiment_dir = os.path.join(self._base_dir, self._experiment_name)
+        shutil.rmtree(self._experiment_dir, ignore_errors=True)
+        path = pathlib.Path(self._experiment_dir)
         path.mkdir(parents=True, exist_ok=True)
 
         self._object_loggers = {}
@@ -50,20 +54,39 @@ class ObjectLogManager:
         for object_logger in self._object_loggers.values():
             object_logger.close()
 
-    def log(self, log_filename: str, log_entry: Any) -> None:
+    def log(
+        self, log_filename: str, log_entry: Any, log_in_parent_dir: bool = False
+    ) -> None:
         """Logs the provided entry to a log file named log_filename.
 
         Args:
           log_filename: A unique label describing the log in which to place
             log_entry. This label is also the actual log filename.
           log_entry: The object to be logged.
+          log_in_parent_dir: A boolean describing whether to log in the base dir
+          instead of the experiment dir.
         """
         if log_filename not in self._object_loggers:
-            self._object_loggers[log_filename] = ObjectLogger(
-                dirname=self._dirname, log_filename=log_filename
-            )
+            if log_in_parent_dir:
+                self._object_loggers[log_filename] = ObjectLogger(
+                    dirname=self._base_dir,
+                    log_filename=log_filename,
+                )
+            else:
+                self._object_loggers[log_filename] = ObjectLogger(
+                    dirname=self._experiment_dir,
+                    log_filename=log_filename,
+                )
 
         self._object_loggers[log_filename].log(log_entry)
+
+    def read_base_dir_log_file(self, log_filename: str) -> list[Any]:
+        """Reads a log entry file in the base directory and returns a list of log entries.
+
+        Args:
+            log_filename: The log filename describing the log to read in the base directory.
+        """
+        return list(read_object_log(os.path.join(self._base_dir, log_filename)))
 
 
 # TODO(arvind): Refactor out common code shared between
@@ -83,6 +106,7 @@ class LoggerAndNormalizer:
         object_log_manager: ObjectLogManager,
         log_entry_object_class: Any,
         make_hashable_fn: Optional[Callable[[Any], Hashable]] = None,
+        read_existing_log_entry: bool = False,
     ):
         """Store logging directives.
 
@@ -119,10 +143,20 @@ class LoggerAndNormalizer:
         else:
             self._make_hashable_fn = lambda x: x
 
-        self._normalizer = {}
         # Object ids are assigned sequentially so they can be used
         # directly as indices for the reverse lookup.
+        self._normalizer = {}
         self._normalizer_reverse_lookup = []
+        if read_existing_log_entry:
+            for log_entry in object_log_manager.read_base_dir_log_file(
+                log_filename=log_filename
+            ):
+                # Object IDs should be presented in sequential order.
+                assert len(self._normalizer_reverse_lookup) == log_entry.id
+
+                hashable_object = self._make_hashable_fn(log_entry.object)
+                self._normalizer[hashable_object] = log_entry.id
+                self._normalizer_reverse_lookup.append(log_entry.object)
 
     def get_logged_object_id(self, object: Any) -> int:
         """Returns the unique id for the provided object.
@@ -161,6 +195,7 @@ class LoggerAndNormalizer:
         self._object_log_manager.log(
             self._log_filename,
             log_entry.NormalizedLogEntry(id=object_id, object=object_copy),
+            log_in_parent_dir=True,
         )
         self._normalizer[hashable_object] = object_id
         assert len(self._normalizer_reverse_lookup) == object_id
@@ -312,7 +347,7 @@ class ObjectLogger:
     def __init__(self, dirname: str, log_filename: str, buffer_size=1000):
         self._buffer_size = buffer_size
         self._buffer = []
-        self._log_file = open(os.path.join(dirname, log_filename), "wb")
+        self._log_file = open(os.path.join(dirname, log_filename), "ab")
 
     def _flush_buffer(self):
         if self._buffer:
