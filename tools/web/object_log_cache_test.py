@@ -52,7 +52,7 @@ class ObjectLogCacheTest(unittest.TestCase):
     def test_get_file_does_not_exist(self):
         self.assertRaisesRegex(
             FileNotFoundError,
-            "action_inversion_report",
+            "No such file or directory",
             self._cache.get,
             experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
@@ -73,7 +73,7 @@ class ObjectLogCacheTest(unittest.TestCase):
 
         self.assertRaisesRegex(
             FileNotFoundError,
-            "action_inversion_report",
+            "No such file or directory",
             self._cache.get,
             experiment_name=_EXPERIMENT_NAME_0,
             data_key=object_log_cache.ACTION_INVERSION_DATABASE_KEY,
@@ -216,6 +216,32 @@ class ObjectLogCacheTest(unittest.TestCase):
             data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
         )
         self.assertEqual(len(training_history_database.get_states_by_visit_count()), 1)
+
+    def test_convert_logs_to_saved_databases(self):
+        """Verifies logs are converted before load."""
+        max_steps = 4
+        _generate_logs(
+            experiment_name=_EXPERIMENT_NAME_0,
+            max_steps=max_steps,
+            debug_action_inversion_checker=True,
+        )
+
+        cache_keys = [
+            object_log_cache._make_cache_key(_EXPERIMENT_NAME_0, data_key)
+            for data_key in object_log_cache._LOADERS.keys()
+        ]
+        for cache_key in cache_keys:
+            self.assertEqual(self._cache.load_database_miss_counts[cache_key], 0)
+            self.assertEqual(self._cache.load_database_hit_counts[cache_key], 0)
+
+        self._cache.convert_logs_to_saved_databases([_EXPERIMENT_NAME_0])
+
+        for cache_key in cache_keys:
+            self._cache.get(experiment_name=cache_key[0], data_key=cache_key[1])
+
+        for cache_key in cache_keys:
+            self.assertEqual(self._cache.load_database_miss_counts[cache_key], 0)
+            self.assertEqual(self._cache.load_database_hit_counts[cache_key], 1)
 
 
 if __name__ == "__main__":

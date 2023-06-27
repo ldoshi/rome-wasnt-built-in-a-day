@@ -7,6 +7,8 @@ any race conditions to get/load data.
 """
 
 import collections
+import functools
+import multiprocessing
 import os
 import pickle
 import time
@@ -41,7 +43,12 @@ def _make_subdir_if_necessary(path: str) -> None:
 def _load_action_inversion_database_from_log(
     log_dir: str,
     experiment_name: str,
-) -> object_log_readers.ActionInversionDatabase:
+) -> object_log_readers.ActionInversionDatabase | None:
+    if log_entry.ACTION_INVERSION_REPORT_ENTRY not in os.listdir(
+        os.path.join(log_dir, experiment_name)
+    ):
+        return
+
     return object_log_readers.ActionInversionDatabase(
         dirname=get_experiment_data_dir(
             log_dir=log_dir, experiment_name=experiment_name
@@ -76,7 +83,25 @@ def _load_database(directory: str, experiment_name: str) -> DatabaseType:
         return pickle.load(f)
 
 
-_LOADERS = {
+def _convert_log_to_saved_database_if_necessary(
+    loader_fn: Callable[[str], DatabaseType],
+    database_directory: str,
+    experiment_name: str,
+) -> None:
+    if _database_exists(directory=database_directory, experiment_name=experiment_name):
+        return
+    _make_subdir_if_necessary(database_directory)
+    database = loader_fn(experiment_name)
+
+    if not database:
+        return
+
+    _save_database(
+        directory=database_directory, experiment_name=experiment_name, database=database
+    )
+
+
+_LOADERS: dict[str, Callable[[str, str], DatabaseType]] = {
     ACTION_INVERSION_DATABASE_KEY: _load_action_inversion_database_from_log,
     TRAINING_HISTORY_DATABASE_KEY: _load_training_history_database_from_log,
 }
@@ -115,13 +140,44 @@ class ObjectLogCache:
         self.load_database_hit_counts = collections.defaultdict(int)
         self.load_database_miss_counts = collections.defaultdict(int)
 
-    def _load(self, experiment_name: str, data_key: str) -> DatabaseType:
+    def _get_temp_dir_path(self, data_key: str) -> str:
+        return os.path.join(self._temp_dir, data_key)
+
+    def convert_logs_to_saved_databases(self, experiment_names: list[str]) -> None:
+        """Converts log data into saved databases for all data keys and experiments.
+
+        Loading saved databases into the ObjectLogCache is much faster
+        than constructing them from logs.
+
+        All data loading is done using multiprocessing.
+
+        Args:
+          experiment_names: The names of all the experiments to convert.
+
+        """
+        for data_key, loader in _LOADERS.items():
+            loader_fn = functools.partial(loader, self._log_dir)
+            convert_log_to_saved_database_if_necessary = functools.partial(
+                _convert_log_to_saved_database_if_necessary,
+                loader_fn,
+                self._get_temp_dir_path(data_key),
+            )
+
+            # Chose only 2 background processes since most of the
+            # processing time is related to reading data from disk. If
+            # I understand correctly, multiple processes don't speed
+            # this up too much unless there's corresponding hardware
+            # support with multiple disk heads.
+            with multiprocessing.Pool(processes=2) as pool:
+                pool.map(convert_log_to_saved_database_if_necessary, experiment_names)
+
+    def _load(self, experiment_name: str, data_key: str) -> DatabaseType | None:
         if data_key not in _LOADERS:
             raise ValueError(f"Unsupported data_key: {data_key}")
 
         cache_key = _make_cache_key(experiment_name=experiment_name, data_key=data_key)
 
-        temp_dir_path = os.path.join(self._temp_dir, data_key)
+        temp_dir_path = self._get_temp_dir_path(data_key)
         if _database_exists(directory=temp_dir_path, experiment_name=experiment_name):
             self.load_database_hit_counts[cache_key] += 1
             return _load_database(
@@ -129,9 +185,10 @@ class ObjectLogCache:
             )
 
         _make_subdir_if_necessary(temp_dir_path)
-        database = _LOADERS[data_key](
-            log_dir=self._log_dir, experiment_name=experiment_name
-        )
+        database = _LOADERS[data_key](self._log_dir, experiment_name)
+        if not database:
+            return
+
         self.load_database_miss_counts[cache_key] += 1
         _save_database(
             directory=temp_dir_path, experiment_name=experiment_name, database=database
