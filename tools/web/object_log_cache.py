@@ -104,7 +104,7 @@ def _convert_log_to_saved_database_if_necessary(
     )
 
 
-_LOADERS = {
+_LOADERS: dict[str, Callable[[str, str], DatabaseType]] = {
     ACTION_INVERSION_DATABASE_KEY: _load_action_inversion_database_from_log,
     TRAINING_HISTORY_DATABASE_KEY: _load_training_history_database_from_log,
 }
@@ -188,9 +188,7 @@ class ObjectLogCache:
             )
 
         _make_subdir_if_necessary(temp_dir_path)
-        database = _LOADERS[data_key](
-            log_dir=self._log_dir, experiment_name=experiment_name
-        )
+        database = _LOADERS[data_key](self._log_dir, experiment_name)
         if not database:
             return
 
