@@ -1,6 +1,7 @@
 import argparse
 import flask
 import os
+import threading
 import time
 
 from typing import Any, Optional
@@ -53,6 +54,10 @@ def _get_int_or_default(name: str, default: Optional[int] = None) -> Optional[in
         return int(value)
     except:
         return default
+
+
+def _get_experiment_names() -> list[str]:
+    return sorted(os.listdir(_LOG_DIR))
 
 
 @app.route("/training_history_plot_data", methods=["GET"])
@@ -274,7 +279,7 @@ def action_inversion_batch_reports():
 @app.route("/", methods=["GET"])
 @app.route("/training_history", methods=["GET"])
 def training_history():
-    experiment_names = sorted(os.listdir(_LOG_DIR))
+    experiment_names = _get_experiment_names()
     selected_experiment_name = _get_string_or_default(
         name=_EXPERIMENT_NAME, default=experiment_names[0]
     )
@@ -351,5 +356,11 @@ if __name__ == "__main__":
     _OBJECT_LOG_CACHE = object_log_cache.ObjectLogCache(
         log_dir=_LOG_DIR, temp_dir=_SIBYL_TMP_DIR
     )
+
+    convert_logs_background_thread = threading.Thread(
+        target=_OBJECT_LOG_CACHE.convert_logs_to_saved_databases,
+        args=(_get_experiment_names(),),
+    )
+    convert_logs_background_thread.start()
 
     app.run(host="0.0.0.0", port=5001)

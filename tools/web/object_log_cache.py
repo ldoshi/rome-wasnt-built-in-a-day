@@ -13,11 +13,14 @@ import os
 import pickle
 import time
 import torch
+import torch.multiprocessing
 
 from typing import Any, Callable, Dict, List
 
 from bridger.logging_utils import log_entry
 from bridger.logging_utils import object_log_readers
+
+torch.multiprocessing.set_sharing_strategy("file_system")
 
 ACTION_INVERSION_DATABASE_KEY = "action_inversion_database_key"
 TRAINING_HISTORY_DATABASE_KEY = "training_history_database_key"
