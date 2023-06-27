@@ -56,7 +56,7 @@ def _get_int_or_default(name: str, default: Optional[int] = None) -> Optional[in
         return default
 
 
-def _get_experiment_names() -> List[str]:
+def _get_experiment_names() -> list[str]:
     return sorted(os.listdir(_LOG_DIR))
 
 
