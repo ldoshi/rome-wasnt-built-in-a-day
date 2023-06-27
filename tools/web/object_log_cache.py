@@ -46,7 +46,10 @@ def _make_subdir_if_necessary(path: str) -> None:
 def _load_action_inversion_database_from_log(
     log_dir: str,
     experiment_name: str,
-) -> object_log_readers.ActionInversionDatabase:
+) -> object_log_readers.ActionInversionDatabase | None:
+    if log_entry.ACTION_INVERSION_REPORT_ENTRY not in os.listdir(os.path.join(log_dir, experiment_name)):
+        return
+    
     return object_log_readers.ActionInversionDatabase(
         dirname=get_experiment_data_dir(
             log_dir=log_dir, experiment_name=experiment_name
@@ -90,6 +93,10 @@ def _convert_log_to_saved_database_if_necessary(
         return
     _make_subdir_if_necessary(database_directory)
     database = loader_fn(experiment_name)
+
+    if not database:
+        return
+    
     _save_database(
         directory=database_directory, experiment_name=experiment_name, database=database
     )
@@ -165,7 +172,7 @@ class ObjectLogCache:
             with multiprocessing.Pool(processes=2) as pool:
                 pool.map(convert_log_to_saved_database_if_necessary, experiment_names)
 
-    def _load(self, experiment_name: str, data_key: str) -> DatabaseType:
+    def _load(self, experiment_name: str, data_key: str) -> DatabaseType | None:
         if data_key not in _LOADERS:
             raise ValueError(f"Unsupported data_key: {data_key}")
 
@@ -182,6 +189,9 @@ class ObjectLogCache:
         database = _LOADERS[data_key](
             log_dir=self._log_dir, experiment_name=experiment_name
         )
+        if not database:
+            return 
+        
         self.load_database_miss_counts[cache_key] += 1
         _save_database(
             directory=temp_dir_path, experiment_name=experiment_name, database=database
