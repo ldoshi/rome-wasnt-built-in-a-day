@@ -32,8 +32,6 @@
 
 """
 
-from typing import List
-
 import argparse
 import json
 import subprocess
@@ -60,7 +58,7 @@ def main():
     with open(parsed_args.config) as f:
         config = json.load(f)
 
-    def execute_fn(args: List[str]) -> None:
+    def execute_fn(args: list[str]) -> None:
         command = [parsed_args.binary] + args
         subprocess.run(command, check=True)
 

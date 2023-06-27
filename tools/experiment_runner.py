@@ -1,6 +1,6 @@
 """Iterates a series of experiments described by a config file."""
 
-from typing import Any, Callable, List, Sequence, Union
+from typing import Any, Callable, Sequence, Union
 
 import argparse
 import copy
@@ -66,7 +66,7 @@ def _get_experiment_name(experiment_name_prefix: str, values: Sequence) -> str:
 
 
 def run_experiments(
-    config: dict[str, Any], execute_fn: Callable[[List[str]], None]
+    config: dict[str, Any], execute_fn: Callable[[list[str]], None]
 ) -> None:
     """Calls execute_fn for argument combinations described in config.
 
