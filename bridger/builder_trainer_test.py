@@ -106,7 +106,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         callbacks = [CountingCallback()] + early_stopping_callback
 
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             test_utils.get_trainer(max_steps, callbacks).fit(
                 test_utils.get_model(object_log_manager)
@@ -121,7 +122,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         """Verifies that training history and batches are not logged by default."""
 
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             test_utils.get_trainer().fit(test_utils.get_model(object_log_manager))
         path = pathlib.Path(_OBJECT_LOGGING_DIR)
@@ -170,7 +172,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         """Verifies that training batches are logged in debug mode."""
 
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             test_utils.get_trainer().fit(
                 test_utils.get_model(object_log_manager=object_log_manager, debug=True)
@@ -204,7 +207,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         max_steps = 2
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=max_steps).fit(
                 test_utils.get_model(
@@ -249,7 +253,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         max_steps = 1
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=max_steps).fit(
                 test_utils.get_model(
@@ -302,7 +307,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         max_steps = 2
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=max_steps).fit(
                 test_utils.get_model(
@@ -336,7 +342,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         max_steps = 8
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=max_steps).fit(
                 test_utils.get_model(
@@ -368,7 +375,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         """Verifies init args when debugging with action inversion checker."""
         max_steps = 1
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             self.assertRaisesRegex(
                 ValueError,
@@ -399,7 +407,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         """Verifies action inversion reports are logged when in debug_action_inversion_checker mode."""
         max_steps = 4
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=max_steps).fit(
                 test_utils.get_model(
@@ -433,7 +442,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         """
         max_steps = 5
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=max_steps).fit(
                 test_utils.get_model(
@@ -462,7 +472,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         self,
     ):
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             self.assertRaisesRegex(
                 ValueError,
@@ -474,7 +485,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
 
         qfunctions.choices["illegal"] = "illegal"
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             self.assertRaisesRegex(
                 ValueError,
@@ -499,7 +511,8 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
         self, name: str, q: str, training_steps: int, expected_change_count: int
     ):
         with object_logging.ObjectLogManager(
-            dirname=_OBJECT_LOGGING_DIR
+            object_logging_base_dir=os.path.dirname(_OBJECT_LOGGING_DIR),
+            experiment_name=os.path.basename(_OBJECT_LOGGING_DIR),
         ) as object_log_manager:
             model = test_utils.get_model(
                 object_log_manager=object_log_manager,

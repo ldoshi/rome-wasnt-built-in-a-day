@@ -7,6 +7,7 @@ import numpy as np
 import pathlib
 import shutil
 import torch
+import os
 
 from bridger import (
     builder_trainer,
@@ -195,7 +196,10 @@ class ReplayBufferInitializersTest(unittest.TestCase):
             capacity=_REPLAY_BUFFER_CAPACITY,
         )
 
-        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+        with object_logging.ObjectLogManager(
+            object_logging_base_dir=os.path.dirname(_TMP_DIR),
+            experiment_name=os.path.basename(_TMP_DIR),
+        ) as logger:
             state_logger = object_logging.LoggerAndNormalizer(
                 log_filename=_LOG_FILENAME,
                 object_log_manager=logger,
@@ -220,7 +224,10 @@ class ReplayBufferInitializersTest(unittest.TestCase):
             debug=True,
         )
 
-        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+        with object_logging.ObjectLogManager(
+            object_logging_base_dir=os.path.dirname(_TMP_DIR),
+            experiment_name=os.path.basename(_TMP_DIR),
+        ) as logger:
             state_logger = object_logging.LoggerAndNormalizer(
                 log_filename=_LOG_FILENAME,
                 object_log_manager=logger,

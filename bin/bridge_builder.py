@@ -47,10 +47,6 @@ def _get_full_experiment_name(experiment_name: str) -> str:
     )
 
 
-def _get_logging_dir(object_logging_base_dir: str, full_experiment_name: str) -> str:
-    return os.path.join(object_logging_base_dir, full_experiment_name)
-
-
 _DEMO_CALLBACK_FREQUENCY = 100
 MAX_DEMO_EPISODE_LENGTH = 50
 
@@ -63,7 +59,7 @@ def run():
 
     full_experiment_name = _get_full_experiment_name(hparams.experiment_name)
     with object_logging.ObjectLogManager(
-        _get_logging_dir(hparams.object_logging_base_dir, full_experiment_name)
+        hparams.object_logging_base_dir, full_experiment_name
     ) as object_log_manager:
         if hparams.load_checkpoint_path:
             # TODO(arvind): Decide on and implement the functionality we'd like to

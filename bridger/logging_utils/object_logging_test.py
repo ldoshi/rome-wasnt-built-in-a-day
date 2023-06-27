@@ -14,17 +14,20 @@ from bridger.logging_utils import log_entry
 from bridger.logging_utils import object_logging
 from bridger.logging_utils import object_log_readers
 
-_TMP_DIR = "tmp/nested_tmp"
+_NESTED_TMP_DIR_0 = "tmp/nested_tmp_0"
+_NESTED_TMP_DIR_1 = "tmp/nested_tmp_1"
 
 
 def create_temp_dir():
-    path = pathlib.Path(_TMP_DIR)
-    path.mkdir(parents=True, exist_ok=True)
+    for temporary_dir in [_NESTED_TMP_DIR_0, _NESTED_TMP_DIR_1]:
+        path = pathlib.Path(temporary_dir)
+        path.mkdir(parents=True, exist_ok=True)
 
 
 def delete_temp_dir():
-    path = pathlib.Path(_TMP_DIR)
-    shutil.rmtree(path.parts[0], ignore_errors=True)
+    for temporary_dir in [_NESTED_TMP_DIR_0, _NESTED_TMP_DIR_1]:
+        path = pathlib.Path(temporary_dir)
+        shutil.rmtree(path.parts[0], ignore_errors=True)
 
 
 _LOG_FILENAME_0 = "log_filename_0"
@@ -33,14 +36,17 @@ _LOG_FILENAME_1 = "log_filename_1"
 
 class TestObjectLogManager(unittest.TestCase):
     def tearDown(self):
-        # The _TMP_DIR is created by the ObjectLogManager init.
+        # The _NESTED_TMP_DIR_0 and _NESTED_TMP_DIR_1 are created by the ObjectLogManager init.
         delete_temp_dir()
 
     def test_object_log_manager_basic(self):
         expected_log_entries_0 = ["a", "b", "c"]
         expected_log_entries_1 = ["d"]
 
-        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+        with object_logging.ObjectLogManager(
+            object_logging_base_dir=os.path.dirname(_NESTED_TMP_DIR_0),
+            experiment_name=os.path.basename(_NESTED_TMP_DIR_0),
+        ) as logger:
             for log_entry in expected_log_entries_0:
                 logger.log(_LOG_FILENAME_0, log_entry)
 
@@ -48,12 +54,16 @@ class TestObjectLogManager(unittest.TestCase):
                 logger.log(_LOG_FILENAME_1, log_entry)
 
         logged_entries_0 = list(
-            object_log_readers.read_object_log(os.path.join(_TMP_DIR, _LOG_FILENAME_0))
+            object_log_readers.read_object_log(
+                os.path.join(_NESTED_TMP_DIR_0, _LOG_FILENAME_0)
+            )
         )
         self.assertEqual(expected_log_entries_0, logged_entries_0)
 
         logged_entries_1 = list(
-            object_log_readers.read_object_log(os.path.join(_TMP_DIR, _LOG_FILENAME_1))
+            object_log_readers.read_object_log(
+                os.path.join(_NESTED_TMP_DIR_0, _LOG_FILENAME_1)
+            )
         )
         self.assertEqual(expected_log_entries_1, logged_entries_1)
 
@@ -74,7 +84,10 @@ class TestLoggerAndNormalizer(unittest.TestCase):
     def test_get_logged_object_id(
         self, name, log_entry_object_class, make_hashable_fn, object_0, object_1
     ):
-        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+        with object_logging.ObjectLogManager(
+            object_logging_base_dir=os.path.dirname(_NESTED_TMP_DIR_0),
+            experiment_name=os.path.basename(_NESTED_TMP_DIR_0),
+        ) as logger:
             normalizer = object_logging.LoggerAndNormalizer(
                 log_filename=_LOG_FILENAME_0,
                 object_log_manager=logger,
@@ -91,13 +104,65 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             log_entry.NormalizedLogEntry(id=1, object=object_1),
         ]
         logged_entries = list(
-            object_log_readers.read_object_log(os.path.join(_TMP_DIR, _LOG_FILENAME_0))
+            object_log_readers.read_object_log(
+                os.path.join(os.path.dirname(_NESTED_TMP_DIR_0), _LOG_FILENAME_0)
+            )
+        )
+        self.assertEqual(logged_entries, expected_entries)
+
+    @parameterized.expand(
+        [
+            ("Hashable Log Entry", int, None, 1, 5),
+            ("Non-Hashable Log Entry", list, str, [1], [2, 5]),
+        ]
+    )
+    def test_get_repeated_logged_object_id(
+        self, name, log_entry_object_class, make_hashable_fn, object_0, object_1
+    ):
+        with object_logging.ObjectLogManager(
+            object_logging_base_dir=os.path.dirname(_NESTED_TMP_DIR_0),
+            experiment_name=os.path.basename(_NESTED_TMP_DIR_0),
+        ) as logger:
+            normalizer = object_logging.LoggerAndNormalizer(
+                log_filename=_LOG_FILENAME_0,
+                object_log_manager=logger,
+                log_entry_object_class=log_entry_object_class,
+                make_hashable_fn=make_hashable_fn,
+            )
+            self.assertEqual(normalizer.get_logged_object_id(object_0), 0)
+            self.assertEqual(normalizer.get_logged_object_id(object_1), 1)
+
+        with object_logging.ObjectLogManager(
+            object_logging_base_dir=os.path.dirname(_NESTED_TMP_DIR_1),
+            experiment_name=os.path.basename(_NESTED_TMP_DIR_1),
+        ) as logger:
+            normalizer = object_logging.LoggerAndNormalizer(
+                log_filename=_LOG_FILENAME_0,
+                object_log_manager=logger,
+                log_entry_object_class=log_entry_object_class,
+                make_hashable_fn=make_hashable_fn,
+                read_existing_log_entry=True,
+            )
+            self.assertEqual(normalizer.get_logged_object_id(object_1), 1)
+            self.assertEqual(normalizer.get_logged_object_id(object_0), 0)
+
+        expected_entries = [
+            log_entry.NormalizedLogEntry(id=0, object=object_0),
+            log_entry.NormalizedLogEntry(id=1, object=object_1),
+        ]
+        logged_entries = list(
+            object_log_readers.read_object_log(
+                os.path.join(os.path.dirname(_NESTED_TMP_DIR_0), _LOG_FILENAME_0)
+            )
         )
         self.assertEqual(logged_entries, expected_entries)
 
     def test_get_logged_object_by_id(self):
         object = 1
-        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+        with object_logging.ObjectLogManager(
+            object_logging_base_dir=os.path.dirname(_NESTED_TMP_DIR_0),
+            experiment_name=os.path.basename(_NESTED_TMP_DIR_0),
+        ) as logger:
             normalizer = object_logging.LoggerAndNormalizer(
                 log_filename=_LOG_FILENAME_0,
                 object_log_manager=logger,
@@ -111,7 +176,10 @@ class TestLoggerAndNormalizer(unittest.TestCase):
             )
 
     def test_logging_incorrect_type(self):
-        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+        with object_logging.ObjectLogManager(
+            object_logging_base_dir=os.path.dirname(_NESTED_TMP_DIR_0),
+            experiment_name=os.path.basename(_NESTED_TMP_DIR_0),
+        ) as logger:
             normalizer = object_logging.LoggerAndNormalizer(
                 log_filename=_LOG_FILENAME_0,
                 object_log_manager=logger,
@@ -126,7 +194,10 @@ class TestLoggerAndNormalizer(unittest.TestCase):
         corresponding make_hashable_fn because torch.equal tensors
         hash to different values using the built-in hash function.
         """
-        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+        with object_logging.ObjectLogManager(
+            object_logging_base_dir=os.path.dirname(_NESTED_TMP_DIR_0),
+            experiment_name=os.path.basename(_NESTED_TMP_DIR_0),
+        ) as logger:
             self.assertRaises(
                 ValueError,
                 object_logging.LoggerAndNormalizer,
@@ -182,7 +253,10 @@ class TestOccurrenceLogger(unittest.TestCase):
         all cases.
 
         """
-        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+        with object_logging.ObjectLogManager(
+            object_logging_base_dir=os.path.dirname(_NESTED_TMP_DIR_0),
+            experiment_name=os.path.basename(_NESTED_TMP_DIR_0),
+        ) as logger:
             if make_hashable_fn:
                 normalizer = object_logging.LoggerAndNormalizer(
                     log_filename=_LOG_FILENAME_0,
@@ -225,12 +299,17 @@ class TestOccurrenceLogger(unittest.TestCase):
             for batch_idx, object in zip([0, 0, 1, 1, 1, 2], expected_logged_objects)
         ]
         logged_entries = list(
-            object_log_readers.read_object_log(os.path.join(_TMP_DIR, _LOG_FILENAME_1))
+            object_log_readers.read_object_log(
+                os.path.join(_NESTED_TMP_DIR_0, _LOG_FILENAME_1)
+            )
         )
         self.assertEqual(logged_entries, expected_entries)
 
     def test_logging_incorrect_type(self):
-        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+        with object_logging.ObjectLogManager(
+            object_logging_base_dir=os.path.dirname(_NESTED_TMP_DIR_0),
+            experiment_name=os.path.basename(_NESTED_TMP_DIR_0),
+        ) as logger:
             occurrence_logger = object_logging.OccurrenceLogger(
                 log_filename=_LOG_FILENAME_0,
                 object_log_manager=logger,
@@ -248,7 +327,10 @@ class TestOccurrenceLogger(unittest.TestCase):
         and efficient storage.
         """
 
-        with object_logging.ObjectLogManager(dirname=_TMP_DIR) as logger:
+        with object_logging.ObjectLogManager(
+            object_logging_base_dir=os.path.dirname(_NESTED_TMP_DIR_0),
+            experiment_name=os.path.basename(_NESTED_TMP_DIR_0),
+        ) as logger:
             self.assertRaises(
                 ValueError,
                 object_logging.OccurrenceLogger,
@@ -260,7 +342,9 @@ class TestOccurrenceLogger(unittest.TestCase):
 
 def _log_entries(entries: List[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
-        dirname=_TMP_DIR, log_filename=_LOG_FILENAME_0, buffer_size=buffer_size
+        dirname=_NESTED_TMP_DIR_0,
+        log_filename=_LOG_FILENAME_0,
+        buffer_size=buffer_size,
     )
     for entry in entries:
         object_logger.log(entry)
@@ -284,7 +368,7 @@ class TestObjectLogger(unittest.TestCase):
         previous entries, which contain buffer_size elements each.
         """
 
-        test_filepath = os.path.join(_TMP_DIR, _LOG_FILENAME_0)
+        test_filepath = os.path.join(_NESTED_TMP_DIR_0, _LOG_FILENAME_0)
         entries = ["a", "b", "c"]
         _log_entries(entries, buffer_size)
 

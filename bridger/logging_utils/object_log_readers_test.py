@@ -169,7 +169,8 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
     def setUp(self):
         test_utils.create_temp_dir()
         with object_logging.ObjectLogManager(
-            dirname=test_utils.object_logging_dir()
+            object_logging_base_dir=os.path.dirname(test_utils.object_logging_dir()),
+            experiment_name=os.path.basename(test_utils.object_logging_dir()),
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=5).fit(
                 test_utils.get_model(
@@ -422,7 +423,8 @@ class TestActionInversionDatabase(unittest.TestCase):
     def setUp(self):
         test_utils.create_temp_dir()
         with object_logging.ObjectLogManager(
-            dirname=test_utils.object_logging_dir()
+            object_logging_base_dir=os.path.dirname(test_utils.object_logging_dir()),
+            experiment_name=os.path.basename(test_utils.object_logging_dir()),
         ) as object_log_manager:
             test_utils.get_trainer(max_steps=12).fit(
                 test_utils.get_model(
