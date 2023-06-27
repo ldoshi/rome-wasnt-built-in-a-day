@@ -44,9 +44,11 @@ def _load_action_inversion_database_from_log(
     log_dir: str,
     experiment_name: str,
 ) -> object_log_readers.ActionInversionDatabase | None:
-    if log_entry.ACTION_INVERSION_REPORT_ENTRY not in os.listdir(os.path.join(log_dir, experiment_name)):
+    if log_entry.ACTION_INVERSION_REPORT_ENTRY not in os.listdir(
+        os.path.join(log_dir, experiment_name)
+    ):
         return
-    
+
     return object_log_readers.ActionInversionDatabase(
         dirname=get_experiment_data_dir(
             log_dir=log_dir, experiment_name=experiment_name
@@ -93,7 +95,7 @@ def _convert_log_to_saved_database_if_necessary(
 
     if not database:
         return
-    
+
     _save_database(
         directory=database_directory, experiment_name=experiment_name, database=database
     )
@@ -187,8 +189,8 @@ class ObjectLogCache:
             log_dir=self._log_dir, experiment_name=experiment_name
         )
         if not database:
-            return 
-        
+            return
+
         self.load_database_miss_counts[cache_key] += 1
         _save_database(
             directory=temp_dir_path, experiment_name=experiment_name, database=database
