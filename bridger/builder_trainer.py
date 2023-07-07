@@ -87,7 +87,7 @@ def make_env(
 
 def get_actions_for_standard_configuration(
     env_width: int,
-) -> List[List[int]]:
+) -> list[list[int]]:
     """Produces actions to build a bridge in the standard configuration.
 
     The implementation presumes an environment of even width where the

@@ -107,7 +107,7 @@ class ActionInversionCheckerTest(unittest.TestCase):
             ("Single column more raised", [[0, 0, 0, 0, 0], [4, 4, 4, 4, 4]]),
         ]
     )
-    def test_check_actions_parsing(self, name: str, actions: List[List[int]]):
+    def test_check_actions_parsing(self, name: str, actions: list[list[int]]):
         """Verifies that different action inputs are parsed differently and correctly."""
         checker = action_inversion_checker.ActionInversionChecker(
             env=self._env, actions=actions

@@ -59,14 +59,14 @@ class TrainingBatchLogEntry:
 
     batch_idx: int
     indices: torch.Tensor
-    state_ids: List[int]
+    state_ids: list[int]
     actions: torch.Tensor
-    next_state_ids: List[int]
+    next_state_ids: list[int]
     rewards: torch.Tensor
     successes: torch.Tensor
     weights: torch.Tensor
     loss: torch.Tensor
-    replay_buffer_state_counts: List[tuple[int, int]]
+    replay_buffer_state_counts: list[tuple[int, int]]
 
 
 @dataclasses.dataclass

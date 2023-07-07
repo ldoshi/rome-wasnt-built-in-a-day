@@ -62,7 +62,7 @@ def get_model(
 
 
 def get_trainer(
-    max_steps: int = 1, callbacks: Optional[List[Callback]] = None
+    max_steps: int = 1, callbacks: Optional[list[Callback]] = None
 ) -> Trainer:
     return Trainer(
         val_check_interval=1,

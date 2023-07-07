@@ -325,7 +325,7 @@ class OccurrenceLogger:
             ),
         )
 
-    def get_top_n(self, n=None) -> List[Any]:
+    def get_top_n(self, n=None) -> list[Any]:
         if self._logger_and_normalizer:
             return [
                 self._logger_and_normalizer.get_logged_object_by_id(entry[0])

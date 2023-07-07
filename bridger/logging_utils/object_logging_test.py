@@ -340,7 +340,7 @@ class TestOccurrenceLogger(unittest.TestCase):
             )
 
 
-def _log_entries(entries: List[Any], buffer_size: int) -> None:
+def _log_entries(entries: list[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
         dirname=_NESTED_TMP_DIR_0,
         log_filename=_LOG_FILENAME_0,
