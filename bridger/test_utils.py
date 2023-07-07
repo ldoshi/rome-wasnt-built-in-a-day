@@ -8,7 +8,7 @@ import shutil
 from bridger.logging_utils import object_logging
 from bridger import builder_trainer
 
-from typing import List, Optional
+from typing import Optional
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback

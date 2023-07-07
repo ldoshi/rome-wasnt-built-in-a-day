@@ -11,7 +11,7 @@ from parameterized import parameterized
 
 import torch
 
-from typing import List, Optional
+from typing import Optional
 
 from bridger.debug import action_inversion_checker
 from bridger import builder_trainer

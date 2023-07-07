@@ -19,7 +19,7 @@ import shutil
 import torch
 
 from collections.abc import Hashable
-from typing import List, Optional, TypeVar, Generic
+from typing import Optional, TypeVar, Generic
 import torch
 
 from bridger.logging_utils import log_entry
