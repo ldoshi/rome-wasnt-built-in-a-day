@@ -206,7 +206,7 @@ def _collect_parameters(
     env: gym.Env,
     hash_fn: Callable[[Any], str],
     remaining_brick_count: int,
-    initial_actions: Tuple[int],
+    initial_actions: tuple[int],
 ) -> Set[str]:
     state_hashes = set()
     for remaining_actions in itertools.product(

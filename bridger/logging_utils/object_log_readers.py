@@ -111,7 +111,7 @@ class MetricMap(Generic[MetricMapValue]):
 
     def get(
         self, start_batch_idx: Optional[int], end_batch_idx: Optional[int]
-    ) -> Tuple[list[int], list[MetricMapValue]]:
+    ) -> tuple[list[int], list[MetricMapValue]]:
         """Retrieves batch_idx and metric values for the requested range.
 
         Args:
@@ -204,7 +204,7 @@ class StateActionMetricMap:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[list[int], list[float]]:
+    ) -> tuple[list[int], list[float]]:
         """Retrieves batch_idx and metric values for the requested range.
 
         Args:
@@ -385,7 +385,7 @@ class TrainingHistoryDatabase:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[list[int], list[float]]:
+    ) -> tuple[list[int], list[float]]:
         """Retrieves td_error values for the requested state and action.
 
         Args:
@@ -414,7 +414,7 @@ class TrainingHistoryDatabase:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[list[int], list[float]]:
+    ) -> tuple[list[int], list[float]]:
         """Retrieves q values for the requested state and action.
 
         Args:
@@ -443,7 +443,7 @@ class TrainingHistoryDatabase:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[list[int], list[float]]:
+    ) -> tuple[list[int], list[float]]:
         """Retrieves q target values for the requested state and action.
 
         Args:
@@ -470,7 +470,7 @@ class TrainingHistoryDatabase:
         self,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[list[int], list[dict[int, int]]]:
+    ) -> tuple[list[int], list[dict[int, int]]]:
         """Retrieves replay buffer state counts for the requested interval of start and end batch idxs.
 
         Args:
@@ -608,7 +608,7 @@ class ActionInversionDatabase:
         self,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[list[int], list[int]]:
+    ) -> tuple[list[int], list[int]]:
         """Returns the action inversion incident rate per batch.
 
         Args:
@@ -637,7 +637,7 @@ class ActionInversionDatabase:
 
     def get_reports(
         self, batch_idx: int
-    ) -> list[Tuple[log_entry.ActionInversionReportEntry, torch.Tensor]]:
+    ) -> list[tuple[log_entry.ActionInversionReportEntry, torch.Tensor]]:
         """Returns action inversion reports paired with their corresponding states.
 
         Args:
