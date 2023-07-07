@@ -32,8 +32,6 @@
 
 """
 
-from typing import List
-
 import argparse
 import json
 import subprocess
