@@ -11,7 +11,7 @@ import functools
 import itertools
 import torch
 
-from typing import Any, Callable, Generator, Optional, Tuple
+from typing import Any, Callable, Generator, Optional
 
 from bridger import builder_trainer, hash_utils
 from bridger.logging_utils import object_logging
@@ -19,7 +19,7 @@ from bridger.logging_utils import object_logging
 
 def _only_reset_state(
     env: gym.Env,
-) -> Generator[Tuple[Any, Any, Any, Any, Any], None, None]:
+) -> Generator[tuple[Any, Any, Any, Any, Any], None, None]:
     """Generates every (reset_state, action) pair.
 
     This is primarily for debugging the full flow from logging to
@@ -44,7 +44,7 @@ def _only_reset_state(
 
 def _standard_configuration_bridge_states(
     env: gym.Env,
-) -> Generator[Tuple[Any, Any, Any, Any, Any], None, None]:
+) -> Generator[tuple[Any, Any, Any, Any, Any], None, None]:
     """Generates experiences while building the optimal bridge.
 
     This strategy assumes the current env standard config. Every
@@ -85,7 +85,7 @@ def _standard_configuration_bridge_states(
 
 def _n_bricks(
     brick_count: int, env: gym.Env
-) -> Generator[Tuple[Any, Any, Any, Any, Any], None, None]:
+) -> Generator[tuple[Any, Any, Any, Any, Any], None, None]:
     """Generates distinct experiences from exhaustively placing n bricks.
 
     Enumerates every permutation of placing n bricks and removes

@@ -23,7 +23,7 @@ import dataclasses
 import gym
 import numpy as np
 import torch
-from typing import Callable, List, Optional, Set
+from typing import Callable, Optional
 
 from bridger import hash_utils
 from bridger import policies
@@ -34,7 +34,7 @@ class PreferredActionEntry:
     """A state paired with the preferred actions to take from that state."""
 
     state: torch.Tensor
-    preferred_actions: Set[int]
+    preferred_actions: set[int]
 
 
 @dataclasses.dataclass
@@ -42,7 +42,7 @@ class ActionInversionReport:
     """An incidence of action inversion for a particular state."""
 
     state: torch.Tensor
-    preferred_actions: Set[int]
+    preferred_actions: set[int]
     policy_action: int
 
 
@@ -59,7 +59,7 @@ class ActionInversionChecker:
     def __init__(
         self,
         env: gym.Env,
-        actions: List[List[int]],
+        actions: list[list[int]],
         state_hash_fn: Callable[[torch.Tensor], Hashable] = hash_utils.hash_tensor,
     ):
         """Initialize expected actions based on the provided contruction sequence.
@@ -122,8 +122,8 @@ class ActionInversionChecker:
     def _populate_preferred_actions(
         self,
         env: gym.Env,
-        actions: List[List[int]],
-        action_indices: List[int],
+        actions: list[list[int]],
+        action_indices: list[int],
         state: np.ndarray,
     ) -> None:
         """Populates the preferred actions per state.
@@ -174,8 +174,8 @@ class ActionInversionChecker:
                 action_indices[index] -= 1
 
     def check(
-        self, policy: policies.Policy, states: Optional[List[torch.Tensor]] = None
-    ) -> List[ActionInversionReport]:
+        self, policy: policies.Policy, states: Optional[list[torch.Tensor]] = None
+    ) -> list[ActionInversionReport]:
         """Checks the policy for action inversions.
 
         Args:

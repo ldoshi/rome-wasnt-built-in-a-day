@@ -6,7 +6,7 @@ import os
 import unittest
 
 import torch
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from parameterized import parameterized
 
@@ -124,8 +124,8 @@ class TestStateActionMetricMap(unittest.TestCase):
         name: str,
         start_batch_idx: Optional[int],
         end_batch_idx: Optional[int],
-        expected_batch_idxs: List[int],
-        expected_values: List[float],
+        expected_batch_idxs: list[int],
+        expected_values: list[float],
     ):
         test_map = object_log_readers.StateActionMetricMap()
 
@@ -375,7 +375,7 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
         self.assertTrue(all([isinstance(value, float) for value in values]))
 
 
-def _log_entries(entries: List[Any], buffer_size: int) -> None:
+def _log_entries(entries: list[Any], buffer_size: int) -> None:
     object_logger = object_logging.ObjectLogger(
         dirname=test_utils.TMP_DIR,
         log_filename=_LOG_FILENAME_0,

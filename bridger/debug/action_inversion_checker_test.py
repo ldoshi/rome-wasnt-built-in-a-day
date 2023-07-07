@@ -11,7 +11,7 @@ from parameterized import parameterized
 
 import torch
 
-from typing import List, Optional
+from typing import Optional
 
 from bridger.debug import action_inversion_checker
 from bridger import builder_trainer
@@ -20,7 +20,7 @@ from bridger import policies
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 
 
-def _constant_estimators(nA: int) -> List:
+def _constant_estimators(nA: int) -> list:
     return [
         (
             lambda action: lambda state: torch.nn.functional.one_hot(
@@ -107,7 +107,7 @@ class ActionInversionCheckerTest(unittest.TestCase):
             ("Single column more raised", [[0, 0, 0, 0, 0], [4, 4, 4, 4, 4]]),
         ]
     )
-    def test_check_actions_parsing(self, name: str, actions: List[List[int]]):
+    def test_check_actions_parsing(self, name: str, actions: list[list[int]]):
         """Verifies that different action inputs are parsed differently and correctly."""
         checker = action_inversion_checker.ActionInversionChecker(
             env=self._env, actions=actions

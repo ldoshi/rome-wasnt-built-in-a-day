@@ -11,7 +11,7 @@ import torch.nn.functional as F
 
 from bridger import hash_utils
 
-from typing import Any, Callable, Optional, Set, Tuple
+from typing import Any, Callable, Optional
 
 
 def _update_target(tau: float, q: torch.nn.Module, target: torch.nn.Module) -> None:
@@ -206,8 +206,8 @@ def _collect_parameters(
     env: gym.Env,
     hash_fn: Callable[[Any], str],
     remaining_brick_count: int,
-    initial_actions: Tuple[int],
-) -> Set[str]:
+    initial_actions: tuple[int],
+) -> set[str]:
     state_hashes = set()
     for remaining_actions in itertools.product(
         range(env.nA), repeat=remaining_brick_count

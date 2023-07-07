@@ -19,7 +19,7 @@ import shutil
 import torch
 
 from collections.abc import Hashable
-from typing import List, Optional, Tuple, Dict, TypeVar, Generic
+from typing import Optional, TypeVar, Generic
 import torch
 
 from bridger.logging_utils import log_entry
@@ -43,7 +43,7 @@ def _read_object_log(dirname: str, log_filename: str):
     yield from read_object_log(log_filepath=os.path.join(dirname, log_filename))
 
 
-MetricMapValue = TypeVar("MetricMapValue", float, Dict[int, int])
+MetricMapValue = TypeVar("MetricMapValue", float, dict[int, int])
 
 
 class MetricMap(Generic[MetricMapValue]):
@@ -111,7 +111,7 @@ class MetricMap(Generic[MetricMapValue]):
 
     def get(
         self, start_batch_idx: Optional[int], end_batch_idx: Optional[int]
-    ) -> Tuple[List[int], List[MetricMapValue]]:
+    ) -> tuple[list[int], list[MetricMapValue]]:
         """Retrieves batch_idx and metric values for the requested range.
 
         Args:
@@ -204,7 +204,7 @@ class StateActionMetricMap:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[List[int], List[float]]:
+    ) -> tuple[list[int], list[float]]:
         """Retrieves batch_idx and metric values for the requested range.
 
         Args:
@@ -349,7 +349,7 @@ class TrainingHistoryDatabase:
             )
         self._td_errors.finalize()
 
-        self._replay_buffer_state_counts = MetricMap[Dict[int, int]]()
+        self._replay_buffer_state_counts = MetricMap[dict[int, int]]()
         for entry in _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY):
             self._replay_buffer_state_counts.add(
                 batch_idx=entry.batch_idx,
@@ -365,7 +365,7 @@ class TrainingHistoryDatabase:
     def get_states_by_visit_count(
         self,
         n: Optional[int] = None,
-    ) -> List[VisitEntry]:
+    ) -> list[VisitEntry]:
         """Retrieves the top-n states by visit count.
 
         Args:
@@ -385,7 +385,7 @@ class TrainingHistoryDatabase:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[List[int], List[float]]:
+    ) -> tuple[list[int], list[float]]:
         """Retrieves td_error values for the requested state and action.
 
         Args:
@@ -414,7 +414,7 @@ class TrainingHistoryDatabase:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[List[int], List[float]]:
+    ) -> tuple[list[int], list[float]]:
         """Retrieves q values for the requested state and action.
 
         Args:
@@ -443,7 +443,7 @@ class TrainingHistoryDatabase:
         action: int,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[List[int], List[float]]:
+    ) -> tuple[list[int], list[float]]:
         """Retrieves q target values for the requested state and action.
 
         Args:
@@ -470,7 +470,7 @@ class TrainingHistoryDatabase:
         self,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[List[int], List[Dict[int, int]]]:
+    ) -> tuple[list[int], list[dict[int, int]]]:
         """Retrieves replay buffer state counts for the requested interval of start and end batch idxs.
 
         Args:
@@ -535,7 +535,7 @@ class ActionInversionDatabase:
 
         self._divergences = self._summarize_divergences()
 
-    def _summarize_divergences(self) -> List[DivergenceEntry]:
+    def _summarize_divergences(self) -> list[DivergenceEntry]:
         """Summarizes incidents of divergence.
 
         A divergence is defined as an incident of logging at least one
@@ -573,7 +573,7 @@ class ActionInversionDatabase:
         self,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> List[DivergenceEntry]:
+    ) -> list[DivergenceEntry]:
         """Returns divergences occurring within the provided range.
 
         Args:
@@ -608,7 +608,7 @@ class ActionInversionDatabase:
         self,
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
-    ) -> Tuple[List[int], List[int]]:
+    ) -> tuple[list[int], list[int]]:
         """Returns the action inversion incident rate per batch.
 
         Args:
@@ -637,7 +637,7 @@ class ActionInversionDatabase:
 
     def get_reports(
         self, batch_idx: int
-    ) -> List[Tuple[log_entry.ActionInversionReportEntry, torch.Tensor]]:
+    ) -> list[tuple[log_entry.ActionInversionReportEntry, torch.Tensor]]:
         """Returns action inversion reports paired with their corresponding states.
 
         Args:

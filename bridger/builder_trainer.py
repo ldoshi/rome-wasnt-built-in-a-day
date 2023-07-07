@@ -6,7 +6,7 @@ import numpy as np
 from bridger import builder
 import pytorch_lightning as pl
 import torch
-from typing import Union, Optional, Callable, Hashable, List
+from typing import Union, Optional, Callable, Hashable
 
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
@@ -87,7 +87,7 @@ def make_env(
 
 def get_actions_for_standard_configuration(
     env_width: int,
-) -> List[List[int]]:
+) -> list[list[int]]:
     """Produces actions to build a bridge in the standard configuration.
 
     The implementation presumes an environment of even width where the
