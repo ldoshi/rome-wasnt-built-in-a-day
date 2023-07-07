@@ -2,7 +2,7 @@
 
 import dataclasses
 import torch
-from typing import Any, Set
+from typing import Any
 
 TRAINING_BATCH_LOG_ENTRY = "training_batch"
 STATE_NORMALIZED_LOG_ENTRY = "state_normalized"
@@ -115,5 +115,5 @@ class ActionInversionReportEntry:
 
     batch_idx: int
     state_id: int
-    preferred_actions: Set[int]
+    preferred_actions: set[int]
     policy_action: int

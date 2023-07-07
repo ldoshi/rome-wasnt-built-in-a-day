@@ -23,7 +23,7 @@ import dataclasses
 import gym
 import numpy as np
 import torch
-from typing import Callable, Optional, Set
+from typing import Callable, Optional
 
 from bridger import hash_utils
 from bridger import policies
@@ -34,7 +34,7 @@ class PreferredActionEntry:
     """A state paired with the preferred actions to take from that state."""
 
     state: torch.Tensor
-    preferred_actions: Set[int]
+    preferred_actions: set[int]
 
 
 @dataclasses.dataclass
@@ -42,7 +42,7 @@ class ActionInversionReport:
     """An incidence of action inversion for a particular state."""
 
     state: torch.Tensor
-    preferred_actions: Set[int]
+    preferred_actions: set[int]
     policy_action: int
 
 
