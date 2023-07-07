@@ -1,6 +1,6 @@
 """A set of helpers for plotting data."""
 
-from typing import Any, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -25,7 +25,7 @@ def downsample(df: pd.DataFrame, n: int) -> pd.DataFrame:
     return df.take(np.unique(np.round(np.linspace(0, len(df) - 1, n)).astype(int)))
 
 
-def downsample_list(data: List[Any], n: int) -> List[Any]:
+def downsample_list(data: list[Any], n: int) -> list[Any]:
     """Downsamples a list to have at most n elements.
 
     The samples are taken equally spaced between the first and last

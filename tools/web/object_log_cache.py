@@ -15,7 +15,7 @@ import time
 import torch
 import torch.multiprocessing
 
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 
 from bridger.logging_utils import log_entry
 from bridger.logging_utils import object_log_readers

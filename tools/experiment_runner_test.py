@@ -1,7 +1,7 @@
 """Tests for experiment_runner."""
 import unittest
 
-from typing import Any, List
+from typing import Any
 
 import itertools
 import json
@@ -27,7 +27,7 @@ def _load_config(filename: str) -> Any:
         return json.load(f)
 
 
-def _get_value(args: List[str], key: str) -> str:
+def _get_value(args: list[str], key: str) -> str:
     for i in range(len(args)):
         if args[i] == key:
             return args[i + 1]
@@ -41,7 +41,7 @@ class ExperimentRunnerTest(unittest.TestCase):
     def setUp(self):
         self._args = []
 
-        def execute_fn(args: List[str]) -> None:
+        def execute_fn(args: list[str]) -> None:
             self._args.append(args)
 
         self._execute_fn = execute_fn
