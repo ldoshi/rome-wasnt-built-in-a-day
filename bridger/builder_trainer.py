@@ -6,7 +6,7 @@ import numpy as np
 from bridger import builder
 import pytorch_lightning as pl
 import torch
-from typing import Union, Optional, Callable, Hashable, List
+from typing import Union, Optional, Callable, Hashable
 
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional

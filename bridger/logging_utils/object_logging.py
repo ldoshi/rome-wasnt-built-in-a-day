@@ -10,7 +10,7 @@ Usage:
     logger.log("buffer", buffer_event)
 
 """
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Optional
 
 import collections
 import copy

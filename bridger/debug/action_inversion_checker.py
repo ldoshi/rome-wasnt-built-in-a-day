@@ -23,7 +23,7 @@ import dataclasses
 import gym
 import numpy as np
 import torch
-from typing import Callable, List, Optional, Set
+from typing import Callable, Optional, Set
 
 from bridger import hash_utils
 from bridger import policies

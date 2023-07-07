@@ -11,7 +11,7 @@ import functools
 import itertools
 import torch
 
-from typing import Any, Callable, Generator, Optional, Tuple
+from typing import Any, Callable, Generator, Optional
 
 from bridger import builder_trainer, hash_utils
 from bridger.logging_utils import object_logging

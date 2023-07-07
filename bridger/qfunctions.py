@@ -11,7 +11,7 @@ import torch.nn.functional as F
 
 from bridger import hash_utils
 
-from typing import Any, Callable, Optional, Set, Tuple
+from typing import Any, Callable, Optional, Set
 
 
 def _update_target(tau: float, q: torch.nn.Module, target: torch.nn.Module) -> None:

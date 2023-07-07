@@ -6,7 +6,7 @@ import os
 import pathlib
 import shutil
 import torch
-from typing import Any, List
+from typing import Any
 
 from parameterized import parameterized
 

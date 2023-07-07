@@ -6,7 +6,7 @@ import os
 import unittest
 
 import torch
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from parameterized import parameterized
 

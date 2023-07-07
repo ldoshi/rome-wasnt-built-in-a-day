@@ -2,7 +2,7 @@
 
 import dataclasses
 import torch
-from typing import Any, List, Set
+from typing import Any, Set
 
 TRAINING_BATCH_LOG_ENTRY = "training_batch"
 STATE_NORMALIZED_LOG_ENTRY = "state_normalized"
