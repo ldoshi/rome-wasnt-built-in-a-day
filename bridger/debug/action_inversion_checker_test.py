@@ -20,7 +20,7 @@ from bridger import policies
 _ENV_NAME = "gym_bridges.envs:Bridges-v0"
 
 
-def _constant_estimators(nA: int) -> List:
+def _constant_estimators(nA: int) -> list:
     return [
         (
             lambda action: lambda state: torch.nn.functional.one_hot(
