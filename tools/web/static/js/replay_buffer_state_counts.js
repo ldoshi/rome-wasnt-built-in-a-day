@@ -54,6 +54,15 @@ let _CHART_OPTIONS_TEMPLATE = {
   },
 };
 
+function render_state_plot(state_index, data) {
+  let canvas_id = `state-plot-state-canvas-${state_index}`;
+  let state_plot_html = `<div class="state-plot-info">Observed State</div>`;
+  state_plot_html += `<div id="state-plot-state-${state_index}" class="state-plot-state"><canvas id="${canvas_id}" class="plot-hover-canvas"></canvas></div>`;
+  $(`#state-holder`).html(state_plot_html);
+
+  render_array_2d(data[state_index], canvas_id);
+}
+
 function update_plots() {
   let experiment_name = $("#experiment-name").val();
 
@@ -70,19 +79,22 @@ function update_plots() {
       render_plots();
       update_url_params();
       $("#current-experiment-name").html(experiment_name);
-    }).fail(function() {
-	add_load_error_indicator();
-    }).always(function() {
-	remove_loading_indicator();
-    });    
+    }
+  )
+    .fail(function () {
+      add_load_error_indicator();
+    })
+    .always(function () {
+      remove_loading_indicator();
+    });
 }
 
 function update_url_params() {
-  let url_param_updates = {'experiment_name' : $("#experiment-name").val() };
-  update_url(url_param_updates);    
+  let url_param_updates = { experiment_name: $("#experiment-name").val() };
+  update_url(url_param_updates);
 }
 
-function render_plots() {   
+function render_plots() {
   // Grab the data from the global _DATA object.
   if (_DATA == null) {
     return;
@@ -90,6 +102,8 @@ function render_plots() {
 
   const total_replay_buffer_state_counts =
     _DATA["total_replay_buffer_state_counts"];
+  const replay_buffer_states_by_visit_count =
+    _DATA["replay_buffer_states_by_visit_count"];
 
   let data = [];
 
@@ -115,9 +129,13 @@ function render_plots() {
     if (!items.length) {
       return "";
     }
-    const item = items[0];
-    const state_id = item.parsed.x;
+    let item = items[0];
+    let state_id = item.parsed.x;
+
+    render_state_plot(state_id, replay_buffer_states_by_visit_count);
+
     return `State id: ${state_id}`;
   };
+
   new Chart($("#histogram"), chart_options);
 }
