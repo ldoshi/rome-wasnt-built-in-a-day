@@ -6,6 +6,7 @@ import gym
 import itertools
 import multiprocessing
 import torch
+from torch.distributions.categorical import Categorical
 import torch.nn
 import torch.nn.functional as F
 
@@ -110,7 +111,6 @@ class CNNQManager(QManager):
     def target(self) -> torch.nn.Module:
         return self._target
 
-
 class CNNQ(torch.nn.Module):
     """Base class for CNN Q-function neural network module."""
 
@@ -134,19 +134,45 @@ class CNNQ(torch.nn.Module):
             H = int((H + 2 * padding - kernel_size) / stride) + 1
             W = int((W + 2 * padding - kernel_size) / stride) + 1
         C = channel_nums[-1]
-        dense_widths = [C * H * W, 64, num_actions]
-        args_iter = zip(dense_widths[:-1], dense_widths[1:])
-        self.DNN = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
+        network_widths = [C * H * W, 64]
+        args_iter = zip(network_widths[:-1], network_widths[1:])
+        self.network = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
 
-    def forward(self, x):
+        critic_widths = [64, 1]
+        args_iter = zip(critic_widths[:-1], critic_widths[1:])
+        self.critic = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
+
+        actor_widths = [64, num_actions]
+        args_iter = zip(actor_widths[:-1], actor_widths[1:])
+        self.actor = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
+
+
+    def _forward_network(self, x):
         x = x.reshape(-1, self.image_height, self.image_width)
         x = encode_enum_state_to_channels(x, self.CNN[0].in_channels).float()
         for layer in self.CNN:
             x = torch.relu(layer(x))
-        x = self.DNN[0](x.reshape(x.shape[0], -1))
-        for layer in self.DNN[1:]:
+        x = self.network[0](x.reshape(x.shape[0], -1))
+        for layer in self.network[1:]:
             x = layer(torch.relu(x))
         return x
+        
+
+    def get_value(self, x):
+        x = self._forward_network(x)
+        for layer in self.critic:
+            x = layer(torch.relu(x))
+        return x
+
+    def get_action_and_value(self, x, action = None):
+        x = self._forward_network(x)
+        for layer in self.actor:
+            x = layer(torch.relu(x))
+
+        probs = Categorical(logits=x)
+        if action is None:
+            action = probs.sample()
+        return action, probs.log_prob(action), self.critic(x)
 
 
 def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int):

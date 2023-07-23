@@ -123,24 +123,33 @@ def get_actions_for_standard_configuration(
     return actions
 
 
-class ValidationBuilder(torch.utils.data.IterableDataset):
-    """Produces build results using a policy based on the current model.
+class ExperienceIterator(torch.utils.data.IterableDataset):
 
-    The model underpinning the policy refers to the same one being
-    trained and will thus evolve over time."""
-
-    def __init__(self, env: gym.Env, policy: policies.Policy, episode_length: int):
-        self._builder = builder.Builder(env)
-        self._policy = policy
-        self._episode_length = episode_length
+    def __init__(self, experiences: list[dict]):
+        self._experiences = experiences
 
     def __iter__(self):
-        """Yields the result of a single building episode each call."""
-        while True:
-            build_result = self._builder.build(
-                self._policy, self._episode_length, render=False
-            )
-            yield [build_result.success, build_result.reward, build_result.steps]
+        return iter(self._experiences)
+
+
+# class ValidationBuilder(torch.utils.data.IterableDataset):
+#     """Produces build results using a policy based on the current model.
+
+#     The model underpinning the policy refers to the same one being
+#     trained and will thus evolve over time."""
+
+#     def __init__(self, env: gym.Env, policy: policies.Policy, episode_length: int):
+#         self._builder = builder.Builder(env)
+#         self._policy = policy
+#         self._episode_length = episode_length
+
+#     def __iter__(self):
+#         """Yields the result of a single building episode each call."""
+#         while True:
+#             build_result = self._builder.build(
+#                 self._policy, self._episode_length, render=False
+#             )
+#             yield [build_result.success, build_result.reward, build_result.steps]
 
 
 class StateActionCache:
@@ -288,26 +297,32 @@ class BridgeBuilderModel(pl.LightningModule):
             debug=self.hparams.debug,
         )
 
-        if self.hparams.q == Q_CNN:
-            self.q_manager = qfunctions.CNNQManager(
-                *self.env.shape, self.env.nA, self.hparams.tau
-            )
-        elif self.hparams.q == Q_TABULAR:
-            self.q_manager = qfunctions.TabularQManager(
-                env=self._validation_env,
-                brick_count=self.hparams.tabular_q_initialization_brick_count,
-                tau=self.hparams.tau,
-            )
-        else:
-            if self.hparams.q in qfunctions.choices:
-                raise ValueError(
-                    f"Provided q function not supported in trainer: {self.hparams.q}"
-                )
-            else:
-                raise ValueError(f"Unrecognized q function: {self.hparams.q}")
+        # TODO(lyric): We set tau to 1 to completely copy over the policy to the target.
+        self.q_manager = qfunctions.CNNQManager(
+            *self.env.shape, self.env.nA, tau=1
+        )
+
+        
+        # if self.hparams.q == Q_CNN:
+        #     self.q_manager = qfunctions.CNNQManager(
+        #         *self.env.shape, self.env.nA, self.hparams.tau
+        #     )
+        # elif self.hparams.q == Q_TABULAR:
+        #     self.q_manager = qfunctions.TabularQManager(
+        #         env=self._validation_env,
+        #         brick_count=self.hparams.tabular_q_initialization_brick_count,
+        #         tau=self.hparams.tau,
+        #     )
+        # else:
+        #     if self.hparams.q in qfunctions.choices:
+        #         raise ValueError(
+        #             f"Provided q function not supported in trainer: {self.hparams.q}"
+        #         )
+        #     else:
+        #         raise ValueError(f"Unrecognized q function: {self.hparams.q}")
 
         # TODO(lyric): Consider specifying the policy as a hyperparam
-        self.policy = policies.EpsilonGreedyPolicy(self.q_manager.q)
+#        self.policy = policies.EpsilonGreedyPolicy(self.q_manager.q)
         # At this time, the world is static once the initial
         # conditions are set. The agent is not navigating a dynamic
         # environment.
@@ -344,10 +359,10 @@ class BridgeBuilderModel(pl.LightningModule):
                 state_visit_logger=self._state_visit_logger,
                 state_logger=self._state_logger,
             )
-        else:
-            self.make_memories(
-                batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
-            )
+#        else:
+ #           self.make_memories(
+  #              batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
+   #         )
 
     def on_train_batch_end(
         self,
@@ -366,7 +381,7 @@ class BridgeBuilderModel(pl.LightningModule):
 
         if self.hparams.debug:
             self._record_q_values_debug_helper(batch_idx)
-        self.make_memories(batch_idx)
+    #    self.make_memories(batch_idx)
 
     def _record_q_values_debug_helper(self, batch_idx: int) -> None:
         """Compute and log q values.
@@ -408,13 +423,36 @@ class BridgeBuilderModel(pl.LightningModule):
             if requested_memory_count is not None
             else self.hparams.inter_training_steps
         )
+
+        # 1. Make a single member array as all our state action advantage experiences
+        # 2. Compute action, action probs, and values for all.
+        # 3. Go through them all as minibatches and compute loss!
+        # 4. Use the log prob to make the ratio a subtraction then exponentiate. 
+        
         with torch.no_grad():
+            trajectory = []
+            discounted_reward = 0
             for _ in range(memory_count):
-                _, _, start_state, _, _, _, _ = next(self.memories)
+                episode_idx, step_idx, start_state, action, end_state, reward, success = next(self.memories)
+                trajectory.append([start_state, action, end_state, reward, success])
+                if success:
+                    # Compute Advantage. Add to replay buffer.
+                    for state_action_pair in reverse(trajectory):
+                        start_state = state_action_pair[0]
+                        reward = state_action_pair[3]
+                        discounted_reward = discounted_reward * self.hparams.gamma + reward
+                        advantage = -self.q_manager.q.get_value(start_state) + discounted_reward
+                        self.replay_buffer.add_new_experience(*state_action_pair, advantage)
+
+                    trajectory = []
+                    discounted_reward = 0
+                
                 if self.hparams.debug:
                     self._state_visit_logger.log_occurrence(
                         batch_idx=batch_idx, object=torch.from_numpy(start_state)
                     )
+
+            self.end_current_episode()
 
     def _memory_generator(
         self,
@@ -435,11 +473,11 @@ class BridgeBuilderModel(pl.LightningModule):
             reward:      The reward gained through the transition.
             success:    Whether the transition marked the end of the episode."""
 
-        episode_idx = 0
+        self.episode_idx = 0
         total_step_idx = 0
         while True:
             for step_idx in range(self.hparams.max_episode_length):
-                self._checkpoint({"episode": episode_idx, "step": total_step_idx})
+                self._checkpoint({"episode": self.episode_idx, "step": total_step_idx})
                 start_state, action, end_state, reward, success = self()
                 yield (
                     episode_idx,
@@ -454,8 +492,11 @@ class BridgeBuilderModel(pl.LightningModule):
                 if success:
                     break
             self._update_epsilon()
-            self.state = self.env.reset()
-            episode_idx += 1
+            self.end_current_episode()
+            
+    def end_current_episode(self) -> None:
+        self.state = self.env.reset()
+        self.episode_idx += 1            
 
     def _checkpoint(self, thresholds: dict[str, int]) -> None:
         """A checkpointer that compares instance-state breakpoints to method
@@ -554,9 +595,8 @@ class BridgeBuilderModel(pl.LightningModule):
         if self.hparams.interactive_mode and self.next_action is not None:
             action = self.next_action
         else:
-            action = self.policy(
-                torch.as_tensor(state, dtype=torch.float), epsilon=self.epsilon
-            )
+            # TODO(lyric): CHECK THIS and update returns.
+            action, log_prob, value = self.q_manager.q.get_action_and_value(state)
 
         next_state, reward, done, _ = self.env.step(action)
         self.state = next_state
@@ -572,6 +612,42 @@ class BridgeBuilderModel(pl.LightningModule):
             self.env.render()
 
         return result
+
+    def collect_trajectory(self) -> list[dict]:
+        trajectory = []
+        state = self.env.reset()
+        for _ in range(self.hparams.max_episode_length):
+            # TODO(lyric): Figure out if/how to revive checkpoint.
+            #            self._checkpoint({"episode": self.episode_idx, "step": total_step_idx})
+            
+#            action, action_log_prob, state_value = self.q_manager.q.get_action_and_value(state)
+            action, action_log_prob, state_value = 1,2,3
+            next_state, reward, success, _ = self.env.step(action)
+
+            trajectory.append({
+                "state" : state,
+                "action" :action,
+                "next_state" : next_state,
+                "reward" : reward,
+                "success" : success,
+                "action_log_prob" : action_log_prob,
+                "state_value" : state_value
+                })
+            
+            if success:
+                break
+            
+            state = next_state
+
+
+# TODO(lyric) : incorporate this
+        # for state_action_pair in reverse(trajectory):
+        #     start_state = state_action_pair[0]
+        #     reward = state_action_pair[3]
+        #     discounted_reward = discounted_reward * self.hparams.gamma + reward
+        #     advantage = -self.q_manager.q.get_value(start_state) + discounted_reward
+            
+        return trajectory
 
     def _update_epsilon(self) -> None:
         """Selects the rule by which epsilon changes in the Epsilon Greedy
@@ -640,8 +716,9 @@ class BridgeBuilderModel(pl.LightningModule):
 
         The loss is computed across a batch of memories sampled from the replay buffer. The replay buffer sampling weights are updated based on the TD error from the samples.
         """
-        indices, states, actions, next_states, rewards, success, weights = batch
-        td_errors = self.get_td_error(states, actions, next_states, rewards, success)
+        print("TRAIN: " , batch)
+        return
+
 
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
@@ -762,9 +839,9 @@ class BridgeBuilderModel(pl.LightningModule):
         self._update_beta()
         return loss
 
-    def validation_step(self, batch, batch_idx):
-        success, rewards, steps = batch
-        self.log("val_reward", torch.Tensor.float(rewards).mean())
+    # def validation_step(self, batch, batch_idx):
+    #     success, rewards, steps = batch
+    #     self.log("val_reward", torch.Tensor.float(rewards).mean())
 
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
@@ -779,21 +856,33 @@ class BridgeBuilderModel(pl.LightningModule):
 
         Used to prevent early bottlenecking in the model at data generation step
         and allows for computations to be split across multiple source files."""
+
+        print("CALLED TRAIN DATALOADER!")
+
+        # TODO(lyric): make this a config param.
+        trajectory_count = 1
+
+        # TODO(lyric): Is exploration an issue?
+        
+        experiences = []
+        for _ in range(trajectory_count):
+            experiences.extend(self.collect_trajectory())
+        
         return DataLoader(
-            self.replay_buffer,
+            ExperienceIterator(experiences),
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
         )
 
-    def val_dataloader(self) -> DataLoader:
-        return DataLoader(
-            ValidationBuilder(
-                env=self._validation_env,
-                policy=self._validation_policy,
-                episode_length=self.hparams.max_episode_length,
-            ),
-            batch_size=self.hparams.val_batch_size,
-            num_workers=self.hparams.num_workers,
-        )
+    # def val_dataloader(self) -> DataLoader:
+    #     return DataLoader(
+    #         ValidationBuilder(
+    #             env=self._validation_env,
+    #             policy=self._validation_policy,
+    #             episode_length=self.hparams.max_episode_length,
+    #         ),
+    #         batch_size=self.hparams.val_batch_size,
+    #         num_workers=self.hparams.num_workers,
+    #     )
 
     # TODO(arvind): Override hooks to load data appropriately for test
