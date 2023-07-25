@@ -1,3 +1,5 @@
+#TODO(LIST): Check dimensions. Value fucntion loss.
+
 import argparse
 import IPython
 import copy
@@ -348,6 +350,9 @@ class BridgeBuilderModel(pl.LightningModule):
     def trained_policy(self):
         return policies.GreedyPolicy(self.q_manager.q)
 
+    def on_train_end(self):
+        self.q_manager.update_target()
+    
     def on_train_start(self):
         """Populates the replay buffer with an initial set of memories before training steps begin."""
         if self.hparams.initialize_replay_buffer_strategy is not None:
@@ -377,7 +382,7 @@ class BridgeBuilderModel(pl.LightningModule):
             batch: A group of memories, size determined by `hparams.batch_size`.
             batch_idx: The index of the current batch, which also signifies the current round of model weight updates.
         """
-        self.q_manager.update_target()
+#        self.q_manager.update_target()
 
         if self.hparams.debug:
             self._record_q_values_debug_helper(batch_idx)
@@ -615,14 +620,14 @@ class BridgeBuilderModel(pl.LightningModule):
 
     def collect_trajectory(self) -> list[dict]:
         trajectory = []
-        state = self.env.reset()
+        state = torch.Tensor(self.env.reset())
         for _ in range(self.hparams.max_episode_length):
             # TODO(lyric): Figure out if/how to revive checkpoint.
             #            self._checkpoint({"episode": self.episode_idx, "step": total_step_idx})
             
-#            action, action_log_prob, state_value = self.q_manager.q.get_action_and_value(state)
-            action, action_log_prob, state_value = 1,2,3
+            action, action_log_prob, state_value = self.q_manager.q.get_action_and_value(state)
             next_state, reward, success, _ = self.env.step(action)
+            next_state = torch.Tensor(next_state)
 
             trajectory.append({
                 "state" : state,
@@ -639,13 +644,10 @@ class BridgeBuilderModel(pl.LightningModule):
             
             state = next_state
 
-
-# TODO(lyric) : incorporate this
-        # for state_action_pair in reverse(trajectory):
-        #     start_state = state_action_pair[0]
-        #     reward = state_action_pair[3]
-        #     discounted_reward = discounted_reward * self.hparams.gamma + reward
-        #     advantage = -self.q_manager.q.get_value(start_state) + discounted_reward
+        discounted_reward = 0
+        for entry in reversed(trajectory):
+            discounted_reward = discounted_reward * self.hparams.gamma + entry['reward']
+            entry['advantage'] = -entry['state_value'] + discounted_reward
             
         return trajectory
 
@@ -717,7 +719,22 @@ class BridgeBuilderModel(pl.LightningModule):
         The loss is computed across a batch of memories sampled from the replay buffer. The replay buffer sampling weights are updated based on the TD error from the samples.
         """
         print("TRAIN: " , batch)
-        return
+
+        # TODO(lyric): Make this a config.
+        EPSILON = .2
+        
+        
+        print('ad in: ' , batch['advantage'].squeeze())
+        
+        _, log_prob_old, _ = self.q_manager.target.get_action_and_value(batch['state'], action=batch['action'].squeeze())
+
+        ratios = (batch['action_log_prob'].squeeze() - log_prob_old).exp()
+        ratios_clamped = torch.clamp(ratios, min=1-EPSILON, max=1+EPSILON)
+
+        ratios_final = torch.min(ratios, ratios_clamped)
+        loss = batch['advantage'].squeeze()* ratios_final
+        
+        return loss
 
 
         loss = self.compute_loss(td_errors, weights=weights)
@@ -863,10 +880,13 @@ class BridgeBuilderModel(pl.LightningModule):
         trajectory_count = 1
 
         # TODO(lyric): Is exploration an issue?
+
+        self.q_manager.update_target()
         
         experiences = []
-        for _ in range(trajectory_count):
-            experiences.extend(self.collect_trajectory())
+        with torch.no_grad():
+            for _ in range(trajectory_count):
+                experiences.extend(self.collect_trajectory())
         
         return DataLoader(
             ExperienceIterator(experiences),

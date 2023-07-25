@@ -158,21 +158,28 @@ class CNNQ(torch.nn.Module):
         return x
         
 
-    def get_value(self, x):
-        x = self._forward_network(x)
-        for layer in self.critic:
-            x = layer(torch.relu(x))
-        return x
+    # def get_value(self, x):
+    #     x = self._forward_network(x)
+    #     for layer in self.critic:
+    #         x = layer(torch.relu(x))
+    #     return x
 
     def get_action_and_value(self, x, action = None):
         x = self._forward_network(x)
-        for layer in self.actor:
-            x = layer(torch.relu(x))
 
-        probs = Categorical(logits=x)
+        actor = x
+        for layer in self.actor:
+            actor = layer(torch.relu(actor))
+            
+        probs = Categorical(logits=actor)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action), self.critic(x)
+
+        critic = x
+        for layer in self.critic:
+            critic = layer(torch.relu(critic))
+            
+        return action, probs.log_prob(action), critic
 
 
 def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int):
