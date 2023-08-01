@@ -111,8 +111,8 @@ def run():
             ),
             max_steps=hparams.max_training_batches,
 #            callbacks=callbacks,
-            max_epochs=6,
-            reload_dataloaders_every_n_epochs=2,
+            max_epochs=2000,
+            reload_dataloaders_every_n_epochs=10,
         )
 
         trainer.fit(model)

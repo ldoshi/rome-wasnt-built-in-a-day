@@ -350,8 +350,8 @@ class BridgeBuilderModel(pl.LightningModule):
     def trained_policy(self):
         return policies.GreedyPolicy(self.q_manager.q)
 
-    def on_train_end(self):
-        self.q_manager.update_target()
+#    def on_train_end(self):
+#        self.q_manager.update_target()
     
     def on_train_start(self):
         """Populates the replay buffer with an initial set of memories before training steps begin."""
@@ -718,21 +718,20 @@ class BridgeBuilderModel(pl.LightningModule):
 
         The loss is computed across a batch of memories sampled from the replay buffer. The replay buffer sampling weights are updated based on the TD error from the samples.
         """
-        print("TRAIN: " , batch)
-
         # TODO(lyric): Make this a config.
         EPSILON = .2
         
-        
-        print('ad in: ' , batch['advantage'].squeeze())
-        
-        _, log_prob_old, _ = self.q_manager.target.get_action_and_value(batch['state'], action=batch['action'].squeeze())
+        _, log_prob_new, state_value_new = self.q_manager.q.get_action_and_value(batch['state'], action=batch['action'].squeeze())
 
-        ratios = (batch['action_log_prob'].squeeze() - log_prob_old).exp()
+        ratios = (log_prob_new - batch['action_log_prob'].squeeze()).exp()
         ratios_clamped = torch.clamp(ratios, min=1-EPSILON, max=1+EPSILON)
-
         ratios_final = torch.min(ratios, ratios_clamped)
-        loss = batch['advantage'].squeeze()* ratios_final
+        loss_clip = (batch['advantage'].squeeze()* ratios_final)
+
+        loss_value = torch.square(state_value_new - batch['state_value'])
+
+        c1 = 1
+        loss = (loss_clip - c1*loss_value).mean()
         
         return loss
 
@@ -877,11 +876,11 @@ class BridgeBuilderModel(pl.LightningModule):
         print("CALLED TRAIN DATALOADER!")
 
         # TODO(lyric): make this a config param.
-        trajectory_count = 1
+        trajectory_count = 1000
 
         # TODO(lyric): Is exploration an issue?
 
-        self.q_manager.update_target()
+#        self.q_manager.update_target()
         
         experiences = []
         with torch.no_grad():
