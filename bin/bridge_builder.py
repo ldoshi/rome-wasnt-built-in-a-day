@@ -111,7 +111,7 @@ def run():
             ),
             max_steps=hparams.max_training_batches,
 #            callbacks=callbacks,
-            max_epochs=2000,
+            max_epochs=6000,
             reload_dataloaders_every_n_epochs=10,
         )
 

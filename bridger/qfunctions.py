@@ -172,6 +172,7 @@ class CNNQ(torch.nn.Module):
             actor = layer(torch.relu(actor))
             
         probs = Categorical(logits=actor)
+#        probs =         [0.1773, 0.1677, 0.1678, 0.1566, 0.1767, 0.1540]
         if action is None:
             action = probs.sample()
 
@@ -181,7 +182,7 @@ class CNNQ(torch.nn.Module):
         for layer in self.critic:
             critic = layer(torch.relu(critic))
             
-        return action, probs.log_prob(action), critic, probs.entropy()
+        return action, probs.log_prob(action), critic, probs.entropy(), probs.probs
 
 
 def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int):

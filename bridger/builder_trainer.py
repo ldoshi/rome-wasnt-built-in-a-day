@@ -625,7 +625,7 @@ class BridgeBuilderModel(pl.LightningModule):
             # TODO(lyric): Figure out if/how to revive checkpoint.
             #            self._checkpoint({"episode": self.episode_idx, "step": total_step_idx})
             
-            action, action_log_prob, state_value, _ = self.q_manager.q.get_action_and_value(state)
+            action, action_log_prob, state_value, _, _ = self.q_manager.q.get_action_and_value(state)
 
 
 
@@ -734,7 +734,7 @@ class BridgeBuilderModel(pl.LightningModule):
 
   #      print("SHAPES! " , batch['state'].shape, " and " , batch['action'].shape)
         
-        _, log_prob_new, state_value_new, entropy = self.q_manager.q.get_action_and_value(batch['state'], action=batch['action'].squeeze())
+        _, log_prob_new, state_value_new, entropy, action_distribution = self.q_manager.q.get_action_and_value(batch['state'], action=batch['action'].squeeze())
 
         
  #       print("SHAPES ACTION PROBS: " , log_prob_new.shape, " and ", batch['action_log_prob'].shape, ' and ', batch['advantage'].shape)
@@ -776,7 +776,8 @@ class BridgeBuilderModel(pl.LightningModule):
         self.log(
             "success", batch['success'].int().sum(), on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
-
+        for a in range(6):
+            self.log(f"action distribution: action {a}", action_distribution[:,a].mean(), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         
         return loss
 
