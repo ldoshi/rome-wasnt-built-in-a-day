@@ -175,11 +175,13 @@ class CNNQ(torch.nn.Module):
         if action is None:
             action = probs.sample()
 
+#        print("actions!: " , probs.probs)
+            
         critic = x
         for layer in self.critic:
             critic = layer(torch.relu(critic))
             
-        return action, probs.log_prob(action), critic
+        return action, probs.log_prob(action), critic, probs.entropy()
 
 
 def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int):

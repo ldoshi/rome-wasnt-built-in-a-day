@@ -601,7 +601,7 @@ class BridgeBuilderModel(pl.LightningModule):
             action = self.next_action
         else:
             # TODO(lyric): CHECK THIS and update returns.
-            action, log_prob, value = self.q_manager.q.get_action_and_value(state)
+            action, log_prob, value, _ = self.q_manager.q.get_action_and_value(state)
 
         next_state, reward, done, _ = self.env.step(action)
         self.state = next_state
@@ -625,18 +625,24 @@ class BridgeBuilderModel(pl.LightningModule):
             # TODO(lyric): Figure out if/how to revive checkpoint.
             #            self._checkpoint({"episode": self.episode_idx, "step": total_step_idx})
             
-            action, action_log_prob, state_value = self.q_manager.q.get_action_and_value(state)
+            action, action_log_prob, state_value, _ = self.q_manager.q.get_action_and_value(state)
+
+
+
+            
             next_state, reward, success, _ = self.env.step(action)
             next_state = torch.Tensor(next_state)
 
+#            print("shapes collect: " , action.shape, " " , action_log_prob.shape,  " and " , state_value.squeeze().shape, " and " , state_value.ravel().shape)
+            
             trajectory.append({
                 "state" : state,
                 "action" :action,
                 "next_state" : next_state,
                 "reward" : reward,
                 "success" : success,
-                "action_log_prob" : action_log_prob,
-                "state_value" : state_value
+                "action_log_prob" : action_log_prob.squeeze(dim=0),
+                "state_value" : state_value.squeeze(dim=0)
                 })
             
             if success:
@@ -645,9 +651,14 @@ class BridgeBuilderModel(pl.LightningModule):
             state = next_state
 
         discounted_reward = 0
+
+#        check dims! 
         for entry in reversed(trajectory):
             discounted_reward = discounted_reward * self.hparams.gamma + entry['reward']
-            entry['advantage'] = -entry['state_value'] + discounted_reward
+            entry['discounted_reward'] = discounted_reward            
+            entry['advantage'] = -entry['state_value'].item() + discounted_reward
+
+#            print("shapes 2:  and " , entry['advantage'], ' and ' , entry['state_value'].shape)
             
         return trajectory
 
@@ -720,26 +731,57 @@ class BridgeBuilderModel(pl.LightningModule):
         """
         # TODO(lyric): Make this a config.
         EPSILON = .2
-        
-        _, log_prob_new, state_value_new = self.q_manager.q.get_action_and_value(batch['state'], action=batch['action'].squeeze())
 
-        ratios = (log_prob_new - batch['action_log_prob'].squeeze()).exp()
+  #      print("SHAPES! " , batch['state'].shape, " and " , batch['action'].shape)
+        
+        _, log_prob_new, state_value_new, entropy = self.q_manager.q.get_action_and_value(batch['state'], action=batch['action'].squeeze())
+
+        
+ #       print("SHAPES ACTION PROBS: " , log_prob_new.shape, " and ", batch['action_log_prob'].shape, ' and ', batch['advantage'].shape)
+        
+        ratios = (log_prob_new - batch['action_log_prob']).exp()
         ratios_clamped = torch.clamp(ratios, min=1-EPSILON, max=1+EPSILON)
         ratios_final = torch.min(ratios, ratios_clamped)
-        loss_clip = (batch['advantage'].squeeze()* ratios_final)
+        loss_clip = (batch['advantage']* ratios_final).mean()
 
-        loss_value = torch.square(state_value_new - batch['state_value'])
+        c1 = 10000
+        c2 = 10
 
-        c1 = 1
-        loss = (loss_clip - c1*loss_value).mean()
+        loss_value = -c1 * torch.square(state_value_new - batch['state_value']).mean()
+
+        loss_entropy = c2 * entropy.mean()
+        
+        loss = loss_clip - loss_value + loss_entropy
+
+#        print("SHAPE VALUE: " , state_value_new.shape)
+#        print("SHAPE batch: " , batch['state_value'].shape)
+        assert loss_clip.shape == loss_value.shape, f"{loss_clip.shape} vs {loss_value.shape}"
+        assert loss_clip.shape == loss_entropy.shape, f"{loss_clip.shape} vs {loss_entropy.shape}"
+        
+        self.log(
+            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        self.log(
+            "loss_clip", loss_clip, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        self.log(
+            "loss_value", loss_value, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        self.log(
+            "loss_entropy", loss_entropy, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        self.log(
+            "discounted_reward", batch['discounted_reward'].mean(), on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        self.log(
+            "success", batch['success'].int().sum(), on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+
         
         return loss
 
 
         loss = self.compute_loss(td_errors, weights=weights)
-        self.log(
-            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
-        )
 
         if self.hparams.debug:
             # TODO(Issue#105): Move more deepcopy calls to logging
@@ -871,12 +913,10 @@ class BridgeBuilderModel(pl.LightningModule):
         """Samples a batch of memories from the replay buffer for training.
 
         Used to prevent early bottlenecking in the model at data generation step
-        and allows for computations to be split across multiple source files."""
-
-        print("CALLED TRAIN DATALOADER!")
+        and allows for computabtions to be split across multiple source files."""
 
         # TODO(lyric): make this a config param.
-        trajectory_count = 1000
+        trajectory_count = 32
 
         # TODO(lyric): Is exploration an issue?
 
