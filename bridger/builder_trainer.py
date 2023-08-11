@@ -128,6 +128,7 @@ def get_actions_for_standard_configuration(
 class ExperienceIterator(torch.utils.data.IterableDataset):
 
     def __init__(self, experiences: list[dict]):
+        np.random.shuffle(experiences)        
         self._experiences = experiences
 
     def __iter__(self):
@@ -436,7 +437,7 @@ class BridgeBuilderModel(pl.LightningModule):
         
         with torch.no_grad():
             trajectory = []
-            discounted_reward = 0
+            returns = 0
             for _ in range(memory_count):
                 episode_idx, step_idx, start_state, action, end_state, reward, success = next(self.memories)
                 trajectory.append([start_state, action, end_state, reward, success])
@@ -445,12 +446,12 @@ class BridgeBuilderModel(pl.LightningModule):
                     for state_action_pair in reverse(trajectory):
                         start_state = state_action_pair[0]
                         reward = state_action_pair[3]
-                        discounted_reward = discounted_reward * self.hparams.gamma + reward
-                        advantage = -self.q_manager.q.get_value(start_state) + discounted_reward
+                        returns = returns * self.hparams.gamma + reward
+                        advantage = -self.q_manager.q.get_value(start_state) + returns
                         self.replay_buffer.add_new_experience(*state_action_pair, advantage)
 
                     trajectory = []
-                    discounted_reward = 0
+                    returns = 0
                 
                 if self.hparams.debug:
                     self._state_visit_logger.log_occurrence(
@@ -650,13 +651,13 @@ class BridgeBuilderModel(pl.LightningModule):
             
             state = next_state
 
-        discounted_reward = 0
+        returns = 0
 
 #        check dims! 
         for entry in reversed(trajectory):
-            discounted_reward = discounted_reward * self.hparams.gamma + entry['reward']
-            entry['discounted_reward'] = discounted_reward            
-            entry['advantage'] = -entry['state_value'].item() + discounted_reward
+            returns = returns * self.hparams.gamma + entry['reward']
+            entry['returns'] = returns            
+            entry['advantage'] = -entry['state_value'].item() + returns
 
 #            print("shapes 2:  and " , entry['advantage'], ' and ' , entry['state_value'].shape)
             
@@ -742,16 +743,16 @@ class BridgeBuilderModel(pl.LightningModule):
         ratios = (log_prob_new - batch['action_log_prob']).exp()
         ratios_clamped = torch.clamp(ratios, min=1-EPSILON, max=1+EPSILON)
         ratios_final = torch.min(ratios, ratios_clamped)
-        loss_clip = (batch['advantage']* ratios_final).mean()
+        loss_clip = -(batch['advantage']* ratios_final).mean()
 
-        c1 = 10000
+        c1 = 1
         c2 = 10
 
-        loss_value = -c1 * torch.square(state_value_new - batch['state_value']).mean()
+        loss_value = c1 * torch.square(state_value_new - batch['returns']).mean()
 
         loss_entropy = c2 * entropy.mean()
         
-        loss = loss_clip - loss_value + loss_entropy
+        loss = loss_clip + loss_value - loss_entropy
 
 #        print("SHAPE VALUE: " , state_value_new.shape)
 #        print("SHAPE batch: " , batch['state_value'].shape)
@@ -771,12 +772,12 @@ class BridgeBuilderModel(pl.LightningModule):
             "loss_entropy", loss_entropy, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
         self.log(
-            "discounted_reward", batch['discounted_reward'].mean(), on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "returns", batch['returns'].mean(), on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
         self.log(
             "success", batch['success'].int().sum(), on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
-        for a in range(6):
+        for a in range(self.env.nA):
             self.log(f"action distribution: action {a}", action_distribution[:,a].mean(), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         
         return loss
@@ -927,7 +928,7 @@ class BridgeBuilderModel(pl.LightningModule):
         with torch.no_grad():
             for _ in range(trajectory_count):
                 experiences.extend(self.collect_trajectory())
-        
+
         return DataLoader(
             ExperienceIterator(experiences),
             batch_size=self.hparams.batch_size,

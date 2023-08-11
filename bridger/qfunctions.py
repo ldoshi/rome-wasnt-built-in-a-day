@@ -5,6 +5,7 @@ import functools
 import gym
 import itertools
 import multiprocessing
+import numpy as np
 import torch
 from torch.distributions.categorical import Categorical
 import torch.nn
@@ -111,6 +112,13 @@ class CNNQManager(QManager):
     def target(self) -> torch.nn.Module:
         return self._target
 
+
+
+def _layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+    torch.nn.init.orthogonal_(layer.weight, std)
+    torch.nn.init.constant_(layer.bias, bias_const)
+    return layer
+
 class CNNQ(torch.nn.Module):
     """Base class for CNN Q-function neural network module."""
 
@@ -136,15 +144,15 @@ class CNNQ(torch.nn.Module):
         C = channel_nums[-1]
         network_widths = [C * H * W, 64]
         args_iter = zip(network_widths[:-1], network_widths[1:])
-        self.network = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
+        self.network = torch.nn.ModuleList([ _layer_init(torch.nn.Linear(*args)) for args in args_iter])
 
         critic_widths = [64, 1]
         args_iter = zip(critic_widths[:-1], critic_widths[1:])
-        self.critic = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
+        self.critic = torch.nn.ModuleList([_layer_init(torch.nn.Linear(*args)) for args in args_iter])
 
         actor_widths = [64, num_actions]
         args_iter = zip(actor_widths[:-1], actor_widths[1:])
-        self.actor = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
+        self.actor = torch.nn.ModuleList([_layer_init(torch.nn.Linear(*args)) for args in args_iter])
 
 
     def _forward_network(self, x):
