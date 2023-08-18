@@ -760,25 +760,25 @@ class BridgeBuilderModel(pl.LightningModule):
         assert loss_clip.shape == loss_entropy.shape, f"{loss_clip.shape} vs {loss_entropy.shape}"
         
         self.log(
-            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "train_loss", loss, on_epoch=True, logger=True
         )
         self.log(
-            "loss_clip", loss_clip, on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "loss_clip", loss_clip, on_epoch=True,  logger=True
         )
         self.log(
-            "loss_value", loss_value, on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "loss_value", loss_value, on_epoch=True,  logger=True
         )
         self.log(
-            "loss_entropy", loss_entropy, on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "loss_entropy", loss_entropy, on_epoch=True,  logger=True
         )
         self.log(
-            "returns", batch['returns'].mean(), on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "returns", batch['returns'].mean(), on_epoch=True,  logger=True
         )
         self.log(
-            "success", batch['success'].int().sum(), on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "success", batch['success'].int().sum(), on_epoch=True,  logger=True
         )
         for a in range(self.env.nA):
-            self.log(f"action distribution: action {a}", action_distribution[:,a].mean(), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+            self.log(f"action distribution: action {a}", action_distribution[:,a].mean(), on_epoch=True,  logger=True)
         
         return loss
 
