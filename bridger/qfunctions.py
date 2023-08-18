@@ -113,11 +113,11 @@ class CNNQManager(QManager):
         return self._target
 
 
-
 def _layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
+
 
 class CNNQ(torch.nn.Module):
     """Base class for CNN Q-function neural network module."""
@@ -144,16 +144,21 @@ class CNNQ(torch.nn.Module):
         C = channel_nums[-1]
         network_widths = [C * H * W, 64]
         args_iter = zip(network_widths[:-1], network_widths[1:])
-        self.network = torch.nn.ModuleList([ _layer_init(torch.nn.Linear(*args)) for args in args_iter])
+        self.network = torch.nn.ModuleList(
+            [_layer_init(torch.nn.Linear(*args)) for args in args_iter]
+        )
 
         critic_widths = [64, 1]
         args_iter = zip(critic_widths[:-1], critic_widths[1:])
-        self.critic = torch.nn.ModuleList([_layer_init(torch.nn.Linear(*args)) for args in args_iter])
+        self.critic = torch.nn.ModuleList(
+            [_layer_init(torch.nn.Linear(*args)) for args in args_iter]
+        )
 
         actor_widths = [64, num_actions]
         args_iter = zip(actor_widths[:-1], actor_widths[1:])
-        self.actor = torch.nn.ModuleList([_layer_init(torch.nn.Linear(*args)) for args in args_iter])
-
+        self.actor = torch.nn.ModuleList(
+            [_layer_init(torch.nn.Linear(*args)) for args in args_iter]
+        )
 
     def _forward_network(self, x):
         x = x.reshape(-1, self.image_height, self.image_width)
@@ -164,7 +169,6 @@ class CNNQ(torch.nn.Module):
         for layer in self.network[1:]:
             x = layer(torch.relu(x))
         return x
-        
 
     # def get_value(self, x):
     #     x = self._forward_network(x)
@@ -172,24 +176,21 @@ class CNNQ(torch.nn.Module):
     #         x = layer(torch.relu(x))
     #     return x
 
-    def get_action_and_value(self, x, action = None):
+    def get_action_and_value(self, x, action=None):
         x = self._forward_network(x)
 
         actor = x
         for layer in self.actor:
             actor = layer(torch.relu(actor))
-            
+
         probs = Categorical(logits=actor)
-#        probs =         [0.1773, 0.1677, 0.1678, 0.1566, 0.1767, 0.1540]
         if action is None:
             action = probs.sample()
 
-#        print("actions!: " , probs.probs)
-            
         critic = x
         for layer in self.critic:
             critic = layer(torch.relu(critic))
-            
+
         return action, probs.log_prob(action), critic, probs.entropy(), probs.probs
 
 

@@ -640,13 +640,26 @@ class BridgeBuilderModel(pl.LightningModule):
                 action_log_prob,
                 state_value,
                 _,
-                _,
+                action_prob,
             ) = self.q_manager.q.get_action_and_value(state)
 
             next_state, reward, success, _ = self.env.step(action)
             next_state = torch.Tensor(next_state)
 
             #            print("shapes collect: " , action.shape, " " , action_log_prob.shape,  " and " , state_value.squeeze().shape, " and " , state_value.ravel().shape)
+
+            for action in range(self.env.nA):
+                self._object_log_manager.log(
+                    log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
+                    log_entry.TrainingHistoryTDErrorLogEntry(
+                        batch_idx=0,
+                        state_id=self._state_logger.get_logged_object_id(state),
+                        action=action,
+                        td_error=self.q_manager.q.get_action_and_value(
+                            state, torch.Tensor([action])
+                        ),
+                    ),
+                )
 
             trajectory.append(
                 {
@@ -839,16 +852,15 @@ class BridgeBuilderModel(pl.LightningModule):
 
         _, _, _, _, action_probs = self.q_manager.q.get_action_and_value(batch["state"])
 
-        if self.hparams.debug:
-            self._object_log_manager.log(
-                log_entry.TRAINING_BATCH_LOG_ENTRY,
-                log_entry.TrainingHistoryStateActionLogEntry(
-                    batch_idx=batch_idx,
-                    state_id=self._state_logger.get_logged_object_id(batch["state"]),
-                    state_width=self.env.nA,
-                    action_probs=action_probs,
-                ),
-            )
+        self._object_log_manager.log(
+            log_entry.TRAINING_BATCH_LOG_ENTRY,
+            log_entry.TrainingBatchLogEntry(
+                batch_idx=batch_idx,
+                state_id=self._state_logger.get_logged_object_id(batch["state"]),
+                state_width=self.env.nA,
+                action_probs=action_probs,
+            ),
+        )
 
         return loss
 

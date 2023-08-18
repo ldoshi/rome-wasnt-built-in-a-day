@@ -86,7 +86,7 @@ def training_history_plot_data():
     max_batch_idx = end_batch_idx if end_batch_idx is not None else start_batch_idx
 
     metrics_and_data_fns = [
-        ("td_error", "TD Error", training_history_database.get_td_errors),
+        ("td_error", "Probabilities", training_history_database.get_td_errors),
         ("q_value", "Q", training_history_database.get_q_values),
         ("q_target_value", "Q Target", training_history_database.get_q_target_values),
     ]
