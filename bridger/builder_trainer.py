@@ -746,7 +746,7 @@ class BridgeBuilderModel(pl.LightningModule):
         loss_clip = -(batch['advantage']* ratios_final).mean()
 
         c1 = 1
-        c2 = 10
+        c2 = .01
 
         loss_value = c1 * torch.square(state_value_new - batch['returns']).mean()
 
