@@ -113,6 +113,7 @@ def run():
 #            callbacks=callbacks,
             max_epochs=6000,
             reload_dataloaders_every_n_epochs=10,
+            check_val_every_n_epoch=10
         )
 
         trainer.fit(model)
