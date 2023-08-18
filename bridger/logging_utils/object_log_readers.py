@@ -276,7 +276,6 @@ class TrainingHistoryDatabase:
     * log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY
     * log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
     * log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY
-    * log_entry.TRAINING_HISTORY_STATE_ACTION_LOG_ENTRY
     * log_entry.STATE_NORMALIZED_LOG_ENTRY
 
     Attributes:

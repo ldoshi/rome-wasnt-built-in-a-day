@@ -89,11 +89,6 @@ def training_history_plot_data():
         ("td_error", "TD Error", training_history_database.get_td_errors),
         ("q_value", "Q", training_history_database.get_q_values),
         ("q_target_value", "Q Target", training_history_database.get_q_target_values),
-        (
-            "state_action_probs",
-            "State Action Probs",
-            training_history_database.get_state_action_probs,
-        ),
     ]
     for visit_entry in state_visits:
         state_plot_data = {
