@@ -899,9 +899,17 @@ class BridgeBuilderModel(pl.LightningModule):
         self._update_beta()
         return loss
 
-    # def validation_step(self, batch, batch_idx):
-    #     success, rewards, steps = batch
-    #     self.log("val_reward", torch.Tensor.float(rewards).mean())
+    def validation_step(self, batch, batch_idx):
+        self.log("success_count", batch['success'].int().sum())
+
+        trajectory_count = 100
+        self.log("average_episode_length", len(batch['success'])/trajectory_count)
+
+
+        optionated_action_threshold = .99
+        self.log("opinionated_action_ratio", (batch['action_log_prob'].exp() > optionated_action_threshold).sum()/len(batch['action_log_prob']))
+
+        
 
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
@@ -935,15 +943,21 @@ class BridgeBuilderModel(pl.LightningModule):
             num_workers=self.hparams.num_workers,
         )
 
-    # def val_dataloader(self) -> DataLoader:
-    #     return DataLoader(
-    #         ValidationBuilder(
-    #             env=self._validation_env,
-    #             policy=self._validation_policy,
-    #             episode_length=self.hparams.max_episode_length,
-    #         ),
-    #         batch_size=self.hparams.val_batch_size,
-    #         num_workers=self.hparams.num_workers,
-    #     )
+    
+    def val_dataloader(self) -> DataLoader:
+        # TODO(lyric): make this a config param.
+        trajectory_count = 100
+
+        experiences = []
+        with torch.no_grad():
+            for _ in range(trajectory_count):
+                experiences.extend(self.collect_trajectory())
+
+        
+        return DataLoader(
+            ExperienceIterator(experiences),
+            batch_size=len(experiences),
+            num_workers=self.hparams.num_workers,
+        )
 
     # TODO(arvind): Override hooks to load data appropriately for test
