@@ -85,14 +85,14 @@ class MetricMap(Generic[MetricMapValue]):
         # logged. Note that this invariant is not currently checked
         # before logging. If the metric value being used is not a float,
         # an error will be thrown here if a duplicate value is found.
-        duplicate_value = self._map.get(batch_idx)
-        if duplicate_value:
-            if not math.isclose(duplicate_value, metric_value, abs_tol=1e-5):
-                raise ValueError(
-                    "Metric values don't match for batch_idx duplicate. Current "
-                    f"is {duplicate_value} and received {metric_value}."
-                )
-            return
+        # duplicate_value = self._map.get(batch_idx)
+        # if duplicate_value:
+        #     if not math.isclose(duplicate_value, metric_value, abs_tol=1e-5):
+        #         raise ValueError(
+        #             "Metric values don't match for batch_idx duplicate. Current "
+        #             f"is {duplicate_value} and received {metric_value}."
+        #         )
+        #     return
 
         self._map[batch_idx] = metric_value
 
@@ -317,25 +317,37 @@ class TrainingHistoryDatabase:
                 )
             )
 
-        self._q_values = StateActionMetricMap()
-        self._q_target_values = StateActionMetricMap()
+        # self._q_values = StateActionMetricMap()
+        # self._q_target_values = StateActionMetricMap()
+        # for entry in _read_object_log(
+        #     dirname, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
+        # ):
+        #     self._q_values.add(
+        #         state_id=entry.state_id,
+        #         action=entry.action,
+        #         batch_idx=entry.batch_idx,
+        #         metric_value=entry.q_value,
+        #     )
+        #     self._q_target_values.add(
+        #         state_id=entry.state_id,
+        #         action=entry.action,
+        #         batch_idx=entry.batch_idx,
+        #         metric_value=entry.q_target_value,
+        #     )
+        # self._q_values.finalize()
+        # self._q_target_values.finalize()
+
+        self._action_probability_values = StateActionMetricMap()
         for entry in _read_object_log(
-            dirname, log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY
+            dirname, log_entry.TRAINING_HISTORY_ACTION_PROBABILITY_LOG_ENTRY
         ):
-            self._q_values.add(
+            self._action_probability_values.add(
                 state_id=entry.state_id,
                 action=entry.action,
                 batch_idx=entry.batch_idx,
-                metric_value=entry.q_value,
+                metric_value=entry.action_probability,
             )
-            self._q_target_values.add(
-                state_id=entry.state_id,
-                action=entry.action,
-                batch_idx=entry.batch_idx,
-                metric_value=entry.q_target_value,
-            )
-        self._q_values.finalize()
-        self._q_target_values.finalize()
+        self._action_probability_values.finalize()
 
         self._td_errors = StateActionMetricMap()
         for entry in _read_object_log(
@@ -402,6 +414,35 @@ class TrainingHistoryDatabase:
           values.
         """
         return self._td_errors.get(
+            state_id=state_id,
+            action=action,
+            start_batch_idx=start_batch_idx,
+            end_batch_idx=end_batch_idx,
+        )
+
+    def get_action_probability_values(
+        self,
+        state_id: int,
+        action: int,
+        start_batch_idx: Optional[int] = None,
+        end_batch_idx: Optional[int] = None,
+    ) -> tuple[list[int], list[float]]:
+        """Retrieves state action probbability values for the requested state and action.
+
+        Args:
+          state_id: The state id for which to retrieve q values.
+          action: The action for which to retrieve q values.
+          start_batch_idx: The first batch index (inclusive) to consider
+            when filtering the data.
+          end_batch_idx: The last batch index (inclusive) to consider
+            when filtering the data.
+
+        Returns:
+          A tuple of lists of the same length. The first contains
+          batch_idxs and the second contains corresponding td error
+          values.
+        """
+        return self._action_probability_values.get(
             state_id=state_id,
             action=action,
             start_batch_idx=start_batch_idx,

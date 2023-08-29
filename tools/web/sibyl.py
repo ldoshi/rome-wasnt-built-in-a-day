@@ -87,7 +87,7 @@ def training_history_plot_data():
 
     metrics_and_data_fns = [
         ("td_error", "TD Error", training_history_database.get_td_errors),
-        ("q_value", "Q", training_history_database.get_q_values),
+        ("action_probability_value", "Action Probability Value", training_history_database.get_action_probability_values),
         ("q_target_value", "Q Target", training_history_database.get_q_target_values),
     ]
     for visit_entry in state_visits:
