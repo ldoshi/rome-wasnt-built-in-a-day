@@ -385,7 +385,7 @@ class BridgeBuilderModel(pl.LightningModule):
 
         if self.hparams.debug:
             # self._record_q_values_debug_helper(batch_idx)
-            self._record_action_probabilities_debug_helper(batch_idx)
+            self._record_action_probabilities_debug_helper()
 
     #    self.make_memories(batch_idx)
 
