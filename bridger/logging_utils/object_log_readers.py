@@ -85,14 +85,17 @@ class MetricMap(Generic[MetricMapValue]):
         # logged. Note that this invariant is not currently checked
         # before logging. If the metric value being used is not a float,
         # an error will be thrown here if a duplicate value is found.
-        # duplicate_value = self._map.get(batch_idx)
-        # if duplicate_value:
-        #     if not math.isclose(duplicate_value, metric_value, abs_tol=1e-5):
-        #         raise ValueError(
-        #             "Metric values don't match for batch_idx duplicate. Current "
-        #             f"is {duplicate_value} and received {metric_value}."
-        #         )
-        #     return
+
+        # Keep the first value of the duplicate in the batch.
+
+        duplicate_value = self._map.get(batch_idx)
+        if duplicate_value:
+            #     if not math.isclose(duplicate_value, metric_value, abs_tol=1e-5):
+            #         raise ValueError(
+            #             "Metric values don't match for batch_idx duplicate. Current "
+            #             f"is {duplicate_value} and received {metric_value}."
+            #         )
+            return
 
         self._map[batch_idx] = metric_value
 
@@ -101,6 +104,8 @@ class MetricMap(Generic[MetricMapValue]):
         assert not self._finalized
         self._batch_idxs = list(self._map)
         self._metric_values = list(self._map.values())
+
+        print(self._batch_idxs)
 
         assert self._batch_idxs == sorted(
             self._batch_idxs
