@@ -404,12 +404,9 @@ class BridgeBuilderModel(pl.LightningModule):
         frequently_visited_states = self._state_visit_logger.get_top_n(
             _FREQUENTLY_VISITED_STATE_COUNT
         )
-        frequently_visited_state_probabilities = [
-            self.q_manager.q.get_action_and_value(state)[4]
-            for state in frequently_visited_states
-        ]
 
-        frequently_visited_states_tensor = torch.stack(frequently_visited_states)
+        frequently_visited_state_probabilities =  self.q_manager.q.get_action_and_value(torch.stack(frequently_visited_states))[4]
+
         for state, action_probabilities in zip(
             frequently_visited_states,
             frequently_visited_state_probabilities,
@@ -422,7 +419,7 @@ class BridgeBuilderModel(pl.LightningModule):
                         batch_idx=batch_idx,
                         state_id=state_id,
                         action=action,
-                        action_probability=action_probability,
+                        action_probability=action_probability.item(),
                     ),
                 )
 
