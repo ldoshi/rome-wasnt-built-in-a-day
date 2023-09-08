@@ -434,8 +434,8 @@ class TrainingHistoryDatabase:
         """Retrieves state action probability values for the requested state and action.
 
         Args:
-          state_id: The state id for which to retrieve q values.
-          action: The action for which to retrieve q values.
+          state_id: The state id for which to retrieve action probability values.
+          action: The action for which to retrieve action probability values.
           start_batch_idx: The first batch index (inclusive) to consider
             when filtering the data.
           end_batch_idx: The last batch index (inclusive) to consider
