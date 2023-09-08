@@ -105,8 +105,6 @@ class MetricMap(Generic[MetricMapValue]):
         self._batch_idxs = list(self._map)
         self._metric_values = list(self._map.values())
 
-        print(self._batch_idxs)
-
         assert self._batch_idxs == sorted(
             self._batch_idxs
         ), "Batch_idxs must be added in increasing order."
@@ -353,31 +351,32 @@ class TrainingHistoryDatabase:
                 metric_value=entry.action_probability,
             )
         self._action_probability_values.finalize()
+        self.nA = self._action_probability_values.nA
 
-        self._td_errors = StateActionMetricMap()
-        for entry in _read_object_log(
-            dirname, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY
-        ):
-            self._td_errors.add(
-                state_id=entry.state_id,
-                action=entry.action,
-                batch_idx=entry.batch_idx,
-                metric_value=entry.td_error,
-            )
-        self._td_errors.finalize()
+        # self._td_errors = StateActionMetricMap()
+        # for entry in _read_object_log(
+        #     dirname, log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY
+        # ):
+        #     self._td_errors.add(
+        #         state_id=entry.state_id,
+        #         action=entry.action,
+        #         batch_idx=entry.batch_idx,
+        #         metric_value=entry.td_error,
+        #     )
+        # self._td_errors.finalize()
 
-        self._replay_buffer_state_counts = MetricMap[dict[int, int]]()
-        for entry in _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY):
-            self._replay_buffer_state_counts.add(
-                batch_idx=entry.batch_idx,
-                metric_value={
-                    id: count for id, count in entry.replay_buffer_state_counts
-                },
-            )
+        # self._replay_buffer_state_counts = MetricMap[dict[int, int]]()
+        # for entry in _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY):
+        #     self._replay_buffer_state_counts.add(
+        #         batch_idx=entry.batch_idx,
+        #         metric_value={
+        #             id: count for id, count in entry.replay_buffer_state_counts
+        #         },
+        #     )
 
-        self._replay_buffer_state_counts.finalize()
+        # self._replay_buffer_state_counts.finalize()
 
-        self.nA = self._td_errors.nA
+        # self.nA = self._td_errors.nA
 
     def get_states_by_visit_count(
         self,
