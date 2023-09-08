@@ -329,7 +329,7 @@ class BridgeBuilderModel(pl.LightningModule):
         self._validation_policy = policies.GreedyPolicy(self.q_manager.q)
 
         self.epsilon = self.hparams.epsilon_training_start
-        self.memories = self._memory_generator()
+        # self.memories = self._memory_generator()
 
         self.next_action = None
         self.state = self.env.reset()
@@ -384,9 +384,42 @@ class BridgeBuilderModel(pl.LightningModule):
         #        self.q_manager.update_target()
 
         if self.hparams.debug:
-            self._record_q_values_debug_helper(batch_idx)
+            # self._record_q_values_debug_helper(batch_idx)
+            self._record_action_probabilities_debug_helper(batch_idx)
 
     #    self.make_memories(batch_idx)
+
+    def _record_action_probabilities_debug_helper(self) -> None:
+        """Compute and log q values.
+
+        Args:
+           batch_idx: A sequential value identifying which training
+             step produced the q values.
+
+        """
+        frequently_visited_states = self._state_visit_logger.get_top_n(
+            _FREQUENTLY_VISITED_STATE_COUNT
+        )
+
+        frequently_visited_state_probabilities = self.q_manager.q.get_action_and_value(
+            torch.stack(frequently_visited_states)
+        )[4]
+
+        for state, action_probabilities in zip(
+            frequently_visited_states,
+            frequently_visited_state_probabilities,
+        ):
+            state_id = self._state_logger.get_logged_object_id(state)
+            for action, action_probability in enumerate(action_probabilities):
+                self._object_log_manager.log(
+                    log_entry.TRAINING_HISTORY_ACTION_PROBABILITY_LOG_ENTRY,
+                    log_entry.TrainingHistoryActionProbabilityLogEntry(
+                        batch_idx=self.global_step,
+                        state_id=state_id,
+                        action=action,
+                        action_probability=action_probability.item(),
+                    ),
+                )
 
     def _record_q_values_debug_helper(self, batch_idx: int) -> None:
         """Compute and log q values.
@@ -421,93 +454,83 @@ class BridgeBuilderModel(pl.LightningModule):
                     ),
                 )
 
-    def make_memories(self, batch_idx, requested_memory_count=None):
-        """Makes memories according to the requested memory count or default number of steps."""
-        memory_count = (
-            requested_memory_count
-            if requested_memory_count is not None
-            else self.hparams.inter_training_steps
-        )
+    # def make_memories(self, batch_idx, requested_memory_count=None):
+    #     """Makes memories according to the requested memory count or default number of steps."""
+    #     memory_count = (
+    #         requested_memory_count
+    #         if requested_memory_count is not None
+    #         else self.hparams.inter_training_steps
+    #     )
 
-        # 1. Make a single member array as all our state action advantage experiences
-        # 2. Compute action, action probs, and values for all.
-        # 3. Go through them all as minibatches and compute loss!
-        # 4. Use the log prob to make the ratio a subtraction then exponentiate.
+    #     # 1. Make a single member array as all our state action advantage experiences
+    #     # 2. Compute action, action probs, and values for all.
+    #     # 3. Go through them all as minibatches and compute loss!
+    #     # 4. Use the log prob to make the ratio a subtraction then exponentiate.
 
-        with torch.no_grad():
-            trajectory = []
-            returns = 0
-            for _ in range(memory_count):
-                (
-                    episode_idx,
-                    step_idx,
-                    start_state,
-                    action,
-                    end_state,
-                    reward,
-                    success,
-                ) = next(self.memories)
-                trajectory.append([start_state, action, end_state, reward, success])
-                if success:
-                    # Compute Advantage. Add to replay buffer.
-                    for state_action_pair in reverse(trajectory):
-                        start_state = state_action_pair[0]
-                        reward = state_action_pair[3]
-                        returns = returns * self.hparams.gamma + reward
-                        advantage = -self.q_manager.q.get_value(start_state) + returns
-                        self.replay_buffer.add_new_experience(
-                            *state_action_pair, advantage
-                        )
+    #     with torch.no_grad():
+    #         trajectory = []
+    #         returns = 0
+    #         for _ in range(memory_count):
+    #             episode_idx, step_idx, start_state, action, end_state, reward, success = next(self.memories)
+    #             trajectory.append([start_state, action, end_state, reward, success])
+    #             if success:
+    #                 # Compute Advantage. Add to replay buffer.
+    #                 for state_action_pair in reverse(trajectory):
+    #                     start_state = state_action_pair[0]
+    #                     reward = state_action_pair[3]
+    #                     returns = returns * self.hparams.gamma + reward
+    #                     advantage = -self.q_manager.q.get_value(start_state) + returns
+    #                     self.replay_buffer.add_new_experience(*state_action_pair, advantage)
 
-                    trajectory = []
-                    returns = 0
+    #                 trajectory = []
+    #                 returns = 0
 
-                if self.hparams.debug:
-                    self._state_visit_logger.log_occurrence(
-                        batch_idx=batch_idx, object=torch.from_numpy(start_state)
-                    )
+    #             if self.hparams.debug:
+    #                 self._state_visit_logger.log_occurrence(
+    #                     batch_idx=batch_idx, object=torch.from_numpy(start_state)
+    #                 )
 
-            self.end_current_episode()
+    #         self.end_current_episode()
 
-    def _memory_generator(
-        self,
-    ) -> Generator[tuple[int, int, Any, Any, Any, Any, Any], None, None]:
-        """A generator that serves up sequential transitions experienced by the
-        agent. When an episode ends, a new one starts immediately.
+    # def _memory_generator(
+    #     self,
+    # ) -> Generator[tuple[int, int, Any, Any, Any, Any, Any], None, None]:
+    #     """A generator that serves up sequential transitions experienced by the
+    #     agent. When an episode ends, a new one starts immediately.
 
-        Returns:
-            Generator object yielding tuples with the following values:
+    #     Returns:
+    #         Generator object yielding tuples with the following values:
 
-            episode_idx: Starting from 0, incremented every time an episode ends
-                        and another begins.
-            step_idx:    Starting from 0, incremented with each transition,
-                        irrespective of the episode it is in.
-            start_state: The state at the beginning of the transition.
-            action:      The action taken during the transition.
-            end_state:   The state at the end of the transition.
-            reward:      The reward gained through the transition.
-            success:    Whether the transition marked the end of the episode."""
+    #         episode_idx: Starting from 0, incremented every time an episode ends
+    #                     and another begins.
+    #         step_idx:    Starting from 0, incremented with each transition,
+    #                     irrespective of the episode it is in.
+    #         start_state: The state at the beginning of the transition.
+    #         action:      The action taken during the transition.
+    #         end_state:   The state at the end of the transition.
+    #         reward:      The reward gained through the transition.
+    #         success:    Whether the transition marked the end of the episode."""
 
-        self.episode_idx = 0
-        total_step_idx = 0
-        while True:
-            for step_idx in range(self.hparams.max_episode_length):
-                self._checkpoint({"episode": self.episode_idx, "step": total_step_idx})
-                start_state, action, end_state, reward, success = self()
-                yield (
-                    episode_idx,
-                    step_idx,
-                    start_state,
-                    action,
-                    end_state,
-                    reward,
-                    success,
-                )
-                total_step_idx += 1
-                if success:
-                    break
-            self._update_epsilon()
-            self.end_current_episode()
+    #     self.episode_idx = 0
+    #     total_step_idx = 0
+    #     while True:
+    #         for step_idx in range(self.hparams.max_episode_length):
+    #             self._checkpoint({"episode": self.episode_idx, "step": total_step_idx})
+    #             start_state, action, end_state, reward, success = self()
+    #             yield (
+    #                 episode_idx,
+    #                 step_idx,
+    #                 start_state,
+    #                 action,
+    #                 end_state,
+    #                 reward,
+    #                 success,
+    #             )
+    #             total_step_idx += 1
+    #             if success:
+    #                 break
+    #         self._update_epsilon()
+    #         self.end_current_episode()
 
     def end_current_episode(self) -> None:
         self.state = self.env.reset()
@@ -797,6 +820,12 @@ class BridgeBuilderModel(pl.LightningModule):
                 on_epoch=True,
                 logger=True,
             )
+
+        if self.hparams.debug:
+            for state in batch["state"]:
+                self._state_visit_logger.log_occurrence(
+                    batch_idx=batch_idx, object=state
+                )
 
         return loss
 
