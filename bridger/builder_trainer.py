@@ -1,4 +1,4 @@
-#TODO(LIST): Check dimensions. Value fucntion loss.
+# TODO(LIST): Check dimensions. Value fucntion loss.
 
 import argparse
 import IPython
@@ -126,9 +126,8 @@ def get_actions_for_standard_configuration(
 
 
 class ExperienceIterator(torch.utils.data.IterableDataset):
-
     def __init__(self, experiences: list[dict]):
-        np.random.shuffle(experiences)        
+        np.random.shuffle(experiences)
         self._experiences = experiences
 
     def __iter__(self):
@@ -227,6 +226,7 @@ class StateActionCache:
 # TODO(arvind): Redesign the signature checking mechanism. Using
 # config.validate_input# is not robust with changes in Lightning functionality
 
+
 # pylint: disable=too-many-instance-attributes
 class BridgeBuilderModel(pl.LightningModule):
     @config.validate_input("BridgeBuilderModel", config.bridger_config)
@@ -301,11 +301,8 @@ class BridgeBuilderModel(pl.LightningModule):
         )
 
         # TODO(lyric): We set tau to 1 to completely copy over the policy to the target.
-        self.q_manager = qfunctions.CNNQManager(
-            *self.env.shape, self.env.nA, tau=1
-        )
+        self.q_manager = qfunctions.CNNQManager(*self.env.shape, self.env.nA, tau=1)
 
-        
         # if self.hparams.q == Q_CNN:
         #     self.q_manager = qfunctions.CNNQManager(
         #         *self.env.shape, self.env.nA, self.hparams.tau
@@ -325,7 +322,7 @@ class BridgeBuilderModel(pl.LightningModule):
         #         raise ValueError(f"Unrecognized q function: {self.hparams.q}")
 
         # TODO(lyric): Consider specifying the policy as a hyperparam
-#        self.policy = policies.EpsilonGreedyPolicy(self.q_manager.q)
+        #        self.policy = policies.EpsilonGreedyPolicy(self.q_manager.q)
         # At this time, the world is static once the initial
         # conditions are set. The agent is not navigating a dynamic
         # environment.
@@ -351,9 +348,9 @@ class BridgeBuilderModel(pl.LightningModule):
     def trained_policy(self):
         return policies.GreedyPolicy(self.q_manager.q)
 
-#    def on_train_end(self):
-#        self.q_manager.update_target()
-    
+    #    def on_train_end(self):
+    #        self.q_manager.update_target()
+
     def on_train_start(self):
         """Populates the replay buffer with an initial set of memories before training steps begin."""
         if self.hparams.initialize_replay_buffer_strategy is not None:
@@ -365,10 +362,11 @@ class BridgeBuilderModel(pl.LightningModule):
                 state_visit_logger=self._state_visit_logger,
                 state_logger=self._state_logger,
             )
-#        else:
- #           self.make_memories(
-  #              batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
-   #         )
+
+    #        else:
+    #           self.make_memories(
+    #              batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
+    #         )
 
     def on_train_batch_end(
         self,
@@ -383,10 +381,11 @@ class BridgeBuilderModel(pl.LightningModule):
             batch: A group of memories, size determined by `hparams.batch_size`.
             batch_idx: The index of the current batch, which also signifies the current round of model weight updates.
         """
-#        self.q_manager.update_target()
+        #        self.q_manager.update_target()
 
         if self.hparams.debug:
             self._record_q_values_debug_helper(batch_idx)
+
     #    self.make_memories(batch_idx)
 
     def _record_q_values_debug_helper(self, batch_idx: int) -> None:
@@ -433,13 +432,21 @@ class BridgeBuilderModel(pl.LightningModule):
         # 1. Make a single member array as all our state action advantage experiences
         # 2. Compute action, action probs, and values for all.
         # 3. Go through them all as minibatches and compute loss!
-        # 4. Use the log prob to make the ratio a subtraction then exponentiate. 
-        
+        # 4. Use the log prob to make the ratio a subtraction then exponentiate.
+
         with torch.no_grad():
             trajectory = []
             returns = 0
             for _ in range(memory_count):
-                episode_idx, step_idx, start_state, action, end_state, reward, success = next(self.memories)
+                (
+                    episode_idx,
+                    step_idx,
+                    start_state,
+                    action,
+                    end_state,
+                    reward,
+                    success,
+                ) = next(self.memories)
                 trajectory.append([start_state, action, end_state, reward, success])
                 if success:
                     # Compute Advantage. Add to replay buffer.
@@ -448,11 +455,13 @@ class BridgeBuilderModel(pl.LightningModule):
                         reward = state_action_pair[3]
                         returns = returns * self.hparams.gamma + reward
                         advantage = -self.q_manager.q.get_value(start_state) + returns
-                        self.replay_buffer.add_new_experience(*state_action_pair, advantage)
+                        self.replay_buffer.add_new_experience(
+                            *state_action_pair, advantage
+                        )
 
                     trajectory = []
                     returns = 0
-                
+
                 if self.hparams.debug:
                     self._state_visit_logger.log_occurrence(
                         batch_idx=batch_idx, object=torch.from_numpy(start_state)
@@ -499,10 +508,10 @@ class BridgeBuilderModel(pl.LightningModule):
                     break
             self._update_epsilon()
             self.end_current_episode()
-            
+
     def end_current_episode(self) -> None:
         self.state = self.env.reset()
-        self.episode_idx += 1            
+        self.episode_idx += 1
 
     def _checkpoint(self, thresholds: dict[str, int]) -> None:
         """A checkpointer that compares instance-state breakpoints to method
@@ -625,42 +634,47 @@ class BridgeBuilderModel(pl.LightningModule):
         for _ in range(self.hparams.max_episode_length):
             # TODO(lyric): Figure out if/how to revive checkpoint.
             #            self._checkpoint({"episode": self.episode_idx, "step": total_step_idx})
-            
-            action, action_log_prob, state_value, _, _ = self.q_manager.q.get_action_and_value(state)
 
+            (
+                action,
+                action_log_prob,
+                state_value,
+                _,
+                _,
+            ) = self.q_manager.q.get_action_and_value(state)
 
-
-            
             next_state, reward, success, _ = self.env.step(action)
             next_state = torch.Tensor(next_state)
 
-#            print("shapes collect: " , action.shape, " " , action_log_prob.shape,  " and " , state_value.squeeze().shape, " and " , state_value.ravel().shape)
-            
-            trajectory.append({
-                "state" : state,
-                "action" :action,
-                "next_state" : next_state,
-                "reward" : reward,
-                "success" : success,
-                "action_log_prob" : action_log_prob.squeeze(dim=0),
-                "state_value" : state_value.squeeze(dim=0)
-                })
-            
+            #            print("shapes collect: " , action.shape, " " , action_log_prob.shape,  " and " , state_value.squeeze().shape, " and " , state_value.ravel().shape)
+
+            trajectory.append(
+                {
+                    "state": state,
+                    "action": action,
+                    "next_state": next_state,
+                    "reward": reward,
+                    "success": success,
+                    "action_log_prob": action_log_prob.squeeze(dim=0),
+                    "state_value": state_value.squeeze(dim=0),
+                }
+            )
+
             if success:
                 break
-            
+
             state = next_state
 
         returns = 0
 
-#        check dims! 
+        #        check dims!
         for entry in reversed(trajectory):
-            returns = returns * self.hparams.gamma + entry['reward']
-            entry['returns'] = returns            
-            entry['advantage'] = -entry['state_value'].item() + returns
+            returns = returns * self.hparams.gamma + entry["reward"]
+            entry["returns"] = returns
+            entry["advantage"] = -entry["state_value"].item() + returns
 
-#            print("shapes 2:  and " , entry['advantage'], ' and ' , entry['state_value'].shape)
-            
+        #            print("shapes 2:  and " , entry['advantage'], ' and ' , entry['state_value'].shape)
+
         return trajectory
 
     def _update_epsilon(self) -> None:
@@ -731,57 +745,60 @@ class BridgeBuilderModel(pl.LightningModule):
         The loss is computed across a batch of memories sampled from the replay buffer. The replay buffer sampling weights are updated based on the TD error from the samples.
         """
         # TODO(lyric): Make this a config.
-        EPSILON = .2
+        EPSILON = 0.2
 
-  #      print("SHAPES! " , batch['state'].shape, " and " , batch['action'].shape)
-        
-        _, log_prob_new, state_value_new, entropy, action_distribution = self.q_manager.q.get_action_and_value(batch['state'], action=batch['action'].squeeze())
+        #      print("SHAPES! " , batch['state'].shape, " and " , batch['action'].shape)
 
-        
- #       print("SHAPES ACTION PROBS: " , log_prob_new.shape, " and ", batch['action_log_prob'].shape, ' and ', batch['advantage'].shape)
-        
-        ratios = (log_prob_new - batch['action_log_prob']).exp()
-        ratios_clamped = torch.clamp(ratios, min=1-EPSILON, max=1+EPSILON)
+        (
+            _,
+            log_prob_new,
+            state_value_new,
+            entropy,
+            action_distribution,
+        ) = self.q_manager.q.get_action_and_value(
+            batch["state"], action=batch["action"].squeeze()
+        )
+
+        #       print("SHAPES ACTION PROBS: " , log_prob_new.shape, " and ", batch['action_log_prob'].shape, ' and ', batch['advantage'].shape)
+
+        ratios = (log_prob_new - batch["action_log_prob"]).exp()
+        ratios_clamped = torch.clamp(ratios, min=1 - EPSILON, max=1 + EPSILON)
         ratios_final = torch.min(ratios, ratios_clamped)
-        loss_clip = -(batch['advantage']* ratios_final).mean()
+        loss_clip = -(batch["advantage"] * ratios_final).mean()
 
         c1 = 1
-        c2 = .01
+        c2 = 0.01
 
-        loss_value = c1 * torch.square(state_value_new - batch['returns']).mean()
+        loss_value = c1 * torch.square(state_value_new - batch["returns"]).mean()
 
         loss_entropy = c2 * entropy.mean()
-        
+
         loss = loss_clip + loss_value - loss_entropy
 
-#        print("SHAPE VALUE: " , state_value_new.shape)
-#        print("SHAPE batch: " , batch['state_value'].shape)
-        assert loss_clip.shape == loss_value.shape, f"{loss_clip.shape} vs {loss_value.shape}"
-        assert loss_clip.shape == loss_entropy.shape, f"{loss_clip.shape} vs {loss_entropy.shape}"
-        
-        self.log(
-            "train_loss", loss, on_epoch=True, logger=True
-        )
-        self.log(
-            "loss_clip", loss_clip, on_epoch=True,  logger=True
-        )
-        self.log(
-            "loss_value", loss_value, on_epoch=True,  logger=True
-        )
-        self.log(
-            "loss_entropy", loss_entropy, on_epoch=True,  logger=True
-        )
-        self.log(
-            "returns", batch['returns'].mean(), on_epoch=True,  logger=True
-        )
-        self.log(
-            "success", batch['success'].int().sum(), on_epoch=True,  logger=True
-        )
-        for a in range(self.env.nA):
-            self.log(f"action distribution: action {a}", action_distribution[:,a].mean(), on_epoch=True,  logger=True)
-        
-        return loss
+        #        print("SHAPE VALUE: " , state_value_new.shape)
+        #        print("SHAPE batch: " , batch['state_value'].shape)
+        assert (
+            loss_clip.shape == loss_value.shape
+        ), f"{loss_clip.shape} vs {loss_value.shape}"
+        assert (
+            loss_clip.shape == loss_entropy.shape
+        ), f"{loss_clip.shape} vs {loss_entropy.shape}"
 
+        self.log("train_loss", loss, on_epoch=True, logger=True)
+        self.log("loss_clip", loss_clip, on_epoch=True, logger=True)
+        self.log("loss_value", loss_value, on_epoch=True, logger=True)
+        self.log("loss_entropy", loss_entropy, on_epoch=True, logger=True)
+        self.log("returns", batch["returns"].mean(), on_epoch=True, logger=True)
+        self.log("success", batch["success"].int().sum(), on_epoch=True, logger=True)
+        for a in range(self.env.nA):
+            self.log(
+                f"action distribution: action {a}",
+                action_distribution[:, a].mean(),
+                on_epoch=True,
+                logger=True,
+            )
+
+        return loss
 
         loss = self.compute_loss(td_errors, weights=weights)
 
@@ -900,16 +917,17 @@ class BridgeBuilderModel(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        self.log("success_count", batch['success'].int().sum())
+        self.log("success_count", batch["success"].int().sum())
 
         trajectory_count = 100
-        self.log("average_episode_length", len(batch['success'])/trajectory_count)
+        self.log("average_episode_length", len(batch["success"]) / trajectory_count)
 
-
-        optionated_action_threshold = .99
-        self.log("opinionated_action_ratio", (batch['action_log_prob'].exp() > optionated_action_threshold).sum()/len(batch['action_log_prob']))
-
-        
+        optionated_action_threshold = 0.99
+        self.log(
+            "opinionated_action_ratio",
+            (batch["action_log_prob"].exp() > optionated_action_threshold).sum()
+            / len(batch["action_log_prob"]),
+        )
 
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
@@ -930,8 +948,8 @@ class BridgeBuilderModel(pl.LightningModule):
 
         # TODO(lyric): Is exploration an issue?
 
-#        self.q_manager.update_target()
-        
+        #        self.q_manager.update_target()
+
         experiences = []
         with torch.no_grad():
             for _ in range(trajectory_count):
@@ -943,7 +961,6 @@ class BridgeBuilderModel(pl.LightningModule):
             num_workers=self.hparams.num_workers,
         )
 
-    
     def val_dataloader(self) -> DataLoader:
         # TODO(lyric): make this a config param.
         trajectory_count = 100
@@ -953,7 +970,6 @@ class BridgeBuilderModel(pl.LightningModule):
             for _ in range(trajectory_count):
                 experiences.extend(self.collect_trajectory())
 
-        
         return DataLoader(
             ExperienceIterator(experiences),
             batch_size=len(experiences),
