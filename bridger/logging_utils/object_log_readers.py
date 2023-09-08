@@ -431,7 +431,7 @@ class TrainingHistoryDatabase:
         start_batch_idx: Optional[int] = None,
         end_batch_idx: Optional[int] = None,
     ) -> tuple[list[int], list[float]]:
-        """Retrieves state action probbability values for the requested state and action.
+        """Retrieves state action probability values for the requested state and action.
 
         Args:
           state_id: The state id for which to retrieve q values.
@@ -443,7 +443,7 @@ class TrainingHistoryDatabase:
 
         Returns:
           A tuple of lists of the same length. The first contains
-          batch_idxs and the second contains corresponding td error
+          batch_idxs and the second contains corresponding action probability
           values.
         """
         return self._action_probability_values.get(
