@@ -127,11 +127,16 @@ class CNNQ(torch.nn.Module):
         self.image_height = image_height
         self.image_width = image_width
 
-        paddings = [1, 1]
-        strides = [2, 1]
-        kernel_sizes = [3, 3]
-        channel_nums = [3, 4, 8]
+        # paddings = [1, 1]
+        # strides = [2, 1]
+        # kernel_sizes = [3, 3]
+        # channel_nums = [3, 4, 8]
 
+        paddings = [1,1,1]
+        strides = [1, 1, 1]
+        kernel_sizes = [3, 3, 3]
+        channel_nums = [3, 32, 64, 64]
+        
         args_iter = zip(
             channel_nums[:-1], channel_nums[1:], kernel_sizes, strides, paddings
         )
@@ -142,15 +147,15 @@ class CNNQ(torch.nn.Module):
             H = int((H + 2 * padding - kernel_size) / stride) + 1
             W = int((W + 2 * padding - kernel_size) / stride) + 1
         C = channel_nums[-1]
-        network_widths = [C * H * W, 64]
+        network_widths = [C * H * W, 512]
         args_iter = zip(network_widths[:-1], network_widths[1:])
         self.network = torch.nn.ModuleList([ _layer_init(torch.nn.Linear(*args)) for args in args_iter])
 
-        critic_widths = [64, 1]
+        critic_widths = [512, 1]
         args_iter = zip(critic_widths[:-1], critic_widths[1:])
         self.critic = torch.nn.ModuleList([_layer_init(torch.nn.Linear(*args)) for args in args_iter])
 
-        actor_widths = [64, num_actions]
+        actor_widths = [512, num_actions]
         args_iter = zip(actor_widths[:-1], actor_widths[1:])
         self.actor = torch.nn.ModuleList([_layer_init(torch.nn.Linear(*args)) for args in args_iter])
 

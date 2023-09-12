@@ -789,11 +789,16 @@ class BridgeBuilderModel(pl.LightningModule):
         ratios_final = torch.min(ratios, ratios_clamped)
         loss_clip = -(batch["advantage"] * ratios_final).mean()
 
-        c1 = 1
+        c1 = .5
         c2 = 0.01
 
         loss_value = c1 * torch.square(state_value_new - batch["returns"]).mean()
 
+        # change the rewards to just reward completion. or... something?
+        # one issue is the value function can never converge because the same (State,Action) can have many values if you keep dropping things in the hole.
+        # make the state the (current state + bricks placed)
+        # Think more about how it can get stuck on action 1. 
+        
         loss_entropy = c2 * entropy.mean()
 
         loss = loss_clip + loss_value - loss_entropy
@@ -970,10 +975,10 @@ class BridgeBuilderModel(pl.LightningModule):
         """Samples a batch of memories from the replay buffer for training.
 
         Used to prevent early bottlenecking in the model at data generation step
-        and allows for computabtions to be split across multiple source files."""
+        and allows for computations to be split across multiple source files."""
 
         # TODO(lyric): make this a config param.
-        trajectory_count = 32
+        trajectory_experience_count = self.hparams.batch_size * 10
 
         # TODO(lyric): Is exploration an issue?
 
@@ -981,8 +986,9 @@ class BridgeBuilderModel(pl.LightningModule):
 
         experiences = []
         with torch.no_grad():
-            for _ in range(trajectory_count):
+            while len(experiences) < trajectory_experience_count:
                 experiences.extend(self.collect_trajectory())
+            experiences = experiences[:trajectory_experience_count]
 
         return DataLoader(
             ExperienceIterator(experiences),
