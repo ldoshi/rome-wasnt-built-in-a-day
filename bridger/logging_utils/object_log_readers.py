@@ -90,19 +90,11 @@ class MetricMap(Generic[MetricMapValue]):
 
         duplicate_value = self._map.get(batch_idx)
         if duplicate_value:
-<<<<<<< HEAD
             if not math.isclose(duplicate_value, metric_value, abs_tol=1e-5):
                 raise ValueError(
                     "Metric values don't match for batch_idx duplicate. Current "
                     f"is {duplicate_value} and received {metric_value}."
                 )
-=======
-            #     if not math.isclose(duplicate_value, metric_value, abs_tol=1e-5):
-            #         raise ValueError(
-            #             "Metric values don't match for batch_idx duplicate. Current "
-            #             f"is {duplicate_value} and received {metric_value}."
-            #         )
->>>>>>> 38bf777 (changes)
             return
 
         self._map[batch_idx] = metric_value

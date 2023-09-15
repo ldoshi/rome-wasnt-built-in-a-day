@@ -818,13 +818,6 @@ class BridgeBuilderModel(pl.LightningModule):
         self.log("loss_entropy", loss_entropy, on_epoch=True, logger=True)
         self.log("returns", batch["returns"].mean(), on_epoch=True, logger=True)
         self.log("success", batch["success"].int().sum(), on_epoch=True, logger=True)
-        for a in range(self.env.nA):
-            self.log(
-                f"action distribution: action {a}",
-                action_distribution[:, a].mean(),
-                on_epoch=True,
-                logger=True,
-            )
 
         if self.hparams.debug:
             for state in batch["state"]:
