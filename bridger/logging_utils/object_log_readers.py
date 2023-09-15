@@ -105,8 +105,6 @@ class MetricMap(Generic[MetricMapValue]):
         self._batch_idxs = list(self._map)
         self._metric_values = list(self._map.values())
 
-        print(self._batch_idxs)
-
         assert self._batch_idxs == sorted(
             self._batch_idxs
         ), "Batch_idxs must be added in increasing order."
