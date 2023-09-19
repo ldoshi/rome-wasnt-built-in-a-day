@@ -71,6 +71,7 @@ class ObjectLogManager:
                 self._object_loggers[log_filename] = ObjectLogger(
                     dirname=self._base_dir,
                     log_filename=log_filename,
+                    buffer_size = 1,
                 )
             else:
                 self._object_loggers[log_filename] = ObjectLogger(
