@@ -789,7 +789,7 @@ class BridgeBuilderModel(pl.LightningModule):
         ratios_final = torch.min(ratios, ratios_clamped)
         loss_clip = -(batch["advantage"] * ratios_final).mean()
 
-        c1 = .5
+        c1 = 0.5
         c2 = 0.01
 
         loss_value = c1 * torch.square(state_value_new - batch["returns"]).mean()
@@ -797,8 +797,8 @@ class BridgeBuilderModel(pl.LightningModule):
         # change the rewards to just reward completion. or... something?
         # one issue is the value function can never converge because the same (State,Action) can have many values if you keep dropping things in the hole.
         # make the state the (current state + bricks placed)
-        # Think more about how it can get stuck on action 1. 
-        
+        # Think more about how it can get stuck on action 1.
+
         loss_entropy = c2 * entropy.mean()
 
         loss = loss_clip + loss_value - loss_entropy
@@ -813,11 +813,25 @@ class BridgeBuilderModel(pl.LightningModule):
         ), f"{loss_clip.shape} vs {loss_entropy.shape}"
 
         self.log("train_loss", loss, on_epoch=True, on_step=False, logger=True)
-        self.log("loss_clip", loss_clip, on_epoch=True, on_step=False,logger=True)
-        self.log("loss_value", loss_value, on_epoch=True, on_step=False,logger=True)
-        self.log("loss_entropy", loss_entropy, on_epoch=True, on_step=False,logger=True)
-        self.log("returns", batch["returns"].mean(), on_epoch=True, on_step=False,logger=True)
-        self.log("success", batch["success"].int().sum(), on_epoch=True, on_step=False,logger=True)
+        self.log("loss_clip", loss_clip, on_epoch=True, on_step=False, logger=True)
+        self.log("loss_value", loss_value, on_epoch=True, on_step=False, logger=True)
+        self.log(
+            "loss_entropy", loss_entropy, on_epoch=True, on_step=False, logger=True
+        )
+        self.log(
+            "returns",
+            batch["returns"].mean(),
+            on_epoch=True,
+            on_step=False,
+            logger=True,
+        )
+        self.log(
+            "success",
+            batch["success"].int().sum(),
+            on_epoch=True,
+            on_step=False,
+            logger=True,
+        )
 
         if self.hparams.debug:
             for state in batch["state"]:
@@ -925,7 +939,13 @@ class BridgeBuilderModel(pl.LightningModule):
             action_inversion_reports = self._action_inversion_checker.check(
                 policy=self._validation_policy
             )
-            self.log("action_inversion_incident_rate", len(action_inversion_reports), on_epoch=True, on_step=False, logger=True)
+            self.log(
+                "action_inversion_incident_rate",
+                len(action_inversion_reports),
+                on_epoch=True,
+                on_step=False,
+                logger=True,
+            )
 
             for report in action_inversion_reports:
                 self._object_log_manager.log(
@@ -944,16 +964,32 @@ class BridgeBuilderModel(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        self.log("success_count", batch["success"].int().sum(), on_epoch=True, on_step=False, logger=True)
+        self.log(
+            "success_count",
+            batch["success"].int().sum(),
+            on_epoch=True,
+            on_step=False,
+            logger=True,
+        )
 
         trajectory_count = 100
-        self.log("average_episode_length", len(batch["success"]) / trajectory_count, on_epoch=True, on_step=False, logger=True)
+        self.log(
+            "average_episode_length",
+            len(batch["success"]) / trajectory_count,
+            on_epoch=True,
+            on_step=False,
+            logger=True,
+        )
 
         optionated_action_threshold = 0.99
         self.log(
             "opinionated_action_ratio",
             (batch["action_log_prob"].exp() > optionated_action_threshold).sum()
-            / len(batch["action_log_prob"]), on_epoch=True, on_step=False, logger=True)
+            / len(batch["action_log_prob"]),
+            on_epoch=True,
+            on_step=False,
+            logger=True,
+        )
 
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
