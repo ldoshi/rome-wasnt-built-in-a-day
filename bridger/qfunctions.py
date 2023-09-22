@@ -188,7 +188,11 @@ class CNNQ(torch.nn.Module):
         # State count will be 0 if we are not using it.
         x = self.network[0](
             torch.concatenate(
-                [x.reshape(x.shape[0], -1), torch.tensor(state_count).reshape(x.shape[0], -1)], axis=1
+                [
+                    x.reshape(x.shape[0], -1),
+                    torch.tensor(state_count).reshape(x.shape[0], -1),
+                ],
+                axis=1,
             )
         )
         for layer in self.network[1:]:
@@ -201,14 +205,8 @@ class CNNQ(torch.nn.Module):
     #         x = layer(torch.relu(x))
     #     return x
 
-<<<<<<< HEAD
-    def get_action_and_value(self, x, action=None):
-        x = self._forward_network(x)
-
-=======
     def get_action_and_value(self, x, state_count, action=None):
         x = self._forward_network(x, state_count)
->>>>>>> 6fbbc2a (Add state count, sibyl action probability disabled)
         actor = x
         for layer in self.actor:
             actor = layer(torch.relu(actor))
