@@ -9,6 +9,7 @@ from bridger import builder
 import pytorch_lightning as pl
 import torch
 from typing import Union, Optional, Callable, Hashable
+from collections import Counter
 
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
@@ -300,8 +301,16 @@ class BridgeBuilderModel(pl.LightningModule):
             debug=self.hparams.debug,
         )
 
-        # TODO(lyric): We set tau to 1 to completely copy over the policy to the target.
-        self.q_manager = qfunctions.CNNQManager(*self.env.shape, self.env.nA, tau=1)
+        # if self.hparams.debug:
+            # TODO(lyric): We set tau to 1 to completely copy over the policy to the target.
+        self.q_manager = qfunctions.CNNQManager(
+            *self.env.shape, self.env.nA, tau=1, include_state_counts=True
+        )
+        self._hashed_state_counts = Counter()
+        # else:
+            # self.q_manager = qfunctions.CNNQManager(
+            #     *self.env.shape, self.env.nA, tau=1, include_state_counts=False
+            # )
 
         # if self.hparams.q == Q_CNN:
         #     self.q_manager = qfunctions.CNNQManager(
@@ -657,14 +666,18 @@ class BridgeBuilderModel(pl.LightningModule):
         for _ in range(self.hparams.max_episode_length):
             # TODO(lyric): Figure out if/how to revive checkpoint.
             #            self._checkpoint({"episode": self.episode_idx, "step": total_step_idx})
-
+            self._hashed_state_counts[hash_utils.hash_tensor(state)] += 1
+            state_count = self._hashed_state_counts[hash_utils.hash_tensor(state)]
             (
                 action,
                 action_log_prob,
                 state_value,
                 _,
                 _,
-            ) = self.q_manager.q.get_action_and_value(state)
+            ) = self.q_manager.q.get_action_and_value(
+                state,
+                state_count=state_count,
+            )
 
             next_state, reward, success, _ = self.env.step(action)
             next_state = torch.Tensor(next_state)
@@ -680,6 +693,7 @@ class BridgeBuilderModel(pl.LightningModule):
                     "success": success,
                     "action_log_prob": action_log_prob.squeeze(dim=0),
                     "state_value": state_value.squeeze(dim=0),
+                    "state_count": state_count
                 }
             )
 
@@ -779,7 +793,7 @@ class BridgeBuilderModel(pl.LightningModule):
             entropy,
             action_distribution,
         ) = self.q_manager.q.get_action_and_value(
-            batch["state"], action=batch["action"].squeeze()
+            batch["state"], batch["state_count"].squeeze(), action=batch["action"].squeeze()
         )
 
         #       print("SHAPES ACTION PROBS: " , log_prob_new.shape, " and ", batch['action_log_prob'].shape, ' and ', batch['advantage'].shape)
