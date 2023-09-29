@@ -826,26 +826,12 @@ class BridgeBuilderModel(pl.LightningModule):
             loss_clip.shape == loss_entropy.shape
         ), f"{loss_clip.shape} vs {loss_entropy.shape}"
 
-        self.log("train_loss", loss, on_epoch=True, on_step=False, logger=True)
-        self.log("loss_clip", loss_clip, on_epoch=True, on_step=False, logger=True)
-        self.log("loss_value", loss_value, on_epoch=True, on_step=False, logger=True)
-        self.log(
-            "loss_entropy", loss_entropy, on_epoch=True, on_step=False, logger=True
-        )
-        self.log(
-            "returns",
-            batch["returns"].mean(),
-            on_epoch=True,
-            on_step=False,
-            logger=True,
-        )
-        self.log(
-            "success",
-            batch["success"].int().sum(),
-            on_epoch=True,
-            on_step=False,
-            logger=True,
-        )
+        self.log("loss", loss, on_epoch=True, on_step=False, logger=True)
+        self.log("loss_clip", loss_clip, on_epoch=True, on_step=False,logger=True)
+        self.log("loss_value", loss_value, on_epoch=True, on_step=False,logger=True)
+        self.log("loss_entropy", loss_entropy, on_epoch=True, on_step=False,logger=True)
+        self.log("returns", batch["returns"].mean(), on_epoch=True, on_step=False,logger=True)
+        self.log("success", batch["success"].int().sum(), on_epoch=True, on_step=False,logger=True)
 
         if self.hparams.debug:
             for state in batch["state"]:
@@ -978,26 +964,16 @@ class BridgeBuilderModel(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        self.log(
-            "success_count",
-            batch["success"].int().sum(),
-            on_epoch=True,
-            on_step=False,
-            logger=True,
-        )
+        self.log("val_success_count", batch["success"].int().sum(), on_epoch=True, on_step=False, logger=True)
 
         trajectory_count = 100
-        self.log(
-            "average_episode_length",
-            len(batch["success"]) / trajectory_count,
-            on_epoch=True,
-            on_step=False,
-            logger=True,
-        )
+        self.log("val_average_episode_length", len(batch["success"]) / trajectory_count, on_epoch=True, on_step=False, logger=True)
+
+        self.log("val_returns", (batch["returns"]).sum() / trajectory_count, on_epoch=True, on_step=False,logger=True)
 
         optionated_action_threshold = 0.99
         self.log(
-            "opinionated_action_ratio",
+            "val_opinionated_action_ratio",
             (batch["action_log_prob"].exp() > optionated_action_threshold).sum()
             / len(batch["action_log_prob"]),
             on_epoch=True,
