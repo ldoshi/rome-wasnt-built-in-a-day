@@ -262,6 +262,7 @@ class BridgeBuilderModel(pl.LightningModule):
             object_log_manager=self._object_log_manager,
             log_entry_object_class=torch.Tensor,
             make_hashable_fn=hash_utils.hash_tensor,
+            read_existing_log_entry=True,
         )
         self._state_visit_logger = object_logging.OccurrenceLogger(
             log_filename=log_entry.TRAINING_HISTORY_VISIT_LOG_ENTRY,
@@ -302,15 +303,15 @@ class BridgeBuilderModel(pl.LightningModule):
         )
 
         # if self.hparams.debug:
-            # TODO(lyric): We set tau to 1 to completely copy over the policy to the target.
+        # TODO(lyric): We set tau to 1 to completely copy over the policy to the target.
         self.q_manager = qfunctions.CNNQManager(
             *self.env.shape, self.env.nA, tau=1, include_state_counts=True
         )
         self._hashed_state_counts = Counter()
         # else:
-            # self.q_manager = qfunctions.CNNQManager(
-            #     *self.env.shape, self.env.nA, tau=1, include_state_counts=False
-            # )
+        # self.q_manager = qfunctions.CNNQManager(
+        #     *self.env.shape, self.env.nA, tau=1, include_state_counts=False
+        # )
 
         # if self.hparams.q == Q_CNN:
         #     self.q_manager = qfunctions.CNNQManager(
@@ -411,7 +412,8 @@ class BridgeBuilderModel(pl.LightningModule):
         )
 
         frequently_visited_state_probabilities = self.q_manager.q.get_action_and_value(
-            torch.stack(frequently_visited_states),             torch.ones(len(frequently_visited_states))
+            torch.stack(frequently_visited_states),
+            torch.ones(len(frequently_visited_states)),
         )[4]
 
         for state, action_probabilities in zip(
@@ -693,7 +695,7 @@ class BridgeBuilderModel(pl.LightningModule):
                     "success": success,
                     "action_log_prob": action_log_prob.squeeze(dim=0),
                     "state_value": state_value.squeeze(dim=0),
-                    "state_count": state_count
+                    "state_count": state_count,
                 }
             )
 
@@ -793,7 +795,9 @@ class BridgeBuilderModel(pl.LightningModule):
             entropy,
             action_distribution,
         ) = self.q_manager.q.get_action_and_value(
-            batch["state"], batch["state_count"].squeeze(), action=batch["action"].squeeze()
+            batch["state"],
+            batch["state_count"].squeeze(),
+            action=batch["action"].squeeze(),
         )
 
         #       print("SHAPES ACTION PROBS: " , log_prob_new.shape, " and ", batch['action_log_prob'].shape, ' and ', batch['advantage'].shape)
@@ -827,11 +831,25 @@ class BridgeBuilderModel(pl.LightningModule):
         ), f"{loss_clip.shape} vs {loss_entropy.shape}"
 
         self.log("loss", loss, on_epoch=True, on_step=False, logger=True)
-        self.log("loss_clip", loss_clip, on_epoch=True, on_step=False,logger=True)
-        self.log("loss_value", loss_value, on_epoch=True, on_step=False,logger=True)
-        self.log("loss_entropy", loss_entropy, on_epoch=True, on_step=False,logger=True)
-        self.log("returns", batch["returns"].mean(), on_epoch=True, on_step=False,logger=True)
-        self.log("success", batch["success"].int().sum(), on_epoch=True, on_step=False,logger=True)
+        self.log("loss_clip", loss_clip, on_epoch=True, on_step=False, logger=True)
+        self.log("loss_value", loss_value, on_epoch=True, on_step=False, logger=True)
+        self.log(
+            "loss_entropy", loss_entropy, on_epoch=True, on_step=False, logger=True
+        )
+        self.log(
+            "returns",
+            batch["returns"].mean(),
+            on_epoch=True,
+            on_step=False,
+            logger=True,
+        )
+        self.log(
+            "success",
+            batch["success"].int().sum(),
+            on_epoch=True,
+            on_step=False,
+            logger=True,
+        )
 
         if self.hparams.debug:
             for state in batch["state"]:
@@ -964,12 +982,30 @@ class BridgeBuilderModel(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        self.log("val_success_count", batch["success"].int().sum(), on_epoch=True, on_step=False, logger=True)
+        self.log(
+            "val_success_count",
+            batch["success"].int().sum(),
+            on_epoch=True,
+            on_step=False,
+            logger=True,
+        )
 
         trajectory_count = 100
-        self.log("val_average_episode_length", len(batch["success"]) / trajectory_count, on_epoch=True, on_step=False, logger=True)
+        self.log(
+            "val_average_episode_length",
+            len(batch["success"]) / trajectory_count,
+            on_epoch=True,
+            on_step=False,
+            logger=True,
+        )
 
-        self.log("val_returns", (batch["returns"]).sum() / trajectory_count, on_epoch=True, on_step=False,logger=True)
+        self.log(
+            "val_returns",
+            (batch["returns"]).sum() / trajectory_count,
+            on_epoch=True,
+            on_step=False,
+            logger=True,
+        )
 
         optionated_action_threshold = 0.99
         self.log(

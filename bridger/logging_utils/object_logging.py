@@ -71,7 +71,7 @@ class ObjectLogManager:
                 self._object_loggers[log_filename] = ObjectLogger(
                     dirname=self._base_dir,
                     log_filename=log_filename,
-                    buffer_size = 1,
+                    buffer_size=1,
                 )
             else:
                 self._object_loggers[log_filename] = ObjectLogger(
@@ -86,8 +86,15 @@ class ObjectLogManager:
 
         Args:
             log_filename: The log filename describing the log to read in the base directory.
+
+        Returns:
+            A list of log entries or an empty list if the log file does not exist.
         """
-        return list(read_object_log(os.path.join(self._base_dir, log_filename)))
+        log_filepath = os.path.join(self._base_dir, log_filename)
+        if not os.path.exists(log_filepath):
+            return []
+
+        return list(read_object_log(log_filepath))
 
 
 # TODO(arvind): Refactor out common code shared between
