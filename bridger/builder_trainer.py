@@ -411,7 +411,7 @@ class BridgeBuilderModel(pl.LightningModule):
         )
 
         frequently_visited_state_probabilities = self.q_manager.q.get_action_and_value(
-            torch.stack(frequently_visited_states)
+            torch.stack(frequently_visited_states),             torch.ones(len(frequently_visited_states))
         )[4]
 
         for state, action_probabilities in zip(
