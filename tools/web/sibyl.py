@@ -57,7 +57,9 @@ def _get_int_or_default(name: str, default: Optional[int] = None) -> Optional[in
 
 
 def _get_experiment_names() -> list[str]:
-    return sorted(os.listdir(_LOG_DIR))
+    return sorted(
+        [x for x in os.listdir(_LOG_DIR) if os.path.isdir(os.path.join(_LOG_DIR, x))]
+    )
 
 
 @app.route("/training_history_plot_data", methods=["GET"])
@@ -86,9 +88,13 @@ def training_history_plot_data():
     max_batch_idx = end_batch_idx if end_batch_idx is not None else start_batch_idx
 
     metrics_and_data_fns = [
-        ("td_error", "TD Error", training_history_database.get_td_errors),
-        ("q_value", "Q", training_history_database.get_q_values),
-        ("q_target_value", "Q Target", training_history_database.get_q_target_values),
+        # ("td_error", "TD Error", training_history_database.get_td_errors),
+        (
+            "action_probability_value",
+            "Action Probability Value",
+            training_history_database.get_action_probability_values,
+        ),
+        # ("q_target_value", "Q Target", training_history_database.get_q_target_values),
     ]
     for visit_entry in state_visits:
         state_plot_data = {

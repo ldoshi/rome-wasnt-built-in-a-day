@@ -5,7 +5,9 @@ import functools
 import gym
 import itertools
 import multiprocessing
+import numpy as np
 import torch
+from torch.distributions.categorical import Categorical
 import torch.nn
 import torch.nn.functional as F
 
@@ -66,6 +68,7 @@ class CNNQManager(QManager):
         image_width: int,
         num_actions: int,
         tau: Optional[float],
+        include_state_counts=False,
     ):
         """Manager implementing q and the target as CNNQs.
 
@@ -83,7 +86,10 @@ class CNNQManager(QManager):
 
         self._tau = tau
         self._q = CNNQ(
-            image_height=image_height, image_width=image_width, num_actions=num_actions
+            image_height=image_height,
+            image_width=image_width,
+            num_actions=num_actions,
+            include_state_counts=include_state_counts,
         )
 
         if self._tau is not None:
@@ -91,6 +97,7 @@ class CNNQManager(QManager):
                 image_height=image_height,
                 image_width=image_width,
                 num_actions=num_actions,
+                include_state_counts=include_state_counts,
             )
             self._target.load_state_dict(self._q.state_dict())
         else:
@@ -111,18 +118,35 @@ class CNNQManager(QManager):
         return self._target
 
 
+def _layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+    torch.nn.init.orthogonal_(layer.weight, std)
+    torch.nn.init.constant_(layer.bias, bias_const)
+    return layer
+
+
 class CNNQ(torch.nn.Module):
     """Base class for CNN Q-function neural network module."""
 
-    def __init__(self, image_height: int, image_width: int, num_actions: int):
+    def __init__(
+        self,
+        image_height: int,
+        image_width: int,
+        num_actions: int,
+        include_state_counts: bool,
+    ):
         super(CNNQ, self).__init__()
         self.image_height = image_height
         self.image_width = image_width
 
-        paddings = [1, 1]
-        strides = [2, 1]
-        kernel_sizes = [3, 3]
-        channel_nums = [3, 4, 8]
+        # paddings = [1, 1]
+        # strides = [2, 1]
+        # kernel_sizes = [3, 3]
+        # channel_nums = [3, 4, 8]
+
+        paddings = [1, 1, 1]
+        strides = [1, 1, 1]
+        kernel_sizes = [3, 3, 3]
+        channel_nums = [3, 32, 64, 64]
 
         args_iter = zip(
             channel_nums[:-1], channel_nums[1:], kernel_sizes, strides, paddings
@@ -134,19 +158,71 @@ class CNNQ(torch.nn.Module):
             H = int((H + 2 * padding - kernel_size) / stride) + 1
             W = int((W + 2 * padding - kernel_size) / stride) + 1
         C = channel_nums[-1]
-        dense_widths = [C * H * W, 64, num_actions]
-        args_iter = zip(dense_widths[:-1], dense_widths[1:])
-        self.DNN = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
+        if include_state_counts:
+            # Add the state count as an extra input bit to the first layer of the network.
+            network_widths = [C * H * W + 1, 512]
+        else:
+            network_widths = [C * H * W, 512]
+        args_iter = zip(network_widths[:-1], network_widths[1:])
+        self.network = torch.nn.ModuleList(
+            [_layer_init(torch.nn.Linear(*args)) for args in args_iter]
+        )
 
-    def forward(self, x):
+        critic_widths = [512, 1]
+        args_iter = zip(critic_widths[:-1], critic_widths[1:])
+        self.critic = torch.nn.ModuleList(
+            [_layer_init(torch.nn.Linear(*args)) for args in args_iter]
+        )
+
+        actor_widths = [512, num_actions]
+        args_iter = zip(actor_widths[:-1], actor_widths[1:])
+        self.actor = torch.nn.ModuleList(
+            [_layer_init(torch.nn.Linear(*args)) for args in args_iter]
+        )
+
+    def _forward_network(self, x, state_count: int = 0):
         x = x.reshape(-1, self.image_height, self.image_width)
         x = encode_enum_state_to_channels(x, self.CNN[0].in_channels).float()
         for layer in self.CNN:
             x = torch.relu(layer(x))
-        x = self.DNN[0](x.reshape(x.shape[0], -1))
-        for layer in self.DNN[1:]:
+        # State count will be 0 if we are not using it.
+        x = self.network[0](
+            torch.concatenate(
+                [
+                    x.reshape(x.shape[0], -1),
+                    torch.tensor(state_count).reshape(x.shape[0], -1),
+                ],
+                axis=1,
+            )
+        )
+        for layer in self.network[1:]:
             x = layer(torch.relu(x))
         return x
+
+    # def get_value(self, x):
+    #     x = self._forward_network(x)
+    #     for layer in self.critic:
+    #         x = layer(torch.relu(x))
+    #     return x
+
+    def get_action_and_value(self, x, state_count, action=None):
+        x = self._forward_network(x, state_count)
+        actor = x
+        for layer in self.actor:
+            actor = layer(torch.relu(actor))
+
+        probs = Categorical(logits=actor)
+        #        probs =         [0.1773, 0.1677, 0.1678, 0.1566, 0.1767, 0.1540]
+        if action is None:
+            action = probs.sample()
+
+        #        print("actions!: " , probs.probs)
+
+        critic = x
+        for layer in self.critic:
+            critic = layer(torch.relu(critic))
+
+        return action, probs.log_prob(action), critic, probs.entropy(), probs.probs
 
 
 def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int):

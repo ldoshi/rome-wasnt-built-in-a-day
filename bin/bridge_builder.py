@@ -100,17 +100,20 @@ def run():
 
         trainer = Trainer(
             gradient_clip_val=hparams.gradient_clip_val,
-            val_check_interval=hparams.val_check_interval,
+#            val_check_interval=hparams.val_check_interval,
             # The validation batch size can be adjusted via a config, but
             # we only need a single batch.
-            limit_val_batches=1,
+ #           limit_val_batches=1,
             logger=TensorBoardLogger(
                 save_dir=hparams.checkpoint_model_dir,
                 name=full_experiment_name,
                 version="",
             ),
             max_steps=hparams.max_training_batches,
-            callbacks=callbacks,
+#            callbacks=callbacks,
+            max_epochs=6000,
+            reload_dataloaders_every_n_epochs=10,
+            check_val_every_n_epoch=10
         )
 
         trainer.fit(model)
@@ -135,13 +138,13 @@ def run():
                 hparams.tabular_q_initialization_brick_count, demo_episode_length
             )
 
-        build_evaluator = builder.BuildEvaluator(
-            env=evaluation_env,
-            policy=model.trained_policy,
-            build_count=build_count,
-            episode_length=demo_episode_length,
-        )
-        build_evaluator.print_report()
+        # build_evaluator = builder.BuildEvaluator(
+        #     env=evaluation_env,
+        #     policy=model.trained_policy,
+        #     build_count=build_count,
+        #     episode_length=demo_episode_length,
+        # )
+        # build_evaluator.print_report()
 
 
 if __name__ == "__main__":
