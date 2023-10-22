@@ -168,10 +168,17 @@ def replay_buffer_state_counts_plot_data():
         data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
     )
 
+    # State visits are sorted by most visited to least visited.
+    replay_buffer_states_by_visit_count = [
+        visit_entry.state.tolist()
+        for visit_entry in training_history_database.get_states_by_visit_count()
+    ]
+
     (
         _,
         replay_buffer_state_counts_by_batch,
     ) = training_history_database.get_replay_buffer_state_counts()
+
     # Sum the replay buffer_state_counts.
     total_replay_buffer_state_counts = Counter()
     for batch_replay_buffer_state_counts in replay_buffer_state_counts_by_batch:
@@ -181,6 +188,7 @@ def replay_buffer_state_counts_plot_data():
     print(f"Sibyl replay buffer state counts took {end-start} ms.")
     return {
         "total_replay_buffer_state_counts": total_replay_buffer_state_counts,
+        "replay_buffer_states_by_visit_count": replay_buffer_states_by_visit_count,
     }
 
 
