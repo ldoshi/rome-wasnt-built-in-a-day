@@ -83,7 +83,7 @@ def make_env(
         An instantiated gym environment.
     """
     env = gym.make(
-        name, width=width, force_standard_config=force_standard_config, seed=seed
+        name, render='human'
     )
     return env
 
@@ -284,6 +284,7 @@ class BridgeBuilderModel(pl.LightningModule):
             force_standard_config=self.hparams.env_force_standard_config,
             seed=torch.rand(1).item(),
         )
+
         self._validation_env = make_env(
             name=self.hparams.env_name,
             width=self.hparams.env_width,
