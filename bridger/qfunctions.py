@@ -63,12 +63,10 @@ class QManager(abc.ABC, torch.nn.Module):
 
 class CNNQManager(QManager):
     def __init__(
-        self,
-        image_height: int,
-        image_width: int,
+        self, 
+            input_dim: int,
         num_actions: int,
         tau: Optional[float],
-        include_state_counts=False,
     ):
         """Manager implementing q and the target as CNNQs.
 
@@ -86,18 +84,14 @@ class CNNQManager(QManager):
 
         self._tau = tau
         self._q = CNNQ(
-            image_height=image_height,
-            image_width=image_width,
+            input_dim=input_dim,
             num_actions=num_actions,
-            include_state_counts=include_state_counts,
         )
 
         if self._tau is not None:
             self._target = CNNQ(
-                image_height=image_height,
-                image_width=image_width,
+                input_dim=input_dim,
                 num_actions=num_actions,
-                include_state_counts=include_state_counts,
             )
             self._target.load_state_dict(self._q.state_dict())
         else:
@@ -123,94 +117,38 @@ def _layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
+class MLP(torch.nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, dropout = 0.5):
+        super().__init__()
+
+        self.fc_1 = torch.nn.Linear(input_dim, hidden_dim)
+        self.fc_2 = torch.nn.Linear(hidden_dim, output_dim)
+        self.dropout = torch.nn.Dropout(dropout)
+        
+    def forward(self, x):
+        x = self.fc_1(x)
+        x = self.dropout(x)
+        x = F.relu(x)
+        x = self.fc_2(x)
+        return x
+
+HIDDEN_DIM = 128
+
 
 class CNNQ(torch.nn.Module):
     """Base class for CNN Q-function neural network module."""
 
     def __init__(
         self,
-        image_height: int,
-        image_width: int,
+            input_dim: int,
         num_actions: int,
-        include_state_counts: bool,
     ):
         super(CNNQ, self).__init__()
-        self.image_height = image_height
-        self.image_width = image_width
+        self.actor = MLP(input_dim, HIDDEN_DIM, num_actions)
+        self.critic = MLP(input_dim, HIDDEN_DIM, 1)
 
-        # paddings = [1, 1]
-        # strides = [2, 1]
-        # kernel_sizes = [3, 3]
-        # channel_nums = [3, 4, 8]
-
-        paddings = [1, 1, 1]
-        strides = [1, 1, 1]
-        kernel_sizes = [3, 3, 3]
-        channel_nums = [3, 32, 64, 64]
-
-        args_iter = zip(
-            channel_nums[:-1], channel_nums[1:], kernel_sizes, strides, paddings
-        )
-
-        self.CNN = torch.nn.ModuleList([torch.nn.Conv2d(*args) for args in args_iter])
-        H, W = self.image_height, self.image_width
-        for padding, kernel_size, stride in zip(paddings, kernel_sizes, strides):
-            H = int((H + 2 * padding - kernel_size) / stride) + 1
-            W = int((W + 2 * padding - kernel_size) / stride) + 1
-        C = channel_nums[-1]
-        if include_state_counts:
-            # Add the state count as an extra input bit to the first layer of the network.
-            network_widths = [C * H * W + 1, 512]
-        else:
-            network_widths = [C * H * W, 512]
-        args_iter = zip(network_widths[:-1], network_widths[1:])
-        self.network = torch.nn.ModuleList(
-            [_layer_init(torch.nn.Linear(*args)) for args in args_iter]
-        )
-
-        critic_widths = [512, 1]
-        args_iter = zip(critic_widths[:-1], critic_widths[1:])
-        self.critic = torch.nn.ModuleList(
-            [_layer_init(torch.nn.Linear(*args)) for args in args_iter]
-        )
-
-        actor_widths = [512, num_actions]
-        args_iter = zip(actor_widths[:-1], actor_widths[1:])
-        self.actor = torch.nn.ModuleList(
-            [_layer_init(torch.nn.Linear(*args)) for args in args_iter]
-        )
-
-    def _forward_network(self, x, state_count: int = 0):
-        x = x.reshape(-1, self.image_height, self.image_width)
-        x = encode_enum_state_to_channels(x, self.CNN[0].in_channels).float()
-        for layer in self.CNN:
-            x = torch.relu(layer(x))
-        # State count will be 0 if we are not using it.
-        x = self.network[0](
-            torch.concatenate(
-                [
-                    x.reshape(x.shape[0], -1),
-                    torch.tensor(state_count).reshape(x.shape[0], -1),
-                ],
-                axis=1,
-            )
-        )
-        for layer in self.network[1:]:
-            x = layer(torch.relu(x))
-        return x
-
-    # def get_value(self, x):
-    #     x = self._forward_network(x)
-    #     for layer in self.critic:
-    #         x = layer(torch.relu(x))
-    #     return x
-
-    def get_action_and_value(self, x, state_count, action=None):
-        x = self._forward_network(x, state_count)
-        actor = x
-        for layer in self.actor:
-            actor = layer(torch.relu(actor))
-
+    def get_action_and_value(self, x, action=None):
+        actor = self.actor(x)
         probs = Categorical(logits=actor)
         #        probs =         [0.1773, 0.1677, 0.1678, 0.1566, 0.1767, 0.1540]
         if action is None:
@@ -218,9 +156,7 @@ class CNNQ(torch.nn.Module):
 
         #        print("actions!: " , probs.probs)
 
-        critic = x
-        for layer in self.critic:
-            critic = layer(torch.relu(critic))
+        critic = self.critic(x)
 
         return action, probs.log_prob(action), critic, probs.entropy(), probs.probs
 

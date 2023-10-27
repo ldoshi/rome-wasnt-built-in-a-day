@@ -83,7 +83,7 @@ def make_env(
         An instantiated gym environment.
     """
     env = gym.make(
-        name, render='human'
+        name, render_mode='human'
     )
     return env
 
@@ -284,7 +284,7 @@ class BridgeBuilderModel(pl.LightningModule):
             force_standard_config=self.hparams.env_force_standard_config,
             seed=torch.rand(1).item(),
         )
-
+        
         self._validation_env = make_env(
             name=self.hparams.env_name,
             width=self.hparams.env_width,
@@ -306,7 +306,7 @@ class BridgeBuilderModel(pl.LightningModule):
         # if self.hparams.debug:
         # TODO(lyric): We set tau to 1 to completely copy over the policy to the target.
         self.q_manager = qfunctions.CNNQManager(
-            *self.env.shape, self.env.nA, tau=1, include_state_counts=True
+            self.env.observation_space.shape[0], self.env.action_space.n, tau=1, 
         )
         self._hashed_state_counts = Counter()
         # else:
