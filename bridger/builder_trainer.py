@@ -681,7 +681,6 @@ class BridgeBuilderModel(pl.LightningModule):
                 state,
             )
 
-            print(action)
             next_state, reward, success, _, _ = self.env.step(action.item())
             next_state = torch.Tensor(next_state)
 
@@ -788,7 +787,6 @@ class BridgeBuilderModel(pl.LightningModule):
         EPSILON = 0.2
 
         #      print("SHAPES! " , batch['state'].shape, " and " , batch['action'].shape)
-
         (
             _,
             log_prob_new,
@@ -797,7 +795,6 @@ class BridgeBuilderModel(pl.LightningModule):
             action_distribution,
         ) = self.q_manager.q.get_action_and_value(
             batch["state"],
-            batch["state_count"].squeeze(),
             action=batch["action"].squeeze(),
         )
 
