@@ -82,9 +82,7 @@ def make_env(
     Returns:
         An instantiated gym environment.
     """
-    env = gym.make(
-        name, render_mode='human'
-    )
+    env = gym.make(name, render_mode="human")
     return env
 
 
@@ -284,7 +282,7 @@ class BridgeBuilderModel(pl.LightningModule):
             force_standard_config=self.hparams.env_force_standard_config,
             seed=torch.rand(1).item(),
         )
-        
+
         self._validation_env = make_env(
             name=self.hparams.env_name,
             width=self.hparams.env_width,
@@ -306,7 +304,9 @@ class BridgeBuilderModel(pl.LightningModule):
         # if self.hparams.debug:
         # TODO(lyric): We set tau to 1 to completely copy over the policy to the target.
         self.q_manager = qfunctions.CNNQManager(
-            self.env.observation_space.shape[0], self.env.action_space.n, tau=1, 
+            self.env.observation_space.shape[0],
+            self.env.action_space.n,
+            tau=1,
         )
         self._hashed_state_counts = Counter()
         # else:
@@ -665,7 +665,7 @@ class BridgeBuilderModel(pl.LightningModule):
 
     def collect_trajectory(self) -> list[dict]:
         trajectory = []
-        state = torch.Tensor(self.env.reset())
+        state = torch.Tensor(self.env.reset()[0])
         for _ in range(self.hparams.max_episode_length):
             # TODO(lyric): Figure out if/how to revive checkpoint.
             #            self._checkpoint({"episode": self.episode_idx, "step": total_step_idx})
@@ -679,10 +679,10 @@ class BridgeBuilderModel(pl.LightningModule):
                 _,
             ) = self.q_manager.q.get_action_and_value(
                 state,
-                state_count=state_count,
             )
 
-            next_state, reward, success, _ = self.env.step(action)
+            print(action)
+            next_state, reward, success, _, _ = self.env.step(action.item())
             next_state = torch.Tensor(next_state)
 
             #            print("shapes collect: " , action.shape, " " , action_log_prob.shape,  " and " , state_value.squeeze().shape, " and " , state_value.ravel().shape)
