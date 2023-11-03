@@ -147,6 +147,9 @@ class CNNQ(torch.nn.Module):
         self.actor = MLP(input_dim, HIDDEN_DIM, num_actions)
         self.critic = MLP(input_dim, HIDDEN_DIM, 1)
 
+    def forward(self, x):
+        return self.actor(x)
+    
     def get_action_and_value(self, x, action=None):
         actor = self.actor(x)
         probs = Categorical(logits=actor)

@@ -69,6 +69,7 @@ def make_env(
     name: str,
     width: int,
     force_standard_config: bool,
+    render: bool = False,
     seed: Union[int, float, None] = None,
 ) -> gym.Env:
     """Function that instantiates an instance of the environment with the appropriate arguments.
@@ -82,7 +83,10 @@ def make_env(
     Returns:
         An instantiated gym environment.
     """
-    env = gym.make(name) #, render_mode="human")
+    if render:
+        env = gym.make(name, render_mode="human")
+    else:
+        env = gym.make(name)
     return env
 
 
@@ -343,7 +347,7 @@ class BridgeBuilderModel(pl.LightningModule):
         # self.memories = self._memory_generator()
 
         self.next_action = None
-        self.state = self.env.reset()
+        self.state, _ = self.env.reset()
         self._breakpoint = {"step": 0, "episode": 0}
 
         self._action_inversion_checker = None
@@ -545,7 +549,7 @@ class BridgeBuilderModel(pl.LightningModule):
     #         self.end_current_episode()
 
     def end_current_episode(self) -> None:
-        self.state = self.env.reset()
+        self.state, _ = self.env.reset()
         self.episode_idx += 1
 
     def _checkpoint(self, thresholds: dict[str, int]) -> None:

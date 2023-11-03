@@ -47,8 +47,8 @@ def _get_full_experiment_name(experiment_name: str) -> str:
     )
 
 
-_DEMO_CALLBACK_FREQUENCY = 1
-MAX_DEMO_EPISODE_LENGTH = 50
+_DEMO_CALLBACK_FREQUENCY = 5
+MAX_DEMO_EPISODE_LENGTH = 200
 
 
 def run():
@@ -82,13 +82,13 @@ def run():
                 monitor=None,  # Should show a quantity, e.g. "train_loss"
                 every_n_train_steps=hparams.checkpoint_interval,
             ),
-            EarlyStopping(
-                monitor="val_reward",
-                patience=hparams.early_stopping_patience,
-                mode="max",
-                strict=True,
-                check_on_train_epoch_end=False,
-            ),
+            # EarlyStopping(
+            #     monitor="val_reward",
+            #     patience=hparams.early_stopping_patience,
+            #     mode="max",
+            #     strict=True,
+            #     check_on_train_epoch_end=False,
+            # ),
         ]
         if hparams.debug:
             callbacks += [
