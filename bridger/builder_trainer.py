@@ -82,7 +82,7 @@ def make_env(
     Returns:
         An instantiated gym environment.
     """
-    env = gym.make(name, render_mode="human")
+    env = gym.make(name) #, render_mode="human")
     return env
 
 
@@ -333,7 +333,7 @@ class BridgeBuilderModel(pl.LightningModule):
         #         raise ValueError(f"Unrecognized q function: {self.hparams.q}")
 
         # TODO(lyric): Consider specifying the policy as a hyperparam
-        #        self.policy = policies.EpsilonGreedyPolicy(self.q_manager.q)
+        self.policy = policies.GreedyPolicy(self.q_manager.q)
         # At this time, the world is static once the initial
         # conditions are set. The agent is not navigating a dynamic
         # environment.
