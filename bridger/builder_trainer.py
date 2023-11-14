@@ -717,7 +717,7 @@ class BridgeBuilderModel(pl.LightningModule):
             entry["advantage"] = -entry["state_value"].item() + returns
 
         #            print("shapes 2:  and " , entry['advantage'], ' and ' , entry['state_value'].shape)
-
+#        print(f"TRAJJJJ ({len(trajectory)}): " , trajectory)
         return trajectory
 
     def _update_epsilon(self) -> None:
@@ -809,8 +809,8 @@ class BridgeBuilderModel(pl.LightningModule):
         ratios_final = torch.min(ratios, ratios_clamped)
         loss_clip = -(batch["advantage"] * ratios_final).mean()
 
-        c1 = 0.5
-        c2 = 0.01
+        c1 = 0.05
+        c2 = 2
 
         loss_value = c1 * torch.square(state_value_new - batch["returns"]).mean()
 

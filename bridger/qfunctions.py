@@ -118,7 +118,7 @@ def _layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 class MLP(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, dropout = 0.5):
+    def __init__(self, input_dim, hidden_dim, output_dim, dropout = 0.1):
         super().__init__()
 
         self.fc_1 = torch.nn.Linear(input_dim, hidden_dim)
@@ -151,8 +151,11 @@ class CNNQ(torch.nn.Module):
         return self.actor(x)
     
     def get_action_and_value(self, x, action=None):
+  #      print("The x: " , x)
+        
         actor = self.actor(x)
         probs = Categorical(logits=actor)
+ #       print("ACTOR SAY: " , actor , " WITH " , probs.probs)
         #        probs =         [0.1773, 0.1677, 0.1678, 0.1566, 0.1767, 0.1540]
         if action is None:
             action = probs.sample()
@@ -160,6 +163,9 @@ class CNNQ(torch.nn.Module):
         #        print("actions!: " , probs.probs)
 
         critic = self.critic(x)
+#        print("CRICI SAY: " , critic)
+#        print("ACTION: " , action)
+#        print("log ps: " , probs.log_prob(action))
 
         return action, probs.log_prob(action), critic, probs.entropy(), probs.probs
 
