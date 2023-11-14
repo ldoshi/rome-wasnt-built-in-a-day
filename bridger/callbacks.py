@@ -10,17 +10,19 @@ class DemoCallback(Callback):
     def __init__(self, steps_per_update, max_episode_length):
         self._max_episode_length = max_episode_length
         self._frequency = steps_per_update
+        self._epoch = 0
         self._builder = None
         
     def on_epoch_end(
         self, trainer, model,
 #            self, trainer, model, outputs, batch, batch_idx, dataloader_idx
     ):
-#        if (batch_idx + 1) % self._frequency > 0:
- #           return
+        self._epoch += 1
+        if (self._epoch) % self._frequency > 0:
+            return
         env = builder_trainer.make_env(
                     name=model.hparams.env_name,
-                    width=model.hparams.env_width,
+                     width=model.hparams.env_width,
                     force_standard_config=model.hparams.env_force_standard_config,
             render=True,
                     seed=torch.rand(1).item(),

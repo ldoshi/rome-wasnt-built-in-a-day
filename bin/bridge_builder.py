@@ -47,7 +47,7 @@ def _get_full_experiment_name(experiment_name: str) -> str:
     )
 
 
-_DEMO_CALLBACK_FREQUENCY = 5
+_DEMO_CALLBACK_FREQUENCY = 50
 MAX_DEMO_EPISODE_LENGTH = 200
 
 
@@ -111,7 +111,7 @@ def run():
             ),
             max_steps=hparams.max_training_batches,
             callbacks=callbacks,
-            max_epochs=6000,
+            max_epochs=100,
             reload_dataloaders_every_n_epochs=10,
             check_val_every_n_epoch=10
         )
