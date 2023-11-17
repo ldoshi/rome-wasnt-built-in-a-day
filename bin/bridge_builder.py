@@ -83,7 +83,7 @@ def run():
                 every_n_train_steps=hparams.checkpoint_interval,
             ),
             # EarlyStopping(
-            #     monitor="val_reward",
+            #     monitor="val_returns",
             #     patience=hparams.early_stopping_patience,
             #     mode="max",
             #     strict=True,
@@ -100,10 +100,6 @@ def run():
 
         trainer = Trainer(
             gradient_clip_val=hparams.gradient_clip_val,
-#            val_check_interval=hparams.val_check_interval,
-            # The validation batch size can be adjusted via a config, but
-            # we only need a single batch.
- #           limit_val_batches=1,
             logger=TensorBoardLogger(
                 save_dir=hparams.checkpoint_model_dir,
                 name=full_experiment_name,
@@ -113,7 +109,7 @@ def run():
             callbacks=callbacks,
             max_epochs=10000,
             reload_dataloaders_every_n_epochs=10,
-#            check_val_every_n_epoch=10
+            #            check_val_every_n_epoch=10
         )
 
         trainer.fit(model)
@@ -137,14 +133,6 @@ def run():
             demo_episode_length = min(
                 hparams.tabular_q_initialization_brick_count, demo_episode_length
             )
-
-        # build_evaluator = builder.BuildEvaluator(
-        #     env=evaluation_env,
-        #     policy=model.trained_policy,
-        #     build_count=build_count,
-        #     episode_length=demo_episode_length,
-        # )
-        # build_evaluator.print_report()
 
 
 if __name__ == "__main__":
