@@ -18,7 +18,7 @@ help_str = "The max number of steps to be run in a single episode."
 hparam_dict[key]["help"] = help_str
 
 key = "batch_size"
-hparam_dict[key] = {"type": int, "default": 100}
+hparam_dict[key] = {"type": int, "default": 64}
 help_str = "The number of transitions to sample in each training batch"
 hparam_dict[key]["help"] = help_str
 

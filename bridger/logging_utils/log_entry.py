@@ -10,6 +10,7 @@ STATE_NORMALIZED_LOG_ENTRY = "state_normalized"
 TRAINING_HISTORY_VISIT_LOG_ENTRY = "training_history_visit"
 TRAINING_HISTORY_TD_ERROR_LOG_ENTRY = "training_history_td_error"
 TRAINING_HISTORY_Q_VALUE_LOG_ENTRY = "training_history_q_value"
+TRAINING_HISTORY_ACTION_PROBABILITY_LOG_ENTRY = "training_history_action_probability"
 
 ACTION_INVERSION_REPORT_ENTRY = "action_inversion_report"
 
@@ -45,6 +46,18 @@ class TrainingHistoryQValueLogEntry:
     action: int
     q_value: float
     q_target_value: float
+
+
+@dataclasses.dataclass
+class TrainingHistoryActionProbabilityLogEntry:
+    """
+    The action probabilities for the network.
+    """
+
+    batch_idx: int
+    state_id: int
+    action: int
+    action_probability: float
 
 
 @dataclasses.dataclass

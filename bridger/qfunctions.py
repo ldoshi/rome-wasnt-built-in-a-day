@@ -5,7 +5,9 @@ import functools
 import gym
 import itertools
 import multiprocessing
+import numpy as np
 import torch
+from torch.distributions.categorical import Categorical
 import torch.nn
 import torch.nn.functional as F
 
@@ -61,9 +63,8 @@ class QManager(abc.ABC, torch.nn.Module):
 
 class CNNQManager(QManager):
     def __init__(
-        self,
-        image_height: int,
-        image_width: int,
+        self, 
+            input_dim: int,
         num_actions: int,
         tau: Optional[float],
     ):
@@ -83,13 +84,13 @@ class CNNQManager(QManager):
 
         self._tau = tau
         self._q = CNNQ(
-            image_height=image_height, image_width=image_width, num_actions=num_actions
+            input_dim=input_dim,
+            num_actions=num_actions,
         )
 
         if self._tau is not None:
             self._target = CNNQ(
-                image_height=image_height,
-                image_width=image_width,
+                input_dim=input_dim,
                 num_actions=num_actions,
             )
             self._target.load_state_dict(self._q.state_dict())
@@ -111,42 +112,62 @@ class CNNQManager(QManager):
         return self._target
 
 
+def _layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+    torch.nn.init.orthogonal_(layer.weight, std)
+    torch.nn.init.constant_(layer.bias, bias_const)
+    return layer
+
+class MLP(torch.nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, dropout = 0.1):
+        super().__init__()
+
+        self.fc_1 = torch.nn.Linear(input_dim, hidden_dim)
+        self.fc_2 = torch.nn.Linear(hidden_dim, output_dim)
+        self.dropout = torch.nn.Dropout(dropout)
+        
+    def forward(self, x):
+        x = self.fc_1(x)
+        x = self.dropout(x)
+        x = F.relu(x)
+        x = self.fc_2(x)
+        return x
+
+HIDDEN_DIM = 128
+
+
 class CNNQ(torch.nn.Module):
     """Base class for CNN Q-function neural network module."""
 
-    def __init__(self, image_height: int, image_width: int, num_actions: int):
+    def __init__(
+        self,
+            input_dim: int,
+        num_actions: int,
+    ):
         super(CNNQ, self).__init__()
-        self.image_height = image_height
-        self.image_width = image_width
-
-        paddings = [1, 1]
-        strides = [2, 1]
-        kernel_sizes = [3, 3]
-        channel_nums = [3, 4, 8]
-
-        args_iter = zip(
-            channel_nums[:-1], channel_nums[1:], kernel_sizes, strides, paddings
-        )
-
-        self.CNN = torch.nn.ModuleList([torch.nn.Conv2d(*args) for args in args_iter])
-        H, W = self.image_height, self.image_width
-        for padding, kernel_size, stride in zip(paddings, kernel_sizes, strides):
-            H = int((H + 2 * padding - kernel_size) / stride) + 1
-            W = int((W + 2 * padding - kernel_size) / stride) + 1
-        C = channel_nums[-1]
-        dense_widths = [C * H * W, 64, num_actions]
-        args_iter = zip(dense_widths[:-1], dense_widths[1:])
-        self.DNN = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
+        self.actor = MLP(input_dim, HIDDEN_DIM, num_actions)
+        self.critic = MLP(input_dim, HIDDEN_DIM, 1)
 
     def forward(self, x):
-        x = x.reshape(-1, self.image_height, self.image_width)
-        x = encode_enum_state_to_channels(x, self.CNN[0].in_channels).float()
-        for layer in self.CNN:
-            x = torch.relu(layer(x))
-        x = self.DNN[0](x.reshape(x.shape[0], -1))
-        for layer in self.DNN[1:]:
-            x = layer(torch.relu(x))
-        return x
+        return self.actor(x)
+    
+    def get_action_and_value(self, x, action=None):
+  #      print("The x: " , x)
+        
+        actor = self.actor(x)
+        probs = Categorical(logits=actor)
+ #       print("ACTOR SAY: " , actor , " WITH " , probs.probs)
+        #        probs =         [0.1773, 0.1677, 0.1678, 0.1566, 0.1767, 0.1540]
+        if action is None:
+            action = probs.sample()
+
+        #        print("actions!: " , probs.probs)
+
+        critic = self.critic(x)
+#        print("CRICI SAY: " , critic)
+#        print("ACTION: " , action)
+#        print("log ps: " , probs.log_prob(action))
+
+        return action, probs.log_prob(action), critic, probs.entropy(), probs.probs
 
 
 def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int):
