@@ -60,16 +60,25 @@ class DatasetGenerator:
 
     def generate_dataset(self):
         for _, _, next_state, _, done in n_bricks(self._n_bricks, self._env):
-            brick_count = np.sum(
-                [
-                    [brick == self._env.StateType.BRICK for brick in row]
-                    for row in next_state
-                ]
+            brick_count = (
+                np.sum(
+                    [
+                        [brick == self._env.StateType.BRICK for brick in row]
+                        for row in next_state
+                    ]
+                )
                 // 2
             )
 
             # Calculate the height of the state.
-            bridge_height = next_state.shape[0] - 1
+            idx_brick = next_state.shape[0] - 1
+            for row in range(self._env.shape[0]):
+                if any(
+                    [brick == self._env.StateType.BRICK for brick in next_state[row]]
+                ):
+                    idx_brick = row
+                    break
+            bridge_height = next_state.shape[0] - 1 - idx_brick
 
             self._bridges.append(next_state)
             self._is_bridge.append(done)
@@ -98,6 +107,6 @@ class DatasetGenerator:
 
         for filename, lst in FILENAME_TO_VARIABLE.items():
             with open(
-                os.path.join(self._log_filename_directory, f"{filename}.pkl"), "wb+"
+                os.path.join(self._log_filename_directory, f"{filename}.pkl"), "wb"
             ) as f:
                 pickle.dump(lst, f)
