@@ -5,11 +5,26 @@ import torch.nn.functional as F
 import torch.nn
 from torch.utils.data import DataLoader
 
-input_file = "test_inputs"
-label_file = "test_labels"
+#input_file = "test_inputs"
+#label_file = "test_labels"
+
+input_file = "../bridger/tmp_log_dir/bridges.pkl"
+# Binary
+#label_file = "../bridger/tmp_log_dir/is_bridge.pkl"
+#label_file = "../bridger/tmp_log_dir/is_bridge_and_uses_less_than_k_bricks.pkl"
+# Multiclass
+label_file = "../bridger/tmp_log_dir/bridge_height.pkl"
+
+# Binary
+#loss_fn = torch.nn.BCELoss()
+# Multiclass
+loss_fn = torch.nn.CrossEntropyLoss()
+
+# ACTIONABLE
+num_classes = 7
 train_test_split = .8
 train_validate_split = .75
-batch_size = 5
+batch_size = 20
 lr = .001
 epochs = 300
 
@@ -19,7 +34,11 @@ with open(input_file, 'rb') as f:
 
 with open(label_file, 'rb') as f:
     labels = pickle.load(f)
-    labels = np.array(labels, dtype=np.float32)
+    # Binary
+#    labels = np.array(labels, dtype=np.float32)
+# Multiclass
+    labels = np.array(labels)
+
 
 class CNN(torch.nn.Module):
     """Base class for CNN neural network module."""
@@ -45,8 +64,8 @@ class CNN(torch.nn.Module):
             W = int((W + 2 * padding - kernel_size) / stride) + 1
         C = channel_nums[-1]
 
-        dense_widths = [C * H * W, 64, 1]
-#        dense_widths = [C * H * W, 64, num_actions]
+        dense_widths = [C * H * W, 64, num_classes]
+
         args_iter = zip(dense_widths[:-1], dense_widths[1:])
         self.dnn = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
 
@@ -58,7 +77,10 @@ class CNN(torch.nn.Module):
         x = self.dnn[0](x.reshape(x.shape[0], -1))
         for layer in self.dnn[1:]:
             x = layer(torch.relu(x))
-        x = torch.sigmoid(x)
+ # Binary
+#        x = torch.sigmoid(x)
+ # Multiclass
+        x = torch.softmax(x, 0)
         return x
 
 
@@ -82,12 +104,13 @@ data_loader = DataLoader(data_train, batch_size)
 data_validate = data_train_validate[train_count:]
 validation_data_loader = DataLoader(data_validate, len(data_validate))
 
+print()
 print(f"Train Size: {len(data_train)}")
 print(f"Valid Size: {len(data_validate)}")
 print(f" Test Size: {len(data_test)}")
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-loss_fn = torch.nn.BCELoss()
+
 
 for i in range(epochs):
     model.train()
@@ -97,7 +120,15 @@ for i in range(epochs):
         output = model(input)
       
         #calculate loss
-        loss = loss_fn(output, label.reshape(-1,1))
+
+        # Binary
+#                loss = loss_fn(output, label.reshape(-1,1))
+
+        # Multiclass
+        label = F.one_hot(label, num_classes=num_classes).float()
+        loss = loss_fn(output, label)
+
+
 
         accuracy = (output.round() == label).float().mean()
         
@@ -110,7 +141,9 @@ for i in range(epochs):
         print("epoch {}\tloss : {}\t accuracy : {}".format(i,loss,accuracy))
 
     model.eval()
-    for eval_input, eval_label in validation_data_loader:
-        eval_output = model(eval_input)
-        eval_accuracy = (eval_output.round() == eval_label).float().mean()
-        print(f"Evaluation accuracy: {eval_accuracy:.2f}")
+    # Binary
+#    for eval_input, eval_label in validation_data_loader:
+#        eval_output = model(eval_input)
+#        eval_accuracy = (eval_output.round() == eval_label).float().mean()
+#        print(f"Evaluation accuracy: {eval_accuracy:.2f}")
+    # Multiclass
