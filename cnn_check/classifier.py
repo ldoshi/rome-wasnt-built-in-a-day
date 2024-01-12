@@ -5,39 +5,40 @@ import torch.nn.functional as F
 import torch.nn
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
+import argparse
 
-#input_file = "test_inputs"
-#label_file = "test_labels"
+# input_file = "test_inputs"
+# label_file = "test_labels"
 
-input_file = "../bridger/tmp_log_dir/bridges.pkl"
+input_file = "tmp_log_dir/bridges.pkl"
 # Binary
-#label_file = "../bridger/tmp_log_dir/is_bridge.pkl"
-#label_file = "../bridger/tmp_log_dir/is_bridge_and_uses_less_than_k_bricks.pkl"
+# label_file = "../bridger/tmp_log_dir/is_bridge.pkl"
+# label_file = "../bridger/tmp_log_dir/is_bridge_and_uses_less_than_k_bricks.pkl"
 # Multiclass
-label_file = "../bridger/tmp_log_dir/bridge_height.pkl"
+label_file = "tmp_log_dir/bridge_height.pkl"
 
 # Binary
-#loss_fn = torch.nn.BCELoss()
+# loss_fn = torch.nn.BCELoss()
 # Multiclass
 loss_fn = torch.nn.CrossEntropyLoss()
 
 # ACTIONABLE
 num_classes = 7
-train_test_split_ratio = .8
-train_validate_split_ratio = .75
+train_test_split_ratio = 0.8
+train_validate_split_ratio = 0.75
 batch_size = 20
-lr = .001
+lr = 0.001
 epochs = 300
 
-with open(input_file, 'rb') as f:
+with open(input_file, "rb") as f:
     inputs = pickle.load(f)
     inputs = [torch.tensor(x) for x in inputs]
 
-with open(label_file, 'rb') as f:
+with open(label_file, "rb") as f:
     labels = pickle.load(f)
     # Binary
-#    labels = np.array(labels, dtype=np.float32)
-# Multiclass
+    #    labels = np.array(labels, dtype=np.float32)
+    # Multiclass
     labels = np.array(labels)
 
 
@@ -78,9 +79,9 @@ class CNN(torch.nn.Module):
         x = self.dnn[0](x.reshape(x.shape[0], -1))
         for layer in self.dnn[1:]:
             x = layer(torch.relu(x))
- # Binary
-#        x = torch.sigmoid(x)
- # Multiclass
+        # Binary
+        #        x = torch.sigmoid(x)
+        # Multiclass
         x = torch.softmax(x, 0)
         return x
 
@@ -92,11 +93,19 @@ def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int)
     x = F.one_hot(state_tensor.long(), num_channels)
     return x.permute(0, 3, 1, 2)
 
+
 model = CNN(*inputs[0].shape, inputs[0].shape[1])
 
 data = list(zip(inputs, labels))
-data_train_side, data_test = train_test_split(data, train_size=train_test_split_ratio, random_state=42, shuffle=True)
-data_train, data_validate = train_test_split(data_train_side, train_size=train_validate_split_ratio, random_state=42, shuffle=True)
+data_train_side, data_test = train_test_split(
+    data, train_size=train_test_split_ratio, random_state=42, shuffle=True
+)
+data_train, data_validate = train_test_split(
+    data_train_side,
+    train_size=train_validate_split_ratio,
+    random_state=42,
+    shuffle=True,
+)
 
 data_loader = DataLoader(data_train, batch_size)
 validation_data_loader = DataLoader(data_validate, len(data_validate))
@@ -111,41 +120,40 @@ optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 for i in range(epochs):
     model.train()
-    for j,(input,label) in enumerate(data_loader):
-          
-        #calculate output
+    for j, (input, label) in enumerate(data_loader):
+        # calculate output
         output = model(input)
-      
-        #calculate loss
+
+        # calculate loss
 
         # Binary
-#                loss = loss_fn(output, label.reshape(-1,1))
+        #                loss = loss_fn(output, label.reshape(-1,1))
 
         # Multiclass
         label = F.one_hot(label, num_classes=num_classes).float()
         loss = loss_fn(output, label)
 
-#        if j == 0:
-#            print("EPOCH: " , i)
-#            print("OUTPUT: ", output)
-#            print("LABEL: " , label)
+        #        if j == 0:
+        #            print("EPOCH: " , i)
+        #            print("OUTPUT: ", output)
+        #            print("LABEL: " , label)
 
         accuracy = (output.round() == label).float().mean()
-        
-        #backprop
+
+        # backprop
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
     if i % 20 == 0:
-        print("epoch {}\tloss : {}\t accuracy : {}".format(i,loss,accuracy))
+        print("epoch {}\tloss : {}\t accuracy : {}".format(i, loss, accuracy))
 
     model.eval()
     # Binary
-#    for eval_input, eval_label in validation_data_loader:
-#        eval_output = model(eval_input)
-#        eval_accuracy = (eval_output.round() == eval_label).float().mean()
-#        print(f"Evaluation accuracy: {eval_accuracy:.2f}")
+    #    for eval_input, eval_label in validation_data_loader:
+    #        eval_output = model(eval_input)
+    #        eval_accuracy = (eval_output.round() == eval_label).float().mean()
+    #        print(f"Evaluation accuracy: {eval_accuracy:.2f}")
     # Multiclass
     for eval_input, eval_label in validation_data_loader:
         eval_output = model(eval_input)
