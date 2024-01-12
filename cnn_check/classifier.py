@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn
 from torch.utils.data import DataLoader
+from sklearn.model_selection import train_test_split
 
 #input_file = "test_inputs"
 #label_file = "test_labels"
@@ -22,8 +23,8 @@ loss_fn = torch.nn.CrossEntropyLoss()
 
 # ACTIONABLE
 num_classes = 7
-train_test_split = .8
-train_validate_split = .75
+train_test_split_ratio = .8
+train_validate_split_ratio = .75
 batch_size = 20
 lr = .001
 epochs = 300
@@ -93,15 +94,11 @@ def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int)
 
 model = CNN(*inputs[0].shape, inputs[0].shape[1])
 
-train_validate_count = round(len(inputs)*train_test_split)
 data = list(zip(inputs, labels))
-data_train_validate = data[:train_validate_count]
-data_test = data[train_validate_count:]
+data_train_side, data_test = train_test_split(data, train_size=train_test_split_ratio, random_state=42, shuffle=True)
+data_train, data_validate = train_test_split(data_train_side, train_size=train_validate_split_ratio, random_state=42, shuffle=True)
 
-train_count = round(len(data_train_validate) * train_validate_split)
-data_train = data_train_validate[:train_count]
 data_loader = DataLoader(data_train, batch_size)
-data_validate = data_train_validate[train_count:]
 validation_data_loader = DataLoader(data_validate, len(data_validate))
 
 print()
@@ -128,7 +125,10 @@ for i in range(epochs):
         label = F.one_hot(label, num_classes=num_classes).float()
         loss = loss_fn(output, label)
 
-
+#        if j == 0:
+#            print("EPOCH: " , i)
+#            print("OUTPUT: ", output)
+#            print("LABEL: " , label)
 
         accuracy = (output.round() == label).float().mean()
         
@@ -147,3 +147,7 @@ for i in range(epochs):
 #        eval_accuracy = (eval_output.round() == eval_label).float().mean()
 #        print(f"Evaluation accuracy: {eval_accuracy:.2f}")
     # Multiclass
+    for eval_input, eval_label in validation_data_loader:
+        eval_output = model(eval_input)
+        eval_accuracy = (eval_output.argmax(axis=1) == eval_label).float().mean()
+        print(f"Evaluation accuracy: {eval_accuracy:.2f}")
