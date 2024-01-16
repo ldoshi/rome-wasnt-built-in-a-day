@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import numpy as np
 import pickle
 import torch
@@ -10,15 +12,19 @@ from sklearn.model_selection import train_test_split
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--input_file", default="../bridger/tmp_log_dir/bridges.pkl")
-parser.add_argument("--label_file", default="../bridger/tmp_log_dir/bridge_height.pkl")
-parser.add_argument("--mode", default="multiclass")
-parser.add_argument("--num_classes", default=7)
-parser.add_argument("--train_test_split_ratio", default=0.8)
-parser.add_argument("--train_validate_split_ratio", default=0.75)
-parser.add_argument("--batch_size", default=20)
-parser.add_argument("--learning_rate", default=0.001)
-parser.add_argument("--epochs", default=300)
+parser.add_argument(
+    "--input_file", type=str, default="../bridger/tmp_log_dir/bridges.pkl"
+)
+parser.add_argument(
+    "--label_file", type=str, default="../bridger/tmp_log_dir/bridge_height.pkl"
+)
+parser.add_argument("--mode", type=str, default="multiclass")
+parser.add_argument("--num_classes", type=int, default=7)
+parser.add_argument("--train_test_split_ratio", type=float, default=0.8)
+parser.add_argument("--train_validate_split_ratio", type=float, default=0.75)
+parser.add_argument("--batch_size", type=int, default=20)
+parser.add_argument("--learning_rate", type=float, default=0.001)
+parser.add_argument("--epochs", type=int, default=300)
 parser.add_argument("--random_state", default=None)
 
 
@@ -104,7 +110,10 @@ model = CNN(*inputs[0].shape, inputs[0].shape[1])
 
 data = list(zip(inputs, labels))
 data_train_side, data_test = train_test_split(
-    data, train_size=args.train_test_split_ratio, random_state=args.random_state, shuffle=True
+    data,
+    train_size=args.train_test_split_ratio,
+    random_state=args.random_state,
+    shuffle=True,
 )
 data_train, data_validate = train_test_split(
     data_train_side,
@@ -123,8 +132,10 @@ print(f" Test Size: {len(data_test)}")
 
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
+
 def compute_accuracy(output, label) -> float:
     return (output.argmax(axis=1) == label).float().mean()
+
 
 for i in range(args.epochs):
     model.train()
@@ -151,7 +162,6 @@ for i in range(args.epochs):
         loss.backward()
         optimizer.step()
 
-
     if i % 20 == 0:
         print("epoch {}\tloss : {}\t accuracy : {}".format(i, loss, accuracy))
 
@@ -167,5 +177,3 @@ for i in range(args.epochs):
                 eval_output = model(eval_input)
                 eval_accuracy = compute_accuracy(eval_output, eval_label)
                 print(f"Evaluation accuracy: {eval_accuracy:.2f}")
-
-    
