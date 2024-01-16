@@ -86,7 +86,6 @@ def run_experiments(
     """
 
     config = copy.deepcopy(config)
-    print(config)
     args = []
 
     experiment_name_prefix = ""
