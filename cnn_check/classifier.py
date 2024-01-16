@@ -29,6 +29,7 @@ args = parser.parse_args()
 
 if args.mode == "binary":
     loss_fn = torch.nn.BCELoss()
+    output_head_count = 1
 elif args.mode == "multiclass":
     loss_fn = torch.nn.CrossEntropyLoss()
     output_head_count = args.num_classes
