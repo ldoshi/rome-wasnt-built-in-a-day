@@ -19,6 +19,7 @@ parser.add_argument("--train_validate_split_ratio", default=0.75)
 parser.add_argument("--batch_size", default=20)
 parser.add_argument("--learning_rate", default=0.001)
 parser.add_argument("--epochs", default=300)
+parser.add_argument("--random_state", default=None)
 
 
 args = parser.parse_args()
@@ -103,12 +104,12 @@ model = CNN(*inputs[0].shape, inputs[0].shape[1])
 
 data = list(zip(inputs, labels))
 data_train_side, data_test = train_test_split(
-    data, train_size=args.train_test_split_ratio, random_state=42, shuffle=True
+    data, train_size=args.train_test_split_ratio, random_state=args.random_state, shuffle=True
 )
 data_train, data_validate = train_test_split(
     data_train_side,
     train_size=args.train_validate_split_ratio,
-    random_state=42,
+    random_state=args.random_state,
     shuffle=True,
 )
 
@@ -122,6 +123,8 @@ print(f" Test Size: {len(data_test)}")
 
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
+def compute_accuracy(output, label) -> float:
+    return (output.argmax(axis=1) == label).float().mean()
 
 for i in range(args.epochs):
     model.train()
@@ -141,25 +144,28 @@ for i in range(args.epochs):
         # print("OUTPUT: ", output)
         # print("LABEL: " , label)
 
-        accuracy = (output.round() == label).float().mean()
+        accuracy = compute_accuracy(output, label.argmax(axis=1))
 
         # backprop
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
+
     if i % 20 == 0:
         print("epoch {}\tloss : {}\t accuracy : {}".format(i, loss, accuracy))
 
-    model.eval()
+        model.eval()
 
-    if args.mode == "binary":
-        for eval_input, eval_label in validation_data_loader:
-            eval_output = model(eval_input)
-            eval_accuracy = (eval_output.round() == eval_label).float().mean()
-            print(f"Evaluation accuracy: {eval_accuracy:.2f}")
-    elif args.mode == "multiclass":
-        for eval_input, eval_label in validation_data_loader:
-            eval_output = model(eval_input)
-            eval_accuracy = (eval_output.argmax(axis=1) == eval_label).float().mean()
-            print(f"Evaluation accuracy: {eval_accuracy:.2f}")
+        if args.mode == "binary":
+            for eval_input, eval_label in validation_data_loader:
+                eval_output = model(eval_input)
+                eval_accuracy = (eval_output.round() == eval_label).float().mean()
+                print(f"Evaluation accuracy: {eval_accuracy:.2f}")
+        elif args.mode == "multiclass":
+            for eval_input, eval_label in validation_data_loader:
+                eval_output = model(eval_input)
+                eval_accuracy = compute_accuracy(eval_output, eval_label)
+                print(f"Evaluation accuracy: {eval_accuracy:.2f}")
+
+    
