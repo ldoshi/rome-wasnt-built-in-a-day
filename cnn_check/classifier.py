@@ -31,6 +31,7 @@ if args.mode == "binary":
     loss_fn = torch.nn.BCELoss()
 elif args.mode == "multiclass":
     loss_fn = torch.nn.CrossEntropyLoss()
+    output_head_count = args.num_classes
 
 
 with open(args.input_file, "rb") as f:
@@ -69,7 +70,7 @@ class CNN(torch.nn.Module):
             W = int((W + 2 * padding - kernel_size) / stride) + 1
         C = channel_nums[-1]
 
-        dense_widths = [C * H * W, 64, args.num_classes]
+        dense_widths = [C * H * W, 64, output_head_count]
 
         args_iter = zip(dense_widths[:-1], dense_widths[1:])
         self.dnn = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
