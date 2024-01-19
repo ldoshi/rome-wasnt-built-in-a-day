@@ -152,9 +152,10 @@ for i in range(args.epochs):
 
         # if j == 0:
         # print("EPOCH: " , i)
-        # print("OUTPUT: ", output)
-        # print("LABEL: " , label)
+        print("OUTPUT: ", output)
+        print("LABEL: " , label)
 
+        # TODO(lyric): Compute accuracy for binary requires round() instead of argmax. Fix this bug.
         accuracy = compute_accuracy(output, label.argmax(axis=1))
 
         # backprop
