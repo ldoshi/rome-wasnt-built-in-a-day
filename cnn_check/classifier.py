@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--experiment-name",
     type=str,
-    default=os.path.join("runs", time.strftime("%Y%m%d-%H%M%S")),
+    default=time.strftime("%Y%m%d-%H%M%S"),
 )
 parser.add_argument("--experiment-name-prefix", type=str, default="")
 parser.add_argument(
@@ -153,7 +153,7 @@ def compute_accuracy(output, label) -> float:
 
 
 # Enable Tensorboard writer for logging loss/accuracy. By default, Tensorboard logs are written to the 'runs' folder.
-writer = SummaryWriter(log_dir=args.experiment_name)
+writer = SummaryWriter(log_dir=os.path.join("runs", args.experiment_name))
 
 for i in range(args.epochs):
     model.train()
@@ -170,8 +170,8 @@ for i in range(args.epochs):
 
         # if j == 0:
         # print("EPOCH: " , i)
-        print("OUTPUT: ", output)
-        print("LABEL: ", label)
+        # print("OUTPUT: ", output)
+        # print("LABEL: ", label)
 
         # TODO(lyric): Compute accuracy for binary requires round() instead of argmax. Fix this bug.
         accuracy = compute_accuracy(output, label.argmax(axis=1))
