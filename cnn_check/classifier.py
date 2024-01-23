@@ -34,16 +34,14 @@ parser.add_argument("--train_validate_split_ratio", type=float, default=0.75)
 parser.add_argument("--batch_size", type=int, default=20)
 parser.add_argument("--learning_rate", type=float, default=0.001)
 parser.add_argument("--epochs", type=int, default=300)
-parser.add_argument("--paddings", type=list, default=[1, 1])
-parser.add_argument("--strides", type=list, default=[2, 1])
-parser.add_argument("--kernel_sizes", type=list, default=[3, 3])
-parser.add_argument("--channel_nums", type=list, default=[3, 4, 8])
+parser.add_argument("--paddings", nargs=2, type=int, default=[1, 1])
+parser.add_argument("--strides", nargs=2, type=int, default=[2, 1])
+parser.add_argument("--kernel_sizes", nargs=2, type=int, default=[3, 3])
+parser.add_argument("--channel_nums", nargs=3, type=int, default=[3, 4, 8])
 parser.add_argument("--random_state", default=None)
 
 
 args = parser.parse_args()
-
-print(args.experiment_name)
 
 # Binary
 # label_file = "../bridger/tmp_log_dir/is_bridge.pkl"
@@ -77,10 +75,10 @@ class CNN(torch.nn.Module):
         self.image_height = image_height
         self.image_width = image_width
 
-        paddings = [1, 1]
-        strides = [2, 1]
-        kernel_sizes = [3, 3]
-        channel_nums = [3, 4, 8]
+        paddings = args.paddings
+        strides = args.strides
+        kernel_sizes = args.kernel_sizes
+        channel_nums = args.channel_nums
 
         args_iter = zip(
             channel_nums[:-1], channel_nums[1:], kernel_sizes, strides, paddings
