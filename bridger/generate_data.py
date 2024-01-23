@@ -8,9 +8,36 @@ from bridger import hash_utils
 from typing import Generator, Any
 
 
-def n_bricks(
+def n_states(state_count: int, brick_count: int, env: gym.Env) -> Generator[tuple[Any, Any], None, None]:
+    rng = np.random.default_rng(85023805983243223904)
+
+    visited_actions = set()
+    visited_states = set()
+
+    while True:
+        actions = rng.integers(low=0, high=env.nA, size=brick_count)
+        actions_tuple = tuple(actions)
+        if actions_tuple in visited_actions:
+            continue
+        visited_actions.add(actions_tuple)
+
+        state = env.reset()
+        for action in actions:
+            state, _, done, _ = env.step(action)
+            state_hash = hash_utils.hash_tensor(state)
+
+            if state_hash not in visited_states:
+                visited_states.add(state_hash)
+                yield state, done
+                if len(visited_states) == state_count:
+                    return
+
+            if done:
+                break
+
+def n_bricks(state_count: int, 
     brick_count: int, env: gym.Env
-) -> Generator[tuple[Any, Any, Any, Any, Any], None, None]:
+) -> Generator[tuple[Any, Any], None, None]:
     """Generates distinct experiences from exhaustively placing n bricks.
 
     Enumerates every permutation of placing n bricks and removes
@@ -36,7 +63,7 @@ def n_bricks(
             state_action_tuple = (hash_utils.hash_tensor(state), action)
             if state_action_tuple not in state_action_tuples:
                 state_action_tuples.add(state_action_tuple)
-                yield state, action, next_state, reward, done
+                yield next_state, done
 
             if done:
                 break
@@ -46,20 +73,22 @@ def n_bricks(
 
 class DatasetGenerator:
     def __init__(
-        self, log_filename_directory: str, n_bricks: int, k: int, env: gym.Env
+            self, log_filename_directory: str, n_bricks: int, n_states: int, k: int, env: gym.Env,state_fn
     ):
         self._log_filename_directory: str = log_filename_directory
         self._n_bricks: int = n_bricks
+        self._n_states: int = n_states
         self._k: int = k
         self._bridges: list[np.array] = []
         self._is_bridge: list[bool] = []
         self._is_bridge_and_uses_less_than_k_bricks: list[bool] = []
         self._bridge_height: list[int] = []
         self._brick_counts: list[int] = []
+        self._state_fn = state_fn
         self._env: gym.Env = env
 
     def generate_dataset(self):
-        for _, _, next_state, _, done in n_bricks(self._n_bricks, self._env):
+        for i, (next_state, done) in enumerate(self._state_fn(self._n_states, self._n_bricks, self._env)):
             brick_count = (
                 np.sum(
                     [
@@ -88,13 +117,16 @@ class DatasetGenerator:
             self._bridge_height.append(bridge_height)
             self._brick_counts.append(brick_count)
 
-            print(
-                next_state,
-                done,
-                done and brick_count < self._k,
-                bridge_height,
-                brick_count,
-            )
+            if (i+1) % 10000 == 0:
+                print("#"*80,
+                      i,
+                      next_state,
+                      done,
+                      done and brick_count < self._k,
+                      bridge_height,
+                      brick_count,
+                )
+
 
     def finalize(self):
         FILENAME_TO_VARIABLE = {
