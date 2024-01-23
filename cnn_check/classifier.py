@@ -8,10 +8,19 @@ import torch.nn
 from torch.utils.data import DataLoader
 import argparse
 from sklearn.model_selection import train_test_split
+import time
+from torch.utils.tensorboard import SummaryWriter
+import os
 
 
 parser = argparse.ArgumentParser()
 
+parser.add_argument(
+    "--experiment-name",
+    type=str,
+    default=os.path.join("runs", time.strftime("%Y%m%d-%H%M%S")),
+)
+parser.add_argument("--experiment-name-prefix", type=str, default="")
 parser.add_argument(
     "--input_file", type=str, default="../bridger/tmp_log_dir/bridges.pkl"
 )
@@ -25,10 +34,16 @@ parser.add_argument("--train_validate_split_ratio", type=float, default=0.75)
 parser.add_argument("--batch_size", type=int, default=20)
 parser.add_argument("--learning_rate", type=float, default=0.001)
 parser.add_argument("--epochs", type=int, default=300)
+parser.add_argument("--paddings", type=list, default=[1, 1])
+parser.add_argument("--strides", type=list, default=[2, 1])
+parser.add_argument("--kernel_sizes", type=list, default=[3, 3])
+parser.add_argument("--channel_nums", type=list, default=[3, 4, 8])
 parser.add_argument("--random_state", default=None)
 
 
 args = parser.parse_args()
+
+print(args.experiment_name)
 
 # Binary
 # label_file = "../bridger/tmp_log_dir/is_bridge.pkl"
@@ -137,6 +152,9 @@ def compute_accuracy(output, label) -> float:
     return (output.argmax(axis=1) == label).float().mean()
 
 
+# Enable Tensorboard writer for logging loss/accuracy. By default, Tensorboard logs are written to the 'runs' folder.
+writer = SummaryWriter(log_dir=args.experiment_name)
+
 for i in range(args.epochs):
     model.train()
     for j, (input, label) in enumerate(data_loader):
@@ -153,7 +171,7 @@ for i in range(args.epochs):
         # if j == 0:
         # print("EPOCH: " , i)
         print("OUTPUT: ", output)
-        print("LABEL: " , label)
+        print("LABEL: ", label)
 
         # TODO(lyric): Compute accuracy for binary requires round() instead of argmax. Fix this bug.
         accuracy = compute_accuracy(output, label.argmax(axis=1))
@@ -165,6 +183,8 @@ for i in range(args.epochs):
 
     if i % 20 == 0:
         print("epoch {}\tloss : {}\t accuracy : {}".format(i, loss, accuracy))
+        writer.add_scalar("Train loss", loss, i)
+        writer.add_scalar("Train accuracy", accuracy, i)
 
         model.eval()
 
@@ -178,3 +198,7 @@ for i in range(args.epochs):
                 eval_output = model(eval_input)
                 eval_accuracy = compute_accuracy(eval_output, eval_label)
                 print(f"Evaluation accuracy: {eval_accuracy:.2f}")
+
+        writer.add_scalar("Test accuracy", eval_accuracy, i)
+
+writer.close()

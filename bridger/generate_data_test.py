@@ -23,9 +23,6 @@ class TestGenerateData(unittest.TestCase):
     def setUp(self):
         create_temp_dir()
 
-    # def tearDown(self):
-    # delete_temp_dir()
-
     def test_generate_six_wide(self):
         dataset = DatasetGenerator(
             log_filename_directory=TMP_LOG_DIR,
