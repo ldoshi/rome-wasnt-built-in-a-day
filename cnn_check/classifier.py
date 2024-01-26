@@ -146,8 +146,11 @@ print(f" Test Size: {len(data_test)}")
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 
-def compute_accuracy(output, label) -> float:
+def compute_multiclass_accuracy(output, label) -> float:
     return (output.argmax(axis=1) == label).float().mean()
+
+def compute_binary_accuracy(output, label) -> float:
+    return (output.round() == label).float().mean()
 
 
 # Enable Tensorboard writer for logging loss/accuracy. By default, Tensorboard logs are written to the 'runs' folder.
@@ -171,15 +174,17 @@ for i in range(args.epochs):
         # print("OUTPUT: ", output)
         # print("LABEL: ", label)
 
-        # TODO(lyric): Compute accuracy for binary requires round() instead of argmax. Fix this bug.
-        accuracy = compute_accuracy(output, label.argmax(axis=1))
+        if args.mode == "binary":
+            accuracy = compute_binary_accuracy(output, label)
+        elif args.mode == "multiclass":
+            accuracy = compute_multiclass_accuracy(output, label.argmax(axis=1))
 
         # backprop
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-    if i % 20 == 0:
+    if i % 1 == 0:
         print("epoch {}\tloss : {}\t accuracy : {}".format(i, loss, accuracy))
         writer.add_scalar("Train loss", loss, i)
         writer.add_scalar("Train accuracy", accuracy, i)
@@ -189,13 +194,13 @@ for i in range(args.epochs):
         if args.mode == "binary":
             for eval_input, eval_label in validation_data_loader:
                 eval_output = model(eval_input)
-                eval_accuracy = (eval_output.round() == eval_label).float().mean()
-                print(f"Evaluation accuracy: {eval_accuracy:.2f}")
+                eval_accuracy = compute_binary_accuracy(eval_output, eval_label)
+                print(f"Evaluation accuracy: {eval_accuracy:.4f}")
         elif args.mode == "multiclass":
             for eval_input, eval_label in validation_data_loader:
                 eval_output = model(eval_input)
-                eval_accuracy = compute_accuracy(eval_output, eval_label)
-                print(f"Evaluation accuracy: {eval_accuracy:.2f}")
+                eval_accuracy = compute_multiclass_accuracy(eval_output, eval_label)
+                print(f"Evaluation accuracy: {eval_accuracy:.4f}")
 
         writer.add_scalar("Test accuracy", eval_accuracy, i)
 
