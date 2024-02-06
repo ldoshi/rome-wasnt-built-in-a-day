@@ -12,6 +12,8 @@ import time
 from torch.utils.tensorboard import SummaryWriter
 import os
 
+import sklearn.metrics as metrics
+
 
 parser = argparse.ArgumentParser()
 
@@ -146,43 +148,38 @@ print(f" Test Size: {len(data_test)}")
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 
-def compute_multiclass_accuracy(output, label) -> float:
-    return (output.argmax(axis=1) == label).float().mean()
-
-def compute_binary_accuracy(output, label) -> float:
-    return (output.round() == label).float().mean()
-
-
 # Enable Tensorboard writer for logging loss/accuracy. By default, Tensorboard logs are written to the 'runs' folder.
 writer = SummaryWriter(log_dir=os.path.join("runs", args.experiment_name))
 
 for i in range(args.epochs):
     model.train()
-    for j, (input, label) in enumerate(data_loader):
+    for j, (input, train_label) in enumerate(data_loader):
         # calculate output
         output = model(input)
 
         # calculate loss
         if args.mode == "binary":
-            loss = loss_fn(output, label.reshape(-1, 1))
+            loss = loss_fn(output, train_label.reshape(-1, 1))
         elif args.mode == "multiclass":
-            label = F.one_hot(label, num_classes=args.num_classes).float()
-            loss = loss_fn(output, label)
+            label_one_hot = F.one_hot(train_label, num_classes=args.num_classes).float()
+            loss = loss_fn(output, label_one_hot)
 
         # if j == 0:
         # print("EPOCH: " , i)
         # print("OUTPUT: ", output)
         # print("LABEL: ", label)
 
-        if args.mode == "binary":
-            accuracy = compute_binary_accuracy(output, label)
-        elif args.mode == "multiclass":
-            accuracy = compute_multiclass_accuracy(output, label.argmax(axis=1))
-
         # backprop
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        if args.mode == "binary":
+            output = output.round()
+        elif args.mode == "multiclass":
+            output = output.argmax(axis=1)
+
+        accuracy = metrics.accuracy_score(output, train_label)
 
     if i % 1 == 0:
         print("epoch {}\tloss : {}\t accuracy : {}".format(i, loss, accuracy))
@@ -191,16 +188,14 @@ for i in range(args.epochs):
 
         model.eval()
 
-        if args.mode == "binary":
-            for eval_input, eval_label in validation_data_loader:
-                eval_output = model(eval_input)
-                eval_accuracy = compute_binary_accuracy(eval_output, eval_label)
-                print(f"Evaluation accuracy: {eval_accuracy:.4f}")
-        elif args.mode == "multiclass":
-            for eval_input, eval_label in validation_data_loader:
-                eval_output = model(eval_input)
-                eval_accuracy = compute_multiclass_accuracy(eval_output, eval_label)
-                print(f"Evaluation accuracy: {eval_accuracy:.4f}")
+        for eval_input, eval_label in validation_data_loader:
+            eval_output = model(eval_input)
+            if args.mode == "binary":
+                eval_output = eval_output.round()
+            elif args.mode == "multiclass":
+                eval_output = eval_output.argmax(axis=1)
+            eval_accuracy = metrics.accuracy_score(eval_output, eval_label)
+            print(f"Evaluation accuracy: {eval_accuracy:.4f}")
 
         writer.add_scalar("Test accuracy", eval_accuracy, i)
 
