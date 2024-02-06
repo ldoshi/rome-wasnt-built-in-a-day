@@ -24,18 +24,18 @@ parser.add_argument(
 )
 parser.add_argument("--experiment-name-prefix", type=str, default="")
 parser.add_argument(
-    "--input_file", type=str, default="../bridger/tmp_log_dir/bridges.pkl"
+    "--input_file", type=str, default="../data_14_100000_10_10/inputs/bridges.pkl"
 )
 parser.add_argument(
-    "--label_file", type=str, default="../bridger/tmp_log_dir/bridge_height.pkl"
+    "--label_file", type=str, default="../data_14_100000_10_10/labels/bridge_height.pkl"
 )
 parser.add_argument("--mode", type=str, default="multiclass")
-parser.add_argument("--num_classes", type=int, default=7)
+parser.add_argument("--num_classes", type=int, default=13)
 parser.add_argument("--train_test_split_ratio", type=float, default=0.8)
 parser.add_argument("--train_validate_split_ratio", type=float, default=0.75)
-parser.add_argument("--batch_size", type=int, default=20)
+parser.add_argument("--batch_size", type=int, default=100)
 parser.add_argument("--learning_rate", type=float, default=0.001)
-parser.add_argument("--epochs", type=int, default=300)
+parser.add_argument("--epochs", type=int, default=10)
 parser.add_argument("--paddings", nargs=2, type=int, default=[1, 1])
 parser.add_argument("--strides", nargs=2, type=int, default=[2, 1])
 parser.add_argument("--kernel_sizes", nargs=2, type=int, default=[3, 3])
@@ -153,6 +153,8 @@ writer = SummaryWriter(log_dir=os.path.join("runs", args.experiment_name))
 
 for i in range(args.epochs):
     model.train()
+    output_all = []
+    train_label_all = []
     for j, (input, train_label) in enumerate(data_loader):
         # calculate output
         output = model(input)
@@ -179,24 +181,30 @@ for i in range(args.epochs):
         elif args.mode == "multiclass":
             output = output.argmax(axis=1)
 
-        accuracy = metrics.accuracy_score(output, train_label)
+        output_all.extend(output)
+        train_label_all.extend(train_label)
+    accuracy = metrics.accuracy_score(output_all, train_label_all)
+    confusion_matrix = metrics.confusion_matrix(output_all, train_label_all)
 
     if i % 1 == 0:
-        print("epoch {}\tloss : {}\t accuracy : {}".format(i, loss, accuracy))
+        print(f"epoch {i}\tloss: {loss}\t accuracy: {accuracy}\tconfusion matrix: {confusion_matrix}")
         writer.add_scalar("Train loss", loss, i)
         writer.add_scalar("Train accuracy", accuracy, i)
 
         model.eval()
-
+        eval_output_all = []
+        eval_label_all = []
         for eval_input, eval_label in validation_data_loader:
             eval_output = model(eval_input)
             if args.mode == "binary":
                 eval_output = eval_output.round()
             elif args.mode == "multiclass":
                 eval_output = eval_output.argmax(axis=1)
-            eval_accuracy = metrics.accuracy_score(eval_output, eval_label)
-            print(f"Evaluation accuracy: {eval_accuracy:.4f}")
-
+            eval_output_all.extend(eval_output)
+            eval_label_all.extend(eval_label)
+        eval_accuracy = metrics.accuracy_score(eval_output_all, eval_label_all)
+        eval_confusion_matrix = metrics.confusion_matrix(eval_output_all, eval_label_all)
+        print(f"epoch {i}\teval accuracy: {eval_accuracy}\teval confusion matrix: {eval_confusion_matrix}")
         writer.add_scalar("Test accuracy", eval_accuracy, i)
 
 writer.close()
