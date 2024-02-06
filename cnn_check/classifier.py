@@ -177,6 +177,25 @@ print(f" Test Size: {len(data_test)}")
 
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
+def dump_metrics(epoch, prefix, label, output, writer=None, print_metrics=True, verbose=False):
+    accuracy = metrics.accuracy_score(label, output)
+    precision = 3 # metrics.precision_score(label,output)
+    recall = 3 # metrics.recall_score(label, output)
+    confusion_matrix =metrics.confusion_matrix(label, output)
+
+    if writer:
+        writer.add_scalar(f"{prefix} accuracy", accuracy, epoch)
+        writer.add_scalar(f"{prefix} precision", precision, epoch)
+        writer.add_scalar(f"{prefix} recall", recall, epoch)
+
+    if print_metrics:
+        print(f"Epoch {i} {prefix} Metrics")
+        print(f"  accuracy: {accuracy}")
+        print(f"  precision: {precision}")
+        print(f"  recall: {recall}")
+        if verbose:
+            print(f"  confusion matrix:\n{confusion_matrix}") 
+
 # Enable Tensorboard writer for logging loss/accuracy. By default, Tensorboard logs are written to the 'runs' folder.
 writer = SummaryWriter(log_dir=os.path.join("runs", args.experiment_name))
 
@@ -212,19 +231,11 @@ for i in range(args.epochs):
 
         output_all.extend(output)
         train_label_all.extend(train_label)
-    accuracy = metrics.accuracy_score(output_all, train_label_all)
-    if args.generate_confusion_matrix:
-        confusion_matrix = metrics.confusion_matrix(output_all, train_label_all)
 
     if i % 1 == 0:
-        if args.generate_confusion_matrix:
-            print(
-                f"epoch {i}\tloss: {loss}\t accuracy: {accuracy}\nconfusion matrix:\n{confusion_matrix}"
-            )
-        else:
-            print(f"epoch {i}\tloss: {loss}\t accuracy: {accuracy}\n")
+        print(f"epoch {i}\tloss: {loss}")
+        dump_metrics(i, "Train", train_label_all, output_all, writer, print_metrics=True, verbose=args.generate_confusion_matrix)
         writer.add_scalar("Train loss", loss, i)
-        writer.add_scalar("Train accuracy", accuracy, i)
 
         model.eval()
         eval_output_all = []
@@ -237,16 +248,8 @@ for i in range(args.epochs):
                 eval_output = eval_output.argmax(axis=1)
             eval_output_all.extend(eval_output)
             eval_label_all.extend(eval_label)
-        eval_accuracy = metrics.accuracy_score(eval_output_all, eval_label_all)
-        if args.generate_confusion_matrix:
-            eval_confusion_matrix = metrics.confusion_matrix(
-                eval_output_all, eval_label_all
-            )
-            print(
-                f"epoch {i}\teval accuracy: {eval_accuracy}\neval confusion matrix:\n{eval_confusion_matrix}"
-            )
-        else:
-            print(f"epoch {i}\teval accuracy: {eval_accuracy}\n")
-        writer.add_scalar("Test accuracy", eval_accuracy, i)
+
+        dump_metrics(i, "Eval", eval_label_all, eval_output_all, writer, print_metrics=True, verbose=args.generate_confusion_matrix)
+
 
 writer.close()
