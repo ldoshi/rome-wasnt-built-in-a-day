@@ -263,7 +263,7 @@ for i in range(args.epochs):
 
     if i % 1 == 0:
         print(
-            f"epoch {i}\tloss: {loss}\t accuracy: {accuracy}\tconfusion matrix: {confusion_matrix}"
+            f"epoch {i}\tloss: {loss}\t accuracy: {accuracy}\nconfusion matrix:\n{confusion_matrix}"
         )
         writer.add_scalar("Train loss", loss, i)
         writer.add_scalar("Train accuracy", accuracy, i)
@@ -284,7 +284,7 @@ for i in range(args.epochs):
             eval_output_all, eval_label_all
         )
         print(
-            f"epoch {i}\teval accuracy: {eval_accuracy}\teval confusion matrix: {eval_confusion_matrix}"
+            f"epoch {i}\teval accuracy: {eval_accuracy}\neval confusion matrix:\n{eval_confusion_matrix}"
         )
         writer.add_scalar("Test accuracy", eval_accuracy, i)
 
