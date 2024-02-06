@@ -187,7 +187,7 @@ for i in range(args.epochs):
     confusion_matrix = metrics.confusion_matrix(output_all, train_label_all)
 
     if i % 1 == 0:
-        print(f"epoch {i}\tloss: {loss}\t accuracy: {accuracy}\tconfusion matrix: {confusion_matrix}")
+        print(f"epoch {i}\tloss: {loss}\t accuracy: {accuracy}\nconfusion matrix:\n{confusion_matrix}")
         writer.add_scalar("Train loss", loss, i)
         writer.add_scalar("Train accuracy", accuracy, i)
 
@@ -204,7 +204,7 @@ for i in range(args.epochs):
             eval_label_all.extend(eval_label)
         eval_accuracy = metrics.accuracy_score(eval_output_all, eval_label_all)
         eval_confusion_matrix = metrics.confusion_matrix(eval_output_all, eval_label_all)
-        print(f"epoch {i}\teval accuracy: {eval_accuracy}\teval confusion matrix: {eval_confusion_matrix}")
+        print(f"epoch {i}\teval accuracy: {eval_accuracy}\neval confusion matrix:\n{eval_confusion_matrix}")
         writer.add_scalar("Test accuracy", eval_accuracy, i)
 
 writer.close()
