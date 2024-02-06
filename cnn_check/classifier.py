@@ -43,6 +43,9 @@ parser.add_argument("--kernel_sizes", nargs=2, type=int, default=[3, 3])
 parser.add_argument("--channel_nums", nargs=3, type=int, default=[3, 4, 8])
 parser.add_argument("--random_state", default=42)
 
+parser.add_argument("--rebalance", type=bool, default=False)
+parser.add_argument("--n_fewest_elements", type=int, default=1)
+
 
 args = parser.parse_args()
 
