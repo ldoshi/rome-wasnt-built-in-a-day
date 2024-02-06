@@ -16,63 +16,6 @@ from sklearn.utils import shuffle
 from collections import defaultdict, Counter
 
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument(
-    "--experiment-name",
-    type=str,
-    default=time.strftime("%Y%m%d-%H%M%S"),
-)
-parser.add_argument("--experiment-name-prefix", type=str, default="")
-parser.add_argument(
-    "--input_file", type=str, default="../data_14_100000_10_10/inputs/bridges.pkl"
-)
-parser.add_argument(
-    "--label_file", type=str, default="../data_14_100000_10_10/labels/bridge_height.pkl"
-)
-parser.add_argument("--mode", type=str, default="multiclass")
-parser.add_argument("--num_classes", type=int, default=13)
-parser.add_argument("--train_test_split_ratio", type=float, default=0.8)
-parser.add_argument("--train_validate_split_ratio", type=float, default=0.75)
-parser.add_argument("--batch_size", type=int, default=100)
-parser.add_argument("--learning_rate", type=float, default=0.001)
-parser.add_argument("--epochs", type=int, default=300)
-parser.add_argument("--paddings", nargs=2, type=int, default=[1, 1])
-parser.add_argument("--strides", nargs=2, type=int, default=[2, 1])
-parser.add_argument("--kernel_sizes", nargs=2, type=int, default=[3, 3])
-parser.add_argument("--channel_nums", nargs=3, type=int, default=[3, 4, 8])
-parser.add_argument("--random_state", default=42)
-
-parser.add_argument("--rebalance", type=bool, default=False)
-parser.add_argument("--n_fewest_elements", type=int, default=1)
-
-
-args = parser.parse_args()
-
-# Binary
-# label_file = "../bridger/tmp_log_dir/is_bridge.pkl"
-# label_file = "../bridger/tmp_log_dir/is_bridge_and_uses_less_than_k_bricks.pkl"
-
-if args.mode == "binary":
-    loss_fn = torch.nn.BCELoss()
-    output_head_count = 1
-elif args.mode == "multiclass":
-    loss_fn = torch.nn.CrossEntropyLoss()
-    output_head_count = args.num_classes
-
-
-with open(args.input_file, "rb") as f:
-    inputs = pickle.load(f)
-    inputs = [torch.tensor(x) for x in inputs]
-
-with open(args.label_file, "rb") as f:
-    labels = pickle.load(f)
-    if args.mode == "binary":
-        labels = np.array(labels, dtype=np.float32)
-    elif args.mode == "multiclass":
-        labels = np.array(labels)
-
-
 class CNN(torch.nn.Module):
     """Base class for CNN neural network module."""
 
@@ -125,14 +68,6 @@ def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int)
     return x.permute(0, 3, 1, 2)
 
 
-def compute_multiclass_accuracy(output, label) -> float:
-    return (output.argmax(axis=1) == label).float().mean()
-
-
-def compute_binary_accuracy(output, label) -> float:
-    return (output.round() == label).float().mean()
-
-
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
@@ -157,6 +92,7 @@ parser.add_argument("--kernel_sizes", nargs=2, type=int, default=[3, 3])
 parser.add_argument("--channel_nums", nargs=3, type=int, default=[3, 4, 8])
 parser.add_argument("--random_state", default=42)
 parser.add_argument("--rebalance", type=bool, default=False)
+parser.add_argument("--generate_confusion_matrix", action="store_false", default=False)
 
 args = parser.parse_args()
 
@@ -167,6 +103,24 @@ elif args.mode == "multiclass":
     loss_fn = torch.nn.CrossEntropyLoss()
     output_head_count = args.num_classes
 
+
+with open(args.input_file, "rb") as f:
+    inputs = pickle.load(f)
+    inputs = [torch.tensor(x) for x in inputs]
+
+with open(args.label_file, "rb") as f:
+    labels = pickle.load(f)
+    if args.mode == "binary":
+        labels = np.array(labels, dtype=np.float32)
+    elif args.mode == "multiclass":
+        labels = np.array(labels)
+
+if args.mode == "binary":
+    loss_fn = torch.nn.BCELoss()
+    output_head_count = 1
+elif args.mode == "multiclass":
+    loss_fn = torch.nn.CrossEntropyLoss()
+    output_head_count = args.num_classes
 
 with open(args.input_file, "rb") as f:
     inputs = pickle.load(f)
@@ -259,12 +213,16 @@ for i in range(args.epochs):
         output_all.extend(output)
         train_label_all.extend(train_label)
     accuracy = metrics.accuracy_score(output_all, train_label_all)
-    confusion_matrix = metrics.confusion_matrix(output_all, train_label_all)
+    if args.generate_confusion_matrix:
+        confusion_matrix = metrics.confusion_matrix(output_all, train_label_all)
 
     if i % 1 == 0:
-        print(
-            f"epoch {i}\tloss: {loss}\t accuracy: {accuracy}\nconfusion matrix:\n{confusion_matrix}"
-        )
+        if args.generate_confusion_matrix:
+            print(
+                f"epoch {i}\tloss: {loss}\t accuracy: {accuracy}\nconfusion matrix:\n{confusion_matrix}"
+            )
+        else:
+            print(f"epoch {i}\tloss: {loss}\t accuracy: {accuracy}\n")
         writer.add_scalar("Train loss", loss, i)
         writer.add_scalar("Train accuracy", accuracy, i)
 
@@ -280,12 +238,15 @@ for i in range(args.epochs):
             eval_output_all.extend(eval_output)
             eval_label_all.extend(eval_label)
         eval_accuracy = metrics.accuracy_score(eval_output_all, eval_label_all)
-        eval_confusion_matrix = metrics.confusion_matrix(
-            eval_output_all, eval_label_all
-        )
-        print(
-            f"epoch {i}\teval accuracy: {eval_accuracy}\neval confusion matrix:\n{eval_confusion_matrix}"
-        )
+        if args.generate_confusion_matrix:
+            eval_confusion_matrix = metrics.confusion_matrix(
+                eval_output_all, eval_label_all
+            )
+            print(
+                f"epoch {i}\teval accuracy: {eval_accuracy}\neval confusion matrix:\n{eval_confusion_matrix}"
+            )
+        else:
+            print(f"epoch {i}\teval accuracy: {eval_accuracy}\n")
         writer.add_scalar("Test accuracy", eval_accuracy, i)
 
 writer.close()
