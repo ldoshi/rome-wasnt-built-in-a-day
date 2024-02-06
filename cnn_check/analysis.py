@@ -24,6 +24,7 @@ parser.add_argument("--train_validate_split_ratio", type=float, default=0.75)
 parser.add_argument("--random_state", default=42)
 args = parser.parse_args()
 
+
 def compute_label_distribution(label_file: str):
     with open(label_file, "rb") as f:
         labels = pickle.load(f)
@@ -47,22 +48,23 @@ def compute_label_distribution(label_file: str):
 def print_distribution(split: str, counter: collections.Counter) -> None:
     print(f"{split}")
     print("Label Distribution (Raw)")
-    for k,v in counter.most_common():
+    for k, v in counter.most_common():
         print(f"{k}: {v}")
     print()
     print("Label Distribution (%)")
-    for k,v in counter.most_common():
+    for k, v in counter.most_common():
         print(f"{k}: {v/counter.total()*100:.2f}")
     print()
     print()
 
+
 for label_file_name in os.listdir(args.label_dir):
     label_file = os.path.join(args.label_dir, label_file_name)
-    label_distribution_train, label_distribution_validate = compute_label_distribution(label_file)
+    label_distribution_train, label_distribution_validate = compute_label_distribution(
+        label_file
+    )
 
     print(f"File: {label_file_name}")
 
     print_distribution("Train", label_distribution_train)
     print_distribution("Validate", label_distribution_validate)
-
-

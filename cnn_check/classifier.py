@@ -11,8 +11,9 @@ from sklearn.model_selection import train_test_split
 import time
 from torch.utils.tensorboard import SummaryWriter
 import os
-
 import sklearn.metrics as metrics
+from sklearn.utils import shuffle
+from collections import defaultdict, Counter
 
 
 parser = argparse.ArgumentParser()
@@ -121,9 +122,81 @@ def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int)
     return x.permute(0, 3, 1, 2)
 
 
+def compute_multiclass_accuracy(output, label) -> float:
+    return (output.argmax(axis=1) == label).float().mean()
+
+
+def compute_binary_accuracy(output, label) -> float:
+    return (output.round() == label).float().mean()
+
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument(
+    "--experiment-name",
+    type=str,
+    default=time.strftime("%Y%m%d-%H%M%S"),
+)
+parser.add_argument("--experiment-name-prefix", type=str, default="")
+parser.add_argument("--input_file", type=str, default="inputs/bridges.pkl")
+parser.add_argument("--label_file", type=str, default="labels/bridge_height.pkl")
+parser.add_argument("--n_fewest_elements", type=int, default=1)
+parser.add_argument("--mode", type=str, default="multiclass")
+parser.add_argument("--num_classes", type=int, default=7)
+parser.add_argument("--train_test_split_ratio", type=float, default=0.8)
+parser.add_argument("--train_validate_split_ratio", type=float, default=0.75)
+parser.add_argument("--batch_size", type=int, default=20)
+parser.add_argument("--learning_rate", type=float, default=0.001)
+parser.add_argument("--epochs", type=int, default=300)
+parser.add_argument("--paddings", nargs=2, type=int, default=[1, 1])
+parser.add_argument("--strides", nargs=2, type=int, default=[2, 1])
+parser.add_argument("--kernel_sizes", nargs=2, type=int, default=[3, 3])
+parser.add_argument("--channel_nums", nargs=3, type=int, default=[3, 4, 8])
+parser.add_argument("--random_state", default=42)
+parser.add_argument("--rebalance", type=bool, default=False)
+
+args = parser.parse_args()
+
+if args.mode == "binary":
+    loss_fn = torch.nn.BCELoss()
+    output_head_count = 1
+elif args.mode == "multiclass":
+    loss_fn = torch.nn.CrossEntropyLoss()
+    output_head_count = args.num_classes
+
+
+with open(args.input_file, "rb") as f:
+    inputs = pickle.load(f)
+    inputs = [torch.tensor(x) for x in inputs]
+
+with open(args.label_file, "rb") as f:
+    labels = pickle.load(f)
+    if args.mode == "binary":
+        labels = np.array(labels, dtype=np.float32)
+    elif args.mode == "multiclass":
+        labels = np.array(labels)
+
+
 model = CNN(*inputs[0].shape, inputs[0].shape[1])
 
+# Downsample all classes to the class with the fewest elements.
 data = list(zip(inputs, labels))
+data = shuffle(data)
+
+if args.rebalance:
+    len_fewest_label = Counter(labels).most_common()[-args.n_fewest_elements][1]
+    print(f"All classes will be downsampled to at most {len_fewest_label} elements.")
+
+    label_to_state_dict = defaultdict(list)
+    for state, label in data:
+        if len(label_to_state_dict[label]) < len_fewest_label:
+            label_to_state_dict[label].append(state)
+
+    data = []
+    for label, state_list in label_to_state_dict.items():
+        for state in state_list:
+            data.append((state, label))
+
 data_train_side, data_test = train_test_split(
     data,
     train_size=args.train_test_split_ratio,
@@ -146,7 +219,6 @@ print(f"Valid Size: {len(data_validate)}")
 print(f" Test Size: {len(data_test)}")
 
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
-
 
 # Enable Tensorboard writer for logging loss/accuracy. By default, Tensorboard logs are written to the 'runs' folder.
 writer = SummaryWriter(log_dir=os.path.join("runs", args.experiment_name))
@@ -187,7 +259,9 @@ for i in range(args.epochs):
     confusion_matrix = metrics.confusion_matrix(output_all, train_label_all)
 
     if i % 1 == 0:
-        print(f"epoch {i}\tloss: {loss}\t accuracy: {accuracy}\tconfusion matrix: {confusion_matrix}")
+        print(
+            f"epoch {i}\tloss: {loss}\t accuracy: {accuracy}\tconfusion matrix: {confusion_matrix}"
+        )
         writer.add_scalar("Train loss", loss, i)
         writer.add_scalar("Train accuracy", accuracy, i)
 
@@ -203,8 +277,12 @@ for i in range(args.epochs):
             eval_output_all.extend(eval_output)
             eval_label_all.extend(eval_label)
         eval_accuracy = metrics.accuracy_score(eval_output_all, eval_label_all)
-        eval_confusion_matrix = metrics.confusion_matrix(eval_output_all, eval_label_all)
-        print(f"epoch {i}\teval accuracy: {eval_accuracy}\teval confusion matrix: {eval_confusion_matrix}")
+        eval_confusion_matrix = metrics.confusion_matrix(
+            eval_output_all, eval_label_all
+        )
+        print(
+            f"epoch {i}\teval accuracy: {eval_accuracy}\teval confusion matrix: {eval_confusion_matrix}"
+        )
         writer.add_scalar("Test accuracy", eval_accuracy, i)
 
 writer.close()
