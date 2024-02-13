@@ -15,6 +15,8 @@ import sklearn.metrics as metrics
 from sklearn.utils import shuffle
 from collections import defaultdict, Counter
 
+import matplotlib.pyplot as plt
+
 
 class CNN(torch.nn.Module):
     """Base class for CNN neural network module."""
@@ -46,6 +48,7 @@ class CNN(torch.nn.Module):
         self.dnn = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
 
     def forward(self, x):
+        assert len(x.shape) == 3
         x = x.reshape(-1, self.image_height, self.image_width)
         x = encode_enum_state_to_channels(x, self.cnn[0].in_channels).float()
         for layer in self.cnn:
@@ -56,7 +59,8 @@ class CNN(torch.nn.Module):
         if args.mode == "binary":
             x = torch.sigmoid(x)
         elif args.mode == "multiclass":
-            x = torch.softmax(x, 0)
+            x = torch.softmax(x, dim=1)
+        
         return x
 
 
@@ -84,8 +88,8 @@ parser.add_argument("--num_classes", type=int, default=14)
 parser.add_argument("--train_test_split_ratio", type=float, default=0.8)
 parser.add_argument("--train_validate_split_ratio", type=float, default=0.75)
 parser.add_argument("--batch_size", type=int, default=20)
-parser.add_argument("--learning_rate", type=float, default=0.001)
-parser.add_argument("--epochs", type=int, default=3)
+parser.add_argument("--learning_rate", type=float, default=0.1)
+parser.add_argument("--epochs", type=int, default=5)
 parser.add_argument("--paddings", nargs=2, type=int, default=[1, 1])
 parser.add_argument("--strides", nargs=2, type=int, default=[2, 1])
 parser.add_argument("--kernel_sizes", nargs=2, type=int, default=[3, 3])
@@ -211,6 +215,27 @@ def dump_metrics(epoch, prefix, label, output, writer=None, print_metrics=True, 
 # Enable Tensorboard writer for logging loss/accuracy. By default, Tensorboard logs are written to the 'runs' folder.
 writer = SummaryWriter(log_dir=os.path.join("runs", args.experiment_name))
 
+
+def run_eval(model, raw_output=False):
+    model.eval()
+    eval_label_all = []
+    eval_output_all = []
+    for eval_input, eval_label in validation_data_loader:
+        eval_label_all.extend(eval_label)
+        
+        eval_output = model(eval_input)
+        if raw_output:
+            eval_output_all.extend(eval_output)
+            continue
+            
+        if args.mode == "binary":
+            eval_output = eval_output.round()
+        elif args.mode == "multiclass":
+            eval_output = eval_output.argmax(axis=1)
+        eval_output_all.extend(eval_output)
+
+    return eval_label_all, eval_output_all
+
 for i in range(args.epochs):
     model.train()
     output_all = []
@@ -244,24 +269,50 @@ for i in range(args.epochs):
         output_all.extend(output)
         train_label_all.extend(train_label)
 
-    if i % 1 == 0:
-        print(f"epoch {i}\tloss: {loss}")
+    print(f"epoch {i}\tloss: {loss}")
+    if i % 10 == 0:
+
         dump_metrics(i, "Train", train_label_all, output_all, writer, print_metrics=True, verbose=args.generate_confusion_matrix)
         writer.add_scalar("Train loss", loss, i)
 
-        model.eval()
-        eval_output_all = []
-        eval_label_all = []
-        for eval_input, eval_label in validation_data_loader:
-            eval_output = model(eval_input)
-            if args.mode == "binary":
-                eval_output = eval_output.round()
-            elif args.mode == "multiclass":
-                eval_output = eval_output.argmax(axis=1)
-            eval_output_all.extend(eval_output)
-            eval_label_all.extend(eval_label)
-
+        eval_label_all, eval_output_all = run_eval(model)
         dump_metrics(i, "Eval", eval_label_all, eval_output_all, writer, print_metrics=True, verbose=args.generate_confusion_matrix)
 
 
+# Plot ROCs
+def plot_rocs(eval_label_all, eval_output_all):
+    y_true_one_hot = torch.nn.functional.one_hot(torch.stack(eval_label_all)).detach().numpy()
+    y_pred = torch.stack(eval_output_all).detach().numpy()
+    for class_id in range(args.num_classes-1):
+        plot_roc(y_true_one_hot[:, class_id], y_pred[:, class_id], class_id)
+    plt.show()
+    
+def plot_roc(y_true, y_pred, class_id):
+    print(class_id)
+    print(y_true[:10])
+    print(y_pred[:10])
+    display = metrics.RocCurveDisplay.from_predictions(
+        y_true=y_true,
+        y_pred= y_pred,
+        name=f"{class_id} vs the rest",
+        plot_chance_level=True,
+        color="darkorange",
+        )
+    display.ax_.set(
+        xlabel="False Positive Rate",
+        ylabel="True Positive Rate",
+        title=f"{class_id} vs Rest ROC Curves"
+    )
+
+
+
+
+
+       
+eval_label_all, eval_output_all = run_eval(model, raw_output=True)
+plot_rocs(eval_label_all, eval_output_all)
+
+
+        
 writer.close()
+
