@@ -60,7 +60,7 @@ class CNN(torch.nn.Module):
             x = torch.sigmoid(x)
         elif args.mode == "multiclass":
             x = torch.softmax(x, dim=1)
-        
+
         return x
 
 
@@ -72,6 +72,26 @@ def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int)
     return x.permute(0, 3, 1, 2)
 
 
+def compute_label_distribution(label_file: str):
+    with open(label_file, "rb") as f:
+        labels = pickle.load(f)
+
+    labels_train_side, labels_test = train_test_split(
+        labels,
+        train_size=args.train_test_split_ratio,
+        random_state=args.random_state,
+        shuffle=True,
+    )
+    labels_train, labels_validate = train_test_split(
+        labels_train_side,
+        train_size=args.train_validate_split_ratio,
+        random_state=args.random_state,
+        shuffle=True,
+    )
+
+    return Counter(labels_train), Counter(labels_validate)
+
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
@@ -80,8 +100,12 @@ parser.add_argument(
     default=time.strftime("%Y%m%d-%H%M%S"),
 )
 parser.add_argument("--experiment-name-prefix", type=str, default="")
-parser.add_argument("--input_file", type=str, default="../data_14_100000_10_10/inputs/bridges.pkl")
-parser.add_argument("--label_file", type=str, default="../data_14_100000_10_10/labels/bridge_height.pkl")
+parser.add_argument(
+    "--input_file", type=str, default="../data_14_100000_10_10/inputs/bridges.pkl"
+)
+parser.add_argument(
+    "--label_file", type=str, default="../data_14_100000_10_10/labels/bridge_height.pkl"
+)
 parser.add_argument("--n_fewest_elements", type=int, default=1)
 parser.add_argument("--mode", type=str, default="multiclass")
 parser.add_argument("--num_classes", type=int, default=14)
@@ -96,6 +120,7 @@ parser.add_argument("--kernel_sizes", nargs=2, type=int, default=[3, 3])
 parser.add_argument("--channel_nums", nargs=3, type=int, default=[3, 4, 8])
 parser.add_argument("--random_state", default=42)
 parser.add_argument("--rebalance", type=bool, default=False)
+parser.add_argument("--reweight", type=bool, default=False)
 parser.add_argument("--generate_confusion_matrix", action="store_false", default=False)
 
 args = parser.parse_args()
@@ -123,7 +148,11 @@ if args.mode == "binary":
     loss_fn = torch.nn.BCELoss()
     output_head_count = 1
 elif args.mode == "multiclass":
-    loss_fn = torch.nn.CrossEntropyLoss()
+    weights = torch.tensor([])
+    if args.reweight:
+        label_counts = Counter(labels)
+        weights = torch.tensor([count / sum(labels) for count in label_counts.values()])
+    loss_fn = torch.nn.CrossEntropyLoss(weight=weights)
     output_head_count = args.num_classes
 
 with open(args.input_file, "rb") as f:
@@ -181,15 +210,19 @@ print(f" Test Size: {len(data_test)}")
 
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
-def dump_metrics(epoch, prefix, label, output, writer=None, print_metrics=True, verbose=False):
+
+def dump_metrics(
+    epoch, prefix, label, output, writer=None, print_metrics=True, verbose=False
+):
+    output = [pred.detach().numpy() for pred in output]
     accuracy = metrics.accuracy_score(label, output)
-    precision_micro =  metrics.precision_score(label,output, average='micro')
-    precision_macro =  metrics.precision_score(label,output, average='macro')
-    precision_weighted =  metrics.precision_score(label,output,average='weighted')
-    recall_micro = metrics.recall_score(label, output, average='micro')
-    recall_macro = metrics.recall_score(label, output, average='macro')
-    recall_weighted = metrics.recall_score(label, output, average='weighted')
-    confusion_matrix =metrics.confusion_matrix(label, output)
+    precision_micro = metrics.precision_score(label, output, average="micro")
+    precision_macro = metrics.precision_score(label, output, average="macro")
+    precision_weighted = metrics.precision_score(label, output, average="weighted")
+    recall_micro = metrics.recall_score(label, output, average="micro")
+    recall_macro = metrics.recall_score(label, output, average="macro")
+    recall_weighted = metrics.recall_score(label, output, average="weighted")
+    confusion_matrix = metrics.confusion_matrix(label, output)
 
     if writer:
         writer.add_scalar(f"{prefix} accuracy", accuracy, epoch)
@@ -210,7 +243,8 @@ def dump_metrics(epoch, prefix, label, output, writer=None, print_metrics=True, 
         print(f"  recall (macro): {recall_macro}")
         print(f"  recall (weighted): {recall_weighted}")
         if verbose:
-            print(f"  confusion matrix:\n{confusion_matrix}") 
+            print(f"  confusion matrix:\n{confusion_matrix}")
+
 
 # Enable Tensorboard writer for logging loss/accuracy. By default, Tensorboard logs are written to the 'runs' folder.
 writer = SummaryWriter(log_dir=os.path.join("runs", args.experiment_name))
@@ -222,12 +256,12 @@ def run_eval(model, raw_output=False):
     eval_output_all = []
     for eval_input, eval_label in validation_data_loader:
         eval_label_all.extend(eval_label)
-        
+
         eval_output = model(eval_input)
         if raw_output:
             eval_output_all.extend(eval_output)
             continue
-            
+
         if args.mode == "binary":
             eval_output = eval_output.round()
         elif args.mode == "multiclass":
@@ -235,6 +269,7 @@ def run_eval(model, raw_output=False):
         eval_output_all.extend(eval_output)
 
     return eval_label_all, eval_output_all
+
 
 for i in range(args.epochs):
     model.train()
@@ -272,47 +307,60 @@ for i in range(args.epochs):
     print(f"epoch {i}\tloss: {loss}")
     if i % 10 == 0:
 
-        dump_metrics(i, "Train", train_label_all, output_all, writer, print_metrics=True, verbose=args.generate_confusion_matrix)
+        dump_metrics(
+            i,
+            "Train",
+            train_label_all,
+            output_all,
+            writer,
+            print_metrics=True,
+            verbose=args.generate_confusion_matrix,
+        )
         writer.add_scalar("Train loss", loss, i)
 
         eval_label_all, eval_output_all = run_eval(model)
-        dump_metrics(i, "Eval", eval_label_all, eval_output_all, writer, print_metrics=True, verbose=args.generate_confusion_matrix)
+        dump_metrics(
+            i,
+            "Eval",
+            eval_label_all,
+            eval_output_all,
+            writer,
+            print_metrics=True,
+            verbose=args.generate_confusion_matrix,
+        )
 
 
 # Plot ROCs
 def plot_rocs(eval_label_all, eval_output_all):
-    y_true_one_hot = torch.nn.functional.one_hot(torch.stack(eval_label_all)).detach().numpy()
+    y_true_one_hot = (
+        torch.nn.functional.one_hot(torch.stack(eval_label_all)).detach().numpy()
+    )
     y_pred = torch.stack(eval_output_all).detach().numpy()
-    for class_id in range(args.num_classes-1):
+    for class_id in range(args.num_classes - 1):
         plot_roc(y_true_one_hot[:, class_id], y_pred[:, class_id], class_id)
     plt.show()
-    
+
+
 def plot_roc(y_true, y_pred, class_id):
     print(class_id)
     print(y_true[:10])
     print(y_pred[:10])
     display = metrics.RocCurveDisplay.from_predictions(
         y_true=y_true,
-        y_pred= y_pred,
+        y_pred=y_pred,
         name=f"{class_id} vs the rest",
         plot_chance_level=True,
         color="darkorange",
-        )
+    )
     display.ax_.set(
         xlabel="False Positive Rate",
         ylabel="True Positive Rate",
-        title=f"{class_id} vs Rest ROC Curves"
+        title=f"{class_id} vs Rest ROC Curves",
     )
 
 
-
-
-
-       
 eval_label_all, eval_output_all = run_eval(model, raw_output=True)
 plot_rocs(eval_label_all, eval_output_all)
 
 
-        
 writer.close()
-
