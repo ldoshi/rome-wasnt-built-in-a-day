@@ -51,6 +51,7 @@ class CNN(torch.nn.Module):
         assert len(x.shape) == 3
         x = x.reshape(-1, self.image_height, self.image_width)
         x = encode_enum_state_to_channels(x, self.cnn[0].in_channels).float()
+
         for layer in self.cnn:
             x = torch.relu(layer(x))
         x = self.dnn[0](x.reshape(x.shape[0], -1))
@@ -58,9 +59,9 @@ class CNN(torch.nn.Module):
             x = layer(torch.relu(x))
         if args.mode == "binary":
             x = torch.sigmoid(x)
-        elif args.mode == "multiclass":
-            x = torch.softmax(x, dim=1)
-
+#        elif args.mode == "multiclass":
+#            x = torch.softmax(x, dim=1)
+        
         return x
 
 
@@ -111,9 +112,9 @@ parser.add_argument("--mode", type=str, default="multiclass")
 parser.add_argument("--num_classes", type=int, default=14)
 parser.add_argument("--train_test_split_ratio", type=float, default=0.8)
 parser.add_argument("--train_validate_split_ratio", type=float, default=0.75)
-parser.add_argument("--batch_size", type=int, default=20)
-parser.add_argument("--learning_rate", type=float, default=0.1)
-parser.add_argument("--epochs", type=int, default=5)
+parser.add_argument("--batch_size", type=int, default=128)
+parser.add_argument("--learning_rate", type=float, default=.01)
+parser.add_argument("--epochs", type=int, default=20)
 parser.add_argument("--paddings", nargs=2, type=int, default=[1, 1])
 parser.add_argument("--strides", nargs=2, type=int, default=[2, 1])
 parser.add_argument("--kernel_sizes", nargs=2, type=int, default=[3, 3])
@@ -134,44 +135,20 @@ elif args.mode == "multiclass":
 
 
 with open(args.input_file, "rb") as f:
-    inputs = pickle.load(f)
-    inputs = [torch.tensor(x) for x in inputs]
+     inputs = pickle.load(f)
+     inputs = [torch.tensor(x) for x in inputs]
 
 with open(args.label_file, "rb") as f:
-    labels = pickle.load(f)
-    if args.mode == "binary":
-        labels = np.array(labels, dtype=np.float32)
-    elif args.mode == "multiclass":
-        labels = np.array(labels)
-
-if args.mode == "binary":
-    loss_fn = torch.nn.BCELoss()
-    output_head_count = 1
-elif args.mode == "multiclass":
-    weights = torch.tensor([])
-    if args.reweight:
-        label_counts = Counter(labels)
-        weights = torch.tensor([count / sum(labels) for count in label_counts.values()])
-    loss_fn = torch.nn.CrossEntropyLoss(weight=weights)
-    output_head_count = args.num_classes
-
-with open(args.input_file, "rb") as f:
-    inputs = pickle.load(f)
-    inputs = [torch.tensor(x) for x in inputs]
-
-with open(args.label_file, "rb") as f:
-    labels = pickle.load(f)
-    if args.mode == "binary":
-        labels = np.array(labels, dtype=np.float32)
-    elif args.mode == "multiclass":
-        labels = np.array(labels)
-
+     labels = pickle.load(f)
+     if args.mode == "binary":
+         labels = np.array(labels, dtype=np.float32)
+     elif args.mode == "multiclass":
+         labels = np.array(labels)
 
 model = CNN(*inputs[0].shape, inputs[0].shape[1])
 
 # Downsample all classes to the class with the fewest elements.
 data = list(zip(inputs, labels))
-data = shuffle(data)
 
 if args.rebalance:
     len_fewest_label = Counter(labels).most_common()[-args.n_fewest_elements][1]
@@ -271,13 +248,30 @@ def run_eval(model, raw_output=False):
     return eval_label_all, eval_output_all
 
 
+def print_state(state):
+    mapping = {
+        2: "@@",
+        1: "[]",
+        0: "  ",
+    }
+    flat_repr = tuple([mapping[x] for x in state.flatten()])
+    print((("%s" * int(state.shape[1]) + "\n") * int(state.shape[0])) % flat_repr)
+        
+
 for i in range(args.epochs):
     model.train()
-    output_all = []
+    train_output_all = []
     train_label_all = []
     for j, (input, train_label) in enumerate(data_loader):
         # calculate output
         output = model(input)
+
+        # print("INPUT : ")
+        # for state in input:
+        #     print_state(state.detach().numpy())
+#        print("OUTPUT: " , output)
+#        print("OUTPUT: " , output.argmax(axis=1))
+#        print("LABEL : " , train_label)
 
         # calculate loss
         if args.mode == "binary":
@@ -296,27 +290,27 @@ for i in range(args.epochs):
         loss.backward()
         optimizer.step()
 
+        def print_params(index):
+            print(f"dnn{index}_w", model.dnn[index].weight)
+            print(f"dnn{index}_b", model.dnn[index].bias)
+            print(f"sum grad_dnn{index}_w", model.dnn[index].weight.grad.sum())
+            print(f"std grad_dnn{index}_w", torch.std(model.dnn[index].weight.grad))
+            print(f"sum grad_dnn{index}_b", model.dnn[index].bias.grad.sum())
+            print(f"std grad_dnn{index}_b", torch.std(model.dnn[index].bias.grad))
+
         if args.mode == "binary":
             output = output.round()
         elif args.mode == "multiclass":
             output = output.argmax(axis=1)
 
-        output_all.extend(output)
+        train_output_all.extend(output)
         train_label_all.extend(train_label)
 
     print(f"epoch {i}\tloss: {loss}")
-    if i % 10 == 0:
 
-        dump_metrics(
-            i,
-            "Train",
-            train_label_all,
-            output_all,
-            writer,
-            print_metrics=True,
-            verbose=args.generate_confusion_matrix,
-        )
-        writer.add_scalar("Train loss", loss, i)
+    writer.add_scalar("Train loss", loss, i)
+    if i % 10 == 0:
+        dump_metrics(i, "Train", train_label_all, train_output_all, writer, print_metrics=True, verbose=args.generate_confusion_matrix)
 
         eval_label_all, eval_output_all = run_eval(model)
         dump_metrics(
@@ -332,9 +326,7 @@ for i in range(args.epochs):
 
 # Plot ROCs
 def plot_rocs(eval_label_all, eval_output_all):
-    y_true_one_hot = (
-        torch.nn.functional.one_hot(torch.stack(eval_label_all)).detach().numpy()
-    )
+    y_true_one_hot = F.one_hot(torch.stack(eval_label_all), num_classes=args.num_classes).detach().numpy()
     y_pred = torch.stack(eval_output_all).detach().numpy()
     for class_id in range(args.num_classes - 1):
         plot_roc(y_true_one_hot[:, class_id], y_pred[:, class_id], class_id)
@@ -342,9 +334,6 @@ def plot_rocs(eval_label_all, eval_output_all):
 
 
 def plot_roc(y_true, y_pred, class_id):
-    print(class_id)
-    print(y_true[:10])
-    print(y_pred[:10])
     display = metrics.RocCurveDisplay.from_predictions(
         y_true=y_true,
         y_pred=y_pred,
@@ -360,7 +349,7 @@ def plot_roc(y_true, y_pred, class_id):
 
 
 eval_label_all, eval_output_all = run_eval(model, raw_output=True)
-plot_rocs(eval_label_all, eval_output_all)
+#plot_rocs(eval_label_all, eval_output_all)
 
 
 writer.close()
