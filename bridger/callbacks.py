@@ -13,7 +13,7 @@ class DemoCallback(Callback):
         self._builder = None
 
     def on_train_batch_end(
-        self, trainer, model, outputs, batch, batch_idx, dataloader_idx
+        self, trainer, model, outputs, batch, batch_idx
     ):
         if not self._builder:
             # We could also initialize a new Builder each time. This
