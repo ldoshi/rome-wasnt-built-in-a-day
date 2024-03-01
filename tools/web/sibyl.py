@@ -57,7 +57,7 @@ def _get_int_or_default(name: str, default: Optional[int] = None) -> Optional[in
 
 
 def _get_experiment_names() -> list[str]:
-    return sorted(os.listdir(_LOG_DIR))
+    return [x for x in sorted(os.listdir(_LOG_DIR)) if x != log_entry.STATE_NORMALIZED_LOG_ENTRY]
 
 
 @app.route("/training_history_plot_data", methods=["GET"])
