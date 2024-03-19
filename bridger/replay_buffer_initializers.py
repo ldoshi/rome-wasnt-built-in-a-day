@@ -17,6 +17,22 @@ from bridger import builder_trainer, hash_utils
 from bridger.logging_utils import object_logging
 
 
+def _single_column(
+    env: gym.Env,
+) -> Generator[tuple[Any, Any, Any, Any, Any], None, None]:
+    state = env.reset()
+    for i in range(7):
+        for action in range(env.nA):
+            env.reset(state)
+            next_state, reward, done, _ = env.step(action)
+
+            if i == 6:
+                done = True
+            yield state, action, next_state, reward, done
+        state, _, _, _ = env.step(0)
+        
+        
+    
 def _only_reset_state(
     env: gym.Env,
 ) -> Generator[tuple[Any, Any, Any, Any, Any], None, None]:
@@ -119,6 +135,8 @@ def _n_bricks(
             state = next_state
 
 
+
+STRATEGY_SINGLE_COLUMN = "single_column"
 STRATEGY_ONLY_RESET_STATE = "only_reset_state"
 STRATEGY_STANDARD_CONFIGURATION_BRIDGE_STATES = "standard_configuration_bridge_states"
 STRATEGY_2_BRICKS = "2_bricks"
@@ -129,6 +147,7 @@ _INITIALIZE_REPLAY_BUFFER_BATCH_IDX = -1
 
 _STRATEGY_MAP = {
     STRATEGY_ONLY_RESET_STATE: _only_reset_state,
+    STRATEGY_SINGLE_COLUMN: _single_column,
     STRATEGY_STANDARD_CONFIGURATION_BRIDGE_STATES: _standard_configuration_bridge_states,
     STRATEGY_2_BRICKS: functools.partial(_n_bricks, brick_count=2),
     STRATEGY_4_BRICKS: functools.partial(_n_bricks, brick_count=4),
@@ -176,7 +195,6 @@ def initialize_replay_buffer(
 
     experience_count = 0
     for (state, action, next_state, reward, done) in _STRATEGY_MAP[strategy](env=env):
-
         if state_visit_logger:
             state_visit_logger.log_occurrence(
                 batch_idx=_INITIALIZE_REPLAY_BUFFER_BATCH_IDX,

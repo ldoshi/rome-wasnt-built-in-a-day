@@ -440,7 +440,7 @@ class BridgeBuilderModel(pl.LightningModule):
         while True:
             for step_idx in range(self.hparams.max_episode_length):
                 self._checkpoint({"episode": episode_idx, "step": total_step_idx})
-                start_state, action, end_state, reward, success = self()
+                start_state, action, end_state, reward, success = self(episode_idx)
                 yield (
                     episode_idx,
                     step_idx,
@@ -546,7 +546,7 @@ class BridgeBuilderModel(pl.LightningModule):
         self.disable_interactive_mode()
         IPython.core.getipython.get_ipython().exiter()
 
-    def forward(self):
+    def forward(self, episode_idx):
         """Forward propagation of the model. If in interactive mode, the user
         can provide the next action with `take_action`. Otherwise, action is
         determined by policy."""
@@ -559,6 +559,12 @@ class BridgeBuilderModel(pl.LightningModule):
             )
 
         next_state, reward, done, _ = self.env.step(action)
+
+        if np.sum(state) > 26:
+            done = True
+#        if episode_idx == 49:
+#            done = True
+        
         self.state = next_state
         result = (state, action, next_state, reward, done)
         self.replay_buffer.add_new_experience(
@@ -614,12 +620,32 @@ class BridgeBuilderModel(pl.LightningModule):
             rewards: The reward gained through the transition.
             success: Whether the transition marked the end of the episode.
         """
+        sums = torch.sum(states, axis=[1,2])
+        
         row_idx = torch.arange(actions.shape[0])
+       # print(row_idx)
         qvals = self.q_manager.q(states)[row_idx, actions]
+        # print("states")
+        # print(states[sums==26])
+        # print(actions[sums==26])
+        # print("rew")
+        # print(rewards[sums==26])
+        # print(success[sums==26])
+        # print("QVAL")
+        # print(qvals[sums == 14])
+      
         with torch.no_grad():
             next_actions = self.q_manager.q(next_states).argmax(dim=1)
             next_vals = self.q_manager.target(next_states)[row_idx, next_actions]
-            expected_qvals = rewards + (~success) * self.hparams.gamma * next_vals
+            expected_qvals = rewards + (torch.logical_not(success)) * self.hparams.gamma * next_vals
+            # print("next")
+            # print(next_actions[sums==26])
+
+            # print("next val")
+            # print(next_vals[sums==26])
+
+            # print("expected_qvals")
+            # print(expected_qvals[sums==26])
         return expected_qvals - qvals
 
     def compute_loss(
@@ -642,6 +668,15 @@ class BridgeBuilderModel(pl.LightningModule):
         """
         indices, states, actions, next_states, rewards, success, weights = batch
         td_errors = self.get_td_error(states, actions, next_states, rewards, success)
+
+        # print("state")
+        # print(states)
+        # print('reward')
+        # print(rewards)
+        # print('success')
+        # print(success)
+        # print("td error")
+        # print(td_errors)
 
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
