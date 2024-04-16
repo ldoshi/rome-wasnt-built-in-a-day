@@ -460,7 +460,6 @@ class BridgeBuilderModel(pl.LightningModule):
                 total_step_idx += 1
                 if success:
                     break
-            self._update_epsilon()
             self.state = self.env.reset()
             episode_idx += 1
 
@@ -656,6 +655,7 @@ class BridgeBuilderModel(pl.LightningModule):
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
+        self.log("epsilon", self.epsilon,on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
         if self.hparams.debug:
             # TODO(Issue#105): Move more deepcopy calls to logging
@@ -769,6 +769,7 @@ class BridgeBuilderModel(pl.LightningModule):
         # Update replay buffer.
         self.replay_buffer.update_priorities(indices, td_errors)
         self._update_beta()
+        self._update_epsilon()
         return loss
 
     def validation_step(self, batch, batch_idx):
