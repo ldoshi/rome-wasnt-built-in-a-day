@@ -66,21 +66,26 @@ def make_env(
     name: str,
     width: int,
     force_standard_config: bool,
+    max_valid_brick_count: int | None = None,
     seed: Union[int, float, None] = None,
 ) -> gym.Env:
     """Function that instantiates an instance of the environment with the appropriate arguments.
 
     Args:
         name: name of environment to construct.
-        width: width of the
-        bridge_builder environment.
+        width: width of the bridge_builder environment.
         force_standard_config: whether to only use the standard environment configuration.
+        max_valid_brick_count: the max number of bricks that can be added in the environment.
 
     Returns:
         An instantiated gym environment.
     """
     env = gym.make(
-        name, width=width, force_standard_config=force_standard_config, seed=seed
+        name,
+        width=width,
+        force_standard_config=force_standard_config,
+        max_valid_brick_count=max_valid_brick_count,
+        seed=seed,
     )
     return env
 
@@ -215,6 +220,7 @@ class StateActionCache:
 # TODO(arvind): Redesign the signature checking mechanism. Using
 # config.validate_input# is not robust with changes in Lightning functionality
 
+
 # pylint: disable=too-many-instance-attributes
 class BridgeBuilderModel(pl.LightningModule):
     @config.validate_input("BridgeBuilderModel", config.bridger_config)
@@ -268,6 +274,7 @@ class BridgeBuilderModel(pl.LightningModule):
             name=self.hparams.env_name,
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
+            max_valid_brick_count=self.hparams.env_max_valid_brick_count,
             seed=torch.rand(1).item(),
         )
         self._validation_env = make_env(
@@ -563,9 +570,11 @@ class BridgeBuilderModel(pl.LightningModule):
         result = (state, action, next_state, reward, done)
         self.replay_buffer.add_new_experience(
             *result,
-            self._state_logger.get_logged_object_id(torch.Tensor(state))
-            if self.hparams.debug
-            else None,
+            (
+                self._state_logger.get_logged_object_id(torch.Tensor(state))
+                if self.hparams.debug
+                else None
+            ),
         )
 
         if self.hparams.env_display:
@@ -687,9 +696,9 @@ class BridgeBuilderModel(pl.LightningModule):
 
             if self.hparams.debug_td_error:
                 # Log richer representation of td error for testing.
-                frequent_states: list[
-                    torch.Tensor
-                ] = self._state_visit_logger.get_top_n(_FREQUENTLY_VISITED_STATE_COUNT)
+                frequent_states: list[torch.Tensor] = (
+                    self._state_visit_logger.get_top_n(_FREQUENTLY_VISITED_STATE_COUNT)
+                )
                 # Sample all possible actions over the state space.
                 actions = range(self.env.nA)
 
