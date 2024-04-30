@@ -1,6 +1,6 @@
 import torch
 
-from pytorch_lightning.callbacks import Callback
+from lightning.pytorch import Callback
 
 from bridger import builder_trainer
 from bridger import builder
@@ -28,7 +28,7 @@ class DemoCallback(Callback):
                 )
             )
 
-        if (batch_idx + 1) % self._frequency == 0:
+        if (model.global_step + 1) % self._frequency == 0:
             with torch.no_grad():
                 build_result = self._builder.build(
                     model.policy, self._max_episode_length

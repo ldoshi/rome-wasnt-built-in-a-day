@@ -3,7 +3,7 @@ Flask==2.2.2
 ipython==8.7.0
 numpy==1.24.0
 pandas==1.5.2
-pytorch-lightning==1.8.6
+lightning=2.2.3
 torch==1.13.1
 protobuf==3.20.1
 Werkzeug==2.2.2

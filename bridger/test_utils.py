@@ -10,8 +10,8 @@ from bridger import builder_trainer
 
 from typing import Optional
 
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import Callback
+from lightning import Trainer
+from lightning.pytorch import Callback
 
 TMP_DIR = "tmp/nested_tmp"
 _OBJECT_LOGGING_DIR = "tmp_object_logging_dir"

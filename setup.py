@@ -14,7 +14,7 @@ setup(
         "gym-bridges>=0.0.1",
         "numpy>=1.18.5",
         "matplotlib>=3.3.2",
-        "pytorch-lightning==1.8.6",
+        "lightning==2.2.3",
         "torch>=1.8.0",
     ],
     # TODO: add metadata kwargs if uploading to PyPI

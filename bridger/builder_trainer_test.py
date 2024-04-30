@@ -8,8 +8,8 @@ import numpy as np
 import os
 import shutil
 from parameterized import parameterized
-from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.callbacks import EarlyStopping
+from lightning import Callback
+from lightning.pytorch.callbacks import EarlyStopping
 
 import torch
 
