@@ -630,7 +630,7 @@ class BridgeBuilderModel(pl.LightningModule):
             expected_qvals = rewards + (~success) * self.hparams.gamma * next_vals
         return expected_qvals - qvals
 
-    def compute_loss(
+    def compute_losses(
         self, td_errors: torch.Tensor, weights: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """Computes loss using td errors in training.
@@ -651,7 +651,7 @@ class BridgeBuilderModel(pl.LightningModule):
         indices, states, actions, next_states, rewards, success, weights = batch
         td_errors = self.get_td_error(states, actions, next_states, rewards, success)
 
-        loss = self.compute_loss(td_errors, weights=weights)
+        loss = self.compute_losses(td_errors, weights=weights)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
