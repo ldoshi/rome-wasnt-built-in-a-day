@@ -157,11 +157,10 @@ class Node:
 
         return best_action, best_child
 
-    def expand(self, state, to_play, action_probs):
+    def expand(self, state, action_probs):
         """
         We expand a node and keep track of the prior policy probability given by neural network
         """
-        self.to_play = to_play
         self.state = state
         for a, prob in enumerate(action_probs):
             if prob != 0:
