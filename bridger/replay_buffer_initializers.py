@@ -41,6 +41,18 @@ def _only_reset_state(
         next_state, reward, done, _ = env.step(action)
         yield state, action, next_state, reward, done
 
+        
+def _single_column(env: gym.Env) -> Generator[tuple[Any, Any, Any, Any, Any], None, None]:
+    state = env.reset()
+    for i in range(10):
+        for action in range(env.nA):
+            env.reset(state)
+            next_state, reward, done, _ = env.step(action)
+            yield state, action, next_state, reward, done
+
+        env.reset(state)
+        state, _, _, _ = env.step(0)  
+        
 
 def _standard_configuration_bridge_states(
     env: gym.Env,
@@ -120,6 +132,7 @@ def _n_bricks(
 
 
 STRATEGY_ONLY_RESET_STATE = "only_reset_state"
+STRATEGY_SINGLE_COLUMN = "single_column"            
 STRATEGY_STANDARD_CONFIGURATION_BRIDGE_STATES = "standard_configuration_bridge_states"
 STRATEGY_2_BRICKS = "2_bricks"
 STRATEGY_4_BRICKS = "4_bricks"
@@ -129,6 +142,7 @@ _INITIALIZE_REPLAY_BUFFER_BATCH_IDX = -1
 
 _STRATEGY_MAP = {
     STRATEGY_ONLY_RESET_STATE: _only_reset_state,
+    STRATEGY_SINGLE_COLUMN: _single_column,
     STRATEGY_STANDARD_CONFIGURATION_BRIDGE_STATES: _standard_configuration_bridge_states,
     STRATEGY_2_BRICKS: functools.partial(_n_bricks, brick_count=2),
     STRATEGY_4_BRICKS: functools.partial(_n_bricks, brick_count=4),
