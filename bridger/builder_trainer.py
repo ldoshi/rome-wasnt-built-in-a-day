@@ -4,7 +4,7 @@ import copy
 import gym
 import numpy as np
 from bridger import builder
-import pytorch_lightning as pl
+import lightning 
 import torch
 from typing import Union, Optional, Callable, Hashable
 
@@ -66,7 +66,6 @@ def make_env(
     name: str,
     width: int,
     force_standard_config: bool,
-    max_valid_brick_count: int | None = None,
     seed: Union[int, float, None] = None,
 ) -> gym.Env:
     """Function that instantiates an instance of the environment with the appropriate arguments.
@@ -75,7 +74,6 @@ def make_env(
         name: name of environment to construct.
         width: width of the bridge_builder environment.
         force_standard_config: whether to only use the standard environment configuration.
-        max_valid_brick_count: the max number of bricks that can be added in the environment.
 
     Returns:
         An instantiated gym environment.
@@ -84,7 +82,6 @@ def make_env(
         name,
         width=width,
         force_standard_config=force_standard_config,
-        max_valid_brick_count=max_valid_brick_count,
         seed=seed,
     )
     return env
@@ -222,7 +219,7 @@ class StateActionCache:
 
 
 # pylint: disable=too-many-instance-attributes
-class BridgeBuilderModel(pl.LightningModule):
+class BridgeBuilderModel(lightning.LightningModule):
     @config.validate_input("BridgeBuilderModel", config.bridger_config)
     def __init__(
         self,
@@ -274,7 +271,6 @@ class BridgeBuilderModel(pl.LightningModule):
             name=self.hparams.env_name,
             width=self.hparams.env_width,
             force_standard_config=self.hparams.env_force_standard_config,
-            max_valid_brick_count=self.hparams.env_max_valid_brick_count,
             seed=torch.rand(1).item(),
         )
         self._validation_env = make_env(
@@ -336,11 +332,13 @@ class BridgeBuilderModel(pl.LightningModule):
                 )
             )
 
+        self._make_initial_memories()
+
     @property
     def trained_policy(self):
         return policies.GreedyPolicy(self.q_manager.q)
 
-    def on_train_start(self):
+    def _make_initial_memories(self):
         """Populates the replay buffer with an initial set of memories before training steps begin."""
         if self.hparams.initialize_replay_buffer_strategy is not None:
             replay_buffer_initializers.initialize_replay_buffer(
@@ -354,8 +352,9 @@ class BridgeBuilderModel(pl.LightningModule):
         else:
             self.make_memories(
                 batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
-            )
-
+            )        
+    
+            
     def on_train_batch_end(
         self,
         outputs: Union[torch.Tensor, dict[str, Any]],
@@ -365,23 +364,19 @@ class BridgeBuilderModel(pl.LightningModule):
         """Complete follow-on calculations after the model weight updates made during the training step. Follow-on calculations include updating the target network, making additional memories using the updated model, and additional bookkeeping.
 
         Args:
-            outputs: The output of a training step, type defined in pytorch_lightning/utilities/types.py.
+            outputs: The output of a training step, type defined in lightning/utilities/types.py.
             batch: A group of memories, size determined by `hparams.batch_size`.
             batch_idx: The index of the current batch, which also signifies the current round of model weight updates.
         """
         self.q_manager.update_target()
 
         if self.hparams.debug:
-            self._record_q_values_debug_helper(batch_idx)
-        self.make_memories(batch_idx)
+            self._record_q_values_debug_helper()
+        self.make_memories(batch_idx=self.global_step)
 
-    def _record_q_values_debug_helper(self, batch_idx: int) -> None:
+
+    def _record_q_values_debug_helper(self) -> None:
         """Compute and log q values.
-
-        Args:
-           batch_idx: A sequential value identifying which training
-             step produced the q values.
-
         """
         frequently_visted_states = self._state_visit_logger.get_top_n(
             _FREQUENTLY_VISITED_STATE_COUNT
@@ -400,7 +395,7 @@ class BridgeBuilderModel(pl.LightningModule):
                 self._object_log_manager.log(
                     log_entry.TRAINING_HISTORY_Q_VALUE_LOG_ENTRY,
                     log_entry.TrainingHistoryQValueLogEntry(
-                        batch_idx=batch_idx,
+                        batch_idx=self.global_step,
                         state_id=state_id,
                         action=action,
                         q_value=q_value,
@@ -675,7 +670,7 @@ class BridgeBuilderModel(pl.LightningModule):
             self._object_log_manager.log(
                 log_entry.TRAINING_BATCH_LOG_ENTRY,
                 log_entry.TrainingBatchLogEntry(
-                    batch_idx=batch_idx,
+                    batch_idx=self.global_step,
                     indices=indices_copy,
                     state_ids=[
                         self._state_logger.get_logged_object_id(state)
@@ -718,7 +713,7 @@ class BridgeBuilderModel(pl.LightningModule):
                         self._object_log_manager.log(
                             log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
                             log_entry.TrainingHistoryTDErrorLogEntry(
-                                batch_idx=batch_idx,
+                                batch_idx=self.global_step,
                                 state_id=self._state_logger.get_logged_object_id(
                                     torch.tensor(state)
                                 ),
@@ -742,7 +737,7 @@ class BridgeBuilderModel(pl.LightningModule):
                     self._object_log_manager.log(
                         log_entry.TRAINING_HISTORY_TD_ERROR_LOG_ENTRY,
                         log_entry.TrainingHistoryTDErrorLogEntry(
-                            batch_idx=batch_idx,
+                            batch_idx=self.global_step,
                             state_id=self._state_logger.get_logged_object_id(state),
                             action=action,
                             td_error=td_error,
@@ -759,7 +754,7 @@ class BridgeBuilderModel(pl.LightningModule):
                 self._object_log_manager.log(
                     log_entry.ACTION_INVERSION_REPORT_ENTRY,
                     log_entry.ActionInversionReportEntry(
-                        batch_idx=batch_idx,
+                        batch_idx=self.global_step,
                         state_id=self._state_logger.get_logged_object_id(report.state),
                         preferred_actions=report.preferred_actions,
                         policy_action=report.policy_action,

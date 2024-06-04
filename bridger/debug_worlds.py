@@ -2,8 +2,8 @@
 
 import gym
 
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import Callback
+from lightning import Trainer
+from lightning.pytorch import Callback
 
 from bridger.builder_trainer import BridgeBuilderModel
 

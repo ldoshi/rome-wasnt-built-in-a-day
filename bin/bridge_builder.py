@@ -16,10 +16,9 @@
 import datetime
 import os
 
-from pytorch_lightning import Trainer
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.callbacks import EarlyStopping
+from lightning import Trainer
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 
 from bridger import builder
 from bridger import builder_trainer
@@ -100,7 +99,7 @@ def run():
 
         trainer = Trainer(
             gradient_clip_val=hparams.gradient_clip_val,
-            val_check_interval=hparams.val_check_interval,
+            check_val_every_n_epoch=hparams.val_check_interval,
             # The validation batch size can be adjusted via a config, but
             # we only need a single batch.
             limit_val_batches=1,
@@ -109,7 +108,9 @@ def run():
                 name=full_experiment_name,
                 version="",
             ),
-            max_steps=hparams.max_training_batches,
+            limit_train_batches=1,
+            max_epochs=hparams.max_training_batches,
+            reload_dataloaders_every_n_epochs=1,
             callbacks=callbacks,
         )
 
