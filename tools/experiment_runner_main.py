@@ -38,15 +38,17 @@ import subprocess
 
 from tools import experiment_runner
 
+# The binary to execute with the arguments provided in the config.
+_BINARY = "bridge_builder.py"
+
+
+def execute_fn(args: list[str]) -> None:
+    command = [_BINARY] + args
+    subprocess.run(command, check=True)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Execute a series of experiments.")
-    parser.add_argument(
-        "--binary",
-        help="The binary to execute with the arguments provided in the config.",
-        default="bridge_builder.py",
-        type=str,
-    )
     parser.add_argument(
         "--config",
         help="The filepath to the json file describing the experimental config.",
@@ -63,10 +65,6 @@ def main():
 
     with open(parsed_args.config) as f:
         config = json.load(f)
-
-    def execute_fn(args: list[str]) -> None:
-        command = [parsed_args.binary] + args
-        subprocess.run(command, check=True)
 
     experiment_runner.run_experiments(
         config=config, execute_fn=execute_fn, num_processes=parsed_args.num_processes
