@@ -4,7 +4,7 @@ import copy
 import gym
 import numpy as np
 from bridger import builder
-import lightning 
+import lightning
 import torch
 from typing import Union, Optional, Callable, Hashable
 
@@ -352,9 +352,8 @@ class BridgeBuilderModel(lightning.LightningModule):
         else:
             self.make_memories(
                 batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
-            )        
-    
-            
+            )
+
     def on_train_batch_end(
         self,
         outputs: Union[torch.Tensor, dict[str, Any]],
@@ -374,10 +373,8 @@ class BridgeBuilderModel(lightning.LightningModule):
             self._record_q_values_debug_helper()
         self.make_memories(batch_idx=self.global_step)
 
-
     def _record_q_values_debug_helper(self) -> None:
-        """Compute and log q values.
-        """
+        """Compute and log q values."""
         frequently_visted_states = self._state_visit_logger.get_top_n(
             _FREQUENTLY_VISITED_STATE_COUNT
         )
@@ -650,7 +647,14 @@ class BridgeBuilderModel(lightning.LightningModule):
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
-        self.log("epsilon", self.epsilon,on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "epsilon",
+            self.epsilon,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )
 
         if self.hparams.debug:
             # TODO(Issue#105): Move more deepcopy calls to logging
@@ -768,8 +772,12 @@ class BridgeBuilderModel(lightning.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
+        """Runs a single validation step based on a policy."""
         success, rewards, steps = batch
+
+        self.log("val_success", torch.sum(success) / len(batch))
         self.log("val_reward", torch.Tensor.float(rewards).mean())
+        self.log("val_steps", torch.Tensor.float(steps).mean())
 
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
