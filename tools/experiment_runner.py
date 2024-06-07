@@ -1,9 +1,12 @@
 """Iterates a series of experiments described by a config file."""
 
+from multiprocessing import Pool
+
 from typing import Any, Callable, Sequence, Union
 
 import argparse
 import copy
+import functools
 import itertools
 import json
 
@@ -64,9 +67,30 @@ def _get_experiment_name(experiment_name_prefix: str, values: Sequence) -> str:
         else experiment_name_suffix
     )
 
+def _executor(execute_fn: Callable[[list[str]], None], experiment_name_prefix: str, args: list[Any], sweep_keys: list[str],iteration_values: list[list[Any]]) -> list[str]:
+    
+    iteration_args = copy.deepcopy(args)
+    assert len(sweep_keys) == len(iteration_values)
+    for flag_name, flag_value in zip(sweep_keys, iteration_values):
+        _add_args(
+            args=iteration_args, flag_name=flag_name, flag_value=flag_value
+        )
+
+    _add_args(
+        args=iteration_args,
+        flag_name=_EXPERIMENT_NAME,
+        flag_value=_get_experiment_name(
+            experiment_name_prefix=experiment_name_prefix,
+            values=iteration_values,
+        ),
+    )
+
+    execute_fn(iteration_args)
+    return iteration_args
+
 
 def run_experiments(
-    config: dict[str, Any], execute_fn: Callable[[list[str]], None]
+        config: dict[str, Any], execute_fn: Callable[[list[str]], None], record_fn: Callable[[list[str]], None] | None = None, num_processes: int=1
 ) -> None:
     """Calls execute_fn for argument combinations described in config.
 
@@ -99,30 +123,21 @@ def run_experiments(
     for flag_name in sorted(config):
         flag_value = config[flag_name]
         _add_args(args=args, flag_name=flag_name, flag_value=flag_value)
-
+        
     if sweep_keys:
+        executor_fn = functools.partial(_executor, execute_fn, experiment_name_prefix, args, sweep_keys)
+        with Pool(num_processes) as pool:
         # Iterate sweep combinations.
-        for iteration_values in itertools.product(*sweep_values):
-            iteration_args = copy.deepcopy(args)
-            assert len(sweep_keys) == len(iteration_values)
-            for flag_name, flag_value in zip(sweep_keys, iteration_values):
-                _add_args(
-                    args=iteration_args, flag_name=flag_name, flag_value=flag_value
-                )
-
-            _add_args(
-                args=iteration_args,
-                flag_name=_EXPERIMENT_NAME,
-                flag_value=_get_experiment_name(
-                    experiment_name_prefix=experiment_name_prefix,
-                    values=iteration_values,
-                ),
-            )
-
-            execute_fn(iteration_args)
+            for iteration_args in pool.map(executor_fn, itertools.product(*sweep_values)):
+                if record_fn is not None:
+                    record_fn(iteration_args)
+            
     else:
         if experiment_name_prefix:
             _add_args(
                 args=args, flag_name=_EXPERIMENT_NAME, flag_value=experiment_name_prefix
             )
         execute_fn(args)
+        if record_fn is not None:
+            record_fn(args)
+

@@ -53,6 +53,12 @@ def main():
         type=str,
         required=True,
     )
+    parser.add_argument(
+        "--num-processes",
+        help="The number of experiments to run in parallel.",
+        type=int,
+        default=1,
+    )
     parsed_args = parser.parse_args()
 
     with open(parsed_args.config) as f:
@@ -62,7 +68,7 @@ def main():
         command = [parsed_args.binary] + args
         subprocess.run(command, check=True)
 
-    experiment_runner.run_experiments(config=config, execute_fn=execute_fn)
+    experiment_runner.run_experiments(config=config, execute_fn=execute_fn, num_processes=parsed_args.num_processes)
 
 
 if __name__ == "__main__":

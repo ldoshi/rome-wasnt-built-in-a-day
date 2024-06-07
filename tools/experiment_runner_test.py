@@ -1,7 +1,7 @@
 """Tests for experiment_runner."""
 import unittest
 
-from typing import Any
+from typing import Any, Callable
 
 import itertools
 import json
@@ -35,16 +35,21 @@ def _get_value(args: list[str], key: str) -> str:
     assert False, f"Unrecognized key: {key}"
 
 
+def _execute_fn(args: list[str]) -> None:
+    return args
+
+    
 class ExperimentRunnerTest(unittest.TestCase):
     """Verifies parameter sweeps from configs."""
 
     def setUp(self):
         self._args = []
 
-        def execute_fn(args: list[str]) -> None:
+        def record_fn(args: list[str]) -> None:
             self._args.append(args)
+            print(self._args)
 
-        self._execute_fn = execute_fn
+        self.record_fn = record_fn
 
     @parameterized.expand(
         [
@@ -56,7 +61,7 @@ class ExperimentRunnerTest(unittest.TestCase):
         """Verifies execution args are built correctly."""
 
         config = _load_config(config_filename)
-        experiment_runner.run_experiments(config=config, execute_fn=self._execute_fn)
+        experiment_runner.run_experiments(config=config, execute_fn=_execute_fn, record_fn=self.record_fn)
         self.assertEqual(len(self._args), 1)
         self.assertEqual(
             self._args[0],
@@ -75,7 +80,7 @@ class ExperimentRunnerTest(unittest.TestCase):
 
     def test_execution_args_nameless(self):
         config = _load_config(_NAMELESS_CONFIG)
-        experiment_runner.run_experiments(config=config, execute_fn=self._execute_fn)
+        experiment_runner.run_experiments(config=config, execute_fn=_execute_fn, record_fn=self.record_fn)
         self.assertEqual(len(self._args), 1)
         self.assertEqual(
             self._args[0], ["--env-width", "3", "--val-check-interval", "13"]
@@ -89,7 +94,7 @@ class ExperimentRunnerTest(unittest.TestCase):
     )
     def test_two_sweeps(self, name: str, config: str, experiment_name_prefix: str):
         config = _load_config(config)
-        experiment_runner.run_experiments(config=config, execute_fn=self._execute_fn)
+        experiment_runner.run_experiments(config=config, execute_fn=_execute_fn, record_fn=self.record_fn)
         self.assertEqual(len(self._args), 12)
         expected_value_tuples = itertools.product(
             ["--debug", "--no-debug"],
