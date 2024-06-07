@@ -68,7 +68,9 @@ def main():
         command = [parsed_args.binary] + args
         subprocess.run(command, check=True)
 
-    experiment_runner.run_experiments(config=config, execute_fn=execute_fn, num_processes=parsed_args.num_processes)
+    experiment_runner.run_experiments(
+        config=config, execute_fn=execute_fn, num_processes=parsed_args.num_processes
+    )
 
 
 if __name__ == "__main__":
