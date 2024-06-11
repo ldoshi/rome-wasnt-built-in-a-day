@@ -775,9 +775,9 @@ class BridgeBuilderModel(lightning.LightningModule):
         """Runs a single validation step based on a policy."""
         success, rewards, steps = batch
 
-        self.log("val_success", torch.sum(success) / len(batch))
-        self.log("val_reward", torch.Tensor.float(rewards).mean())
-        self.log("val_steps", torch.Tensor.float(steps).mean())
+        self.log("val_batch_percent_success", torch.sum(success) / len(success))
+        self.log("val_mean_reward", torch.Tensor.float(rewards).mean())
+        self.log("val_avg_steps_taken", torch.Tensor.float(steps).mean())
 
     # TODO(arvind): Override hooks to compute non-TD-error metrics for val and test
 
