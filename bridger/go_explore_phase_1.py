@@ -25,7 +25,7 @@ class StateCache:
     def __init__(self, rng):
         self._rng = rng
 
-    def update_times_since_lead_something_new(self, state, led_to_something_to_new: bool) -> None:
+    def update_times_since_led_to_something_new(self, state, led_to_something_to_new: bool) -> None:
         key = hash_utils.hash_tensor(state)
         assert key in self._cache
         if led_to_something_to_new:
@@ -74,7 +74,7 @@ def rollout(rng, env, start_state, start_entry, cache, num_actions, success_entr
 
         cache.visit(next_state, current_trajectory, current_reward)
 
-    cache.update_times_since_lead_something_new(start_state, led_to_something_new)
+    cache.update_times_since_led_to_something_new(start_state, led_to_something_new)
     
 def explore(rng, env, cache, num_iterations, num_actions, success_entries):
 
@@ -87,8 +87,8 @@ rng = np.random.default_rng(42)
 width=6
 env = BridgesEnv(width=width, force_standard_config=True)
 
-num_iterations = 1000
-num_actions = 10
+num_iterations = 10000
+num_actions = 8
 
 cache: StateCache = StateCache(rng)
 cache.visit(state=env.reset(), trajectory=[], reward=0)
