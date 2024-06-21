@@ -269,21 +269,12 @@ class BackwardAlgorithmManager:
             render=False,
             initial_state=self.state(),
         )
-        #        print("BUILDER SAYS: " , build_result)
+
         if build_result.success and build_result.reward >= sum(
             self._success_entry.reward[self._trajectory_index :]
         ):
-            print("GOING BACKWARRS: ", self._trajectory_index)
             self._trajectory_index -= 1
         return self._trajectory_index == -1
-
-
-#     Plans:
-#    * needs rng access.
-
-#    backward algorithm manager will manager which is the current reset state(s) with jitter. Can ask it for a reset state each time we need one. None means just use reset and be done when you want to be done. need to remove earlystopping or put it on hold.
-
-#    needs a builder to eval how the policy is going. or just needs to be fed the policy's current deterministic score.
 
 
 # pylint: disable=too-many-instance-attributes
