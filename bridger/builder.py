@@ -142,8 +142,12 @@ class Builder:
         self._env = env
 
     def build(
-            self, policy: policies.Policy, episode_length: int, render: bool = True,
-            initial_state: np.ndarray | None=None) -> BuildResult:
+        self,
+        policy: policies.Policy,
+        episode_length: int,
+        render: bool = True,
+        initial_state: np.ndarray | None = None,
+    ) -> BuildResult:
         """Builds following the provided policy.
 
         Resets the environment and constructs a fresh element

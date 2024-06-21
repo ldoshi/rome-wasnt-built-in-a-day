@@ -219,23 +219,33 @@ class StateActionCache:
 # TODO(arvind): Redesign the signature checking mechanism. Using
 # config.validate_input# is not robust with changes in Lightning functionality
 
+
 # TODO(lyric): Refactor.
 @dataclasses.dataclass(frozen=True)
 class SuccessEntry:
     trajectory: tuple[int]
     reward: tuple[float]
 
+
 # First impl: train until reward is >=. Soften this later, especially
 # if we vary envs and also consider a success rate.
 class BackwardAlgorithmManager:
 
-    def __init__(self, success_entries: set[SuccessEntry], env: gym.Env,         policy: policies.Policy, episode_length: int):
+    def __init__(
+        self,
+        success_entries: set[SuccessEntry],
+        env: gym.Env,
+        policy: policies.Policy,
+        episode_length: int,
+    ):
         self._builder = builder.Builder(env)
         self._policy = policy
         self._episode_length = episode_length
-        
+
         self._success_entries = success_entries
-        assert len(self._success_entries) == 1, "Started by assuming a single success entry for guidance."
+        assert (
+            len(self._success_entries) == 1
+        ), "Started by assuming a single success entry for guidance."
 
         state = env.reset()
         self._start_states = []
@@ -253,21 +263,29 @@ class BackwardAlgorithmManager:
         return self._start_states[self._trajectory_index]
 
     def move_backward_if_necessary(self) -> bool:
-        build_result = self._builder.build(policy=self._policy, episode_length=self._episode_length, render=False, initial_state=self.state())
-#        print("BUILDER SAYS: " , build_result)
-        if build_result.success and build_result.reward >= sum(self._success_entry.reward[self._trajectory_index:]):
-            print("GOING BACKWARRS: " , self._trajectory_index)
+        build_result = self._builder.build(
+            policy=self._policy,
+            episode_length=self._episode_length,
+            render=False,
+            initial_state=self.state(),
+        )
+        #        print("BUILDER SAYS: " , build_result)
+        if build_result.success and build_result.reward >= sum(
+            self._success_entry.reward[self._trajectory_index :]
+        ):
+            print("GOING BACKWARRS: ", self._trajectory_index)
             self._trajectory_index -= 1
         return self._trajectory_index == -1
-            
+
 
 #     Plans:
 #    * needs rng access.
-    
-#    backward algorithm manager will manager which is the current reset state(s) with jitter. Can ask it for a reset state each time we need one. None means just use reset and be done when you want to be done. need to remove earlystopping or put it on hold. 
 
-#    needs a builder to eval how the policy is going. or just needs to be fed the policy's current deterministic score. 
-    
+#    backward algorithm manager will manager which is the current reset state(s) with jitter. Can ask it for a reset state each time we need one. None means just use reset and be done when you want to be done. need to remove earlystopping or put it on hold.
+
+#    needs a builder to eval how the policy is going. or just needs to be fed the policy's current deterministic score.
+
+
 # pylint: disable=too-many-instance-attributes
 class BridgeBuilderModel(lightning.LightningModule):
     @config.validate_input("BridgeBuilderModel", config.bridger_config)
@@ -359,7 +377,6 @@ class BridgeBuilderModel(lightning.LightningModule):
             else:
                 raise ValueError(f"Unrecognized q function: {self.hparams.q}")
 
-
         # TODO(lyric): Consider specifying the policy as a hyperparam
         self.policy = policies.EpsilonGreedyPolicy(self.q_manager.q)
         # At this time, the world is static once the initial
@@ -383,12 +400,18 @@ class BridgeBuilderModel(lightning.LightningModule):
                 )
             )
 
-#        with open(self.hparams.go_explore_success_entries_path) as f:
-#            success_entries = pickle.load(f)
-        success_entries = {SuccessEntry(trajectory=(0,1,4,3), reward=(-.1,-.1,-.1,-.1))}
-        self._backward_algorithm_manager = BackwardAlgorithmManager(success_entries=success_entries, env=self._validation_env,                 policy=self._validation_policy,
-                episode_length=self.hparams.max_episode_length)
-            
+        #        with open(self.hparams.go_explore_success_entries_path) as f:
+        #            success_entries = pickle.load(f)
+        success_entries = {
+            SuccessEntry(trajectory=(0, 1, 4, 3), reward=(-0.1, -0.1, -0.1, -0.1))
+        }
+        self._backward_algorithm_manager = BackwardAlgorithmManager(
+            success_entries=success_entries,
+            env=self._validation_env,
+            policy=self._validation_policy,
+            episode_length=self.hparams.max_episode_length,
+        )
+
         self._make_initial_memories()
 
     @property
