@@ -142,8 +142,8 @@ class Builder:
         self._env = env
 
     def build(
-        self, policy: policies.Policy, episode_length: int, render: bool = True
-    ) -> BuildResult:
+            self, policy: policies.Policy, episode_length: int, render: bool = True,
+            initial_state: np.ndarray | None=None) -> BuildResult:
         """Builds following the provided policy.
 
         Resets the environment and constructs a fresh element
@@ -160,7 +160,7 @@ class Builder:
           many steps were actually taken. The steps taken may be less
           than episode_length if the construction is successful.
         """
-        state = self._env.reset()
+        state = self._env.reset(initial_state)
         total_reward = 0
         for i in range(episode_length):
             # This lint error seems to be a torch+pylint issue in general.
