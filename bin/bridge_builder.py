@@ -81,13 +81,13 @@ def run():
                 monitor=None,  # Should show a quantity, e.g. "train_loss"
                 every_n_train_steps=hparams.checkpoint_interval,
             ),
-            EarlyStopping(
-                monitor="val_reward",
-                patience=hparams.early_stopping_patience,
-                mode="max",
-                strict=True,
-                check_on_train_epoch_end=False,
-            ),
+            # EarlyStopping(
+            #     monitor="val_reward",
+            #     patience=hparams.early_stopping_patience,
+            #     mode="max",
+            #     strict=True,
+            #     check_on_train_epoch_end=False,
+            # ),
         ]
         if hparams.debug:
             callbacks += [

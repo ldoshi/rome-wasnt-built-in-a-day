@@ -98,3 +98,8 @@ help_str = (
     "The number of checks with no improvement after which training will be stopped"
 )
 hparam_dict[key]["help"] = help_str
+
+key = "go_explore_success_entries_path"
+hparam_dict[key] = {"type": str, "default": "success_entries,pkl"}
+help_str = "Path to the file containing SuccessEntry members discovered by go_explore."
+hparam_dict[key]["help"] = help_str

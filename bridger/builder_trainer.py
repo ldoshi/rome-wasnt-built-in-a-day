@@ -1,7 +1,9 @@
 import argparse
+import dataclasses
 import IPython
 import copy
 import gym
+import pickle
 import numpy as np
 from bridger import builder
 import lightning
@@ -131,16 +133,17 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
     The model underpinning the policy refers to the same one being
     trained and will thus evolve over time."""
 
-    def __init__(self, env: gym.Env, policy: policies.Policy, episode_length: int):
+    def __init__(self, env: gym.Env, policy: policies.Policy, episode_length: int, initial_state: np.ndarray, ):
         self._builder = builder.Builder(env)
         self._policy = policy
         self._episode_length = episode_length
+        self._initial_state = initial_state
 
     def __iter__(self):
         """Yields the result of a single building episode each call."""
         while True:
             build_result = self._builder.build(
-                self._policy, self._episode_length, render=False
+                self._policy, self._episode_length, render=False, initial_state=self._initial_state
             )
             yield [build_result.success, build_result.reward, build_result.steps]
 
@@ -216,6 +219,66 @@ class StateActionCache:
 
 # TODO(arvind): Redesign the signature checking mechanism. Using
 # config.validate_input# is not robust with changes in Lightning functionality
+
+
+# TODO(lyric): Refactor and align with Joseph.
+@dataclasses.dataclass(frozen=True)
+class SuccessEntry:
+    trajectory: tuple[int]
+    reward: tuple[float]
+
+
+# First impl: train until reward is >=. Soften this later, especially
+# if we vary envs and also consider a success rate.
+class BackwardAlgorithmManager:
+
+    def __init__(
+        self,
+        success_entries: set[SuccessEntry],
+        env: gym.Env,
+        policy: policies.Policy,
+        episode_length: int,
+    ):
+        self._builder = builder.Builder(env)
+        self._policy = policy
+        self._episode_length = episode_length
+
+        self._success_entries = success_entries
+        assert (
+            len(self._success_entries) == 1
+        ), "Started by assuming a single success entry for guidance."
+
+        state = env.reset()
+        self._start_states = []
+
+        self._success_entry = next(iter(success_entries))
+        for action in self._success_entry.trajectory:
+            self._start_states.append(state)
+            state, reward, done, _ = env.step(action)
+        assert done
+
+        self._trajectory_index = len(self._start_states) - 1
+
+    def state(self) -> np.ndarray:
+        # TODO(lyric): Initial impl: just return the current trajectory index without jitter
+        trajectory_index =max(0, self._trajectory_index)
+        
+        return self._start_states[trajectory_index]
+
+    def move_backward_if_necessary(self) -> bool:
+        build_result = self._builder.build(
+            policy=self._policy,
+            episode_length=self._episode_length,
+            render=False,
+            initial_state=self.state(),
+        )
+
+        if build_result.success and build_result.reward >= sum(
+            self._success_entry.reward[self._trajectory_index :]
+        ):
+            self._trajectory_index -= 1
+            return True
+        return False
 
 
 # pylint: disable=too-many-instance-attributes
@@ -332,6 +395,18 @@ class BridgeBuilderModel(lightning.LightningModule):
                 )
             )
 
+        #        with open(self.hparams.go_explore_success_entries_path) as f:
+        #            success_entries = pickle.load(f)
+        success_entries = {
+            SuccessEntry(trajectory=(0, 1, 4, 3), reward=(-0.1, -0.1, -0.1, -0.1))
+        }
+        self._backward_algorithm_manager = BackwardAlgorithmManager(
+            success_entries=success_entries,
+            env=self._validation_env,
+            policy=self._validation_policy,
+            episode_length=self.hparams.max_episode_length,
+        )
+
         self._make_initial_memories()
 
     @property
@@ -371,6 +446,12 @@ class BridgeBuilderModel(lightning.LightningModule):
 
         if self.hparams.debug:
             self._record_q_values_debug_helper()
+
+        moved_back = self._backward_algorithm_manager.move_backward_if_necessary()
+        self.log(
+            "moved_back", moved_back, on_step=False,on_epoch=True, prog_bar=False,logger=True
+        )
+
         self.make_memories(batch_idx=self.global_step)
 
     def _record_q_values_debug_helper(self) -> None:
@@ -452,7 +533,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                 total_step_idx += 1
                 if success:
                     break
-            self.state = self.env.reset()
+            self.state = self.env.reset(self._backward_algorithm_manager.state())
             episode_idx += 1
 
     def _checkpoint(self, thresholds: dict[str, int]) -> None:
@@ -645,14 +726,14 @@ class BridgeBuilderModel(lightning.LightningModule):
 
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
-            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "train_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
         )
         self.log(
             "epsilon",
             self.epsilon,
-            on_step=True,
+            on_step=False,
             on_epoch=True,
-            prog_bar=True,
+            prog_bar=False,
             logger=True,
         )
 
@@ -774,7 +855,6 @@ class BridgeBuilderModel(lightning.LightningModule):
     def validation_step(self, batch, batch_idx):
         """Runs a single validation step based on a policy."""
         success, rewards, steps = batch
-
         self.log("val_success", torch.sum(success) / len(batch))
         self.log("val_reward", torch.Tensor.float(rewards).mean())
         self.log("val_steps", torch.Tensor.float(steps).mean())
@@ -802,6 +882,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         return DataLoader(
             ValidationBuilder(
                 env=self._validation_env,
+                initial_state=self._backward_algorithm_manager.state(),
                 policy=self._validation_policy,
                 episode_length=self.hparams.max_episode_length,
             ),

@@ -88,7 +88,7 @@ class BuildEvaluator:
         Returning the full ordered list enables comparing success and
         failure points for different policies.
 
-        """
+       """
         return np.array([build_result.reward for build_result in self._build_results])
 
     @property
@@ -142,7 +142,11 @@ class Builder:
         self._env = env
 
     def build(
-        self, policy: policies.Policy, episode_length: int, render: bool = True
+        self,
+        policy: policies.Policy,
+        episode_length: int,
+        render: bool = True,
+        initial_state: np.ndarray | None = None,
     ) -> BuildResult:
         """Builds following the provided policy.
 
@@ -160,7 +164,7 @@ class Builder:
           many steps were actually taken. The steps taken may be less
           than episode_length if the construction is successful.
         """
-        state = self._env.reset()
+        state = self._env.reset(initial_state)
         total_reward = 0
         for i in range(episode_length):
             # This lint error seems to be a torch+pylint issue in general.
