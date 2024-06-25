@@ -20,8 +20,6 @@ class TestGoExplorePhaseOne(unittest.TestCase):
             num_iterations=num_iterations,
             num_actions=num_actions,
         )
-        success_entry_generator_single_process.generate_success_entries()
-        success_entry_generator_multiple_process.generate_success_entries()
         print(success_entry_generator_single_process.success_entries in success_entry_generator_multiple_process.success_entries)
 
 if __name__ == "__main__":

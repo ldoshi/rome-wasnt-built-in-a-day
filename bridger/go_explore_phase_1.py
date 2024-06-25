@@ -36,7 +36,6 @@ class SuccessEntryGenerator:
         self._num_actions = num_actions
         self.success_entries: set[SuccessEntry] = set()
 
-    def generate_success_entries(self):
         _collect_generate_success_entry = functools.partial(
             generate_success_entry,
             self._env,
@@ -140,6 +139,5 @@ if __name__ == "__main__":
         num_iterations=num_iterations,
         num_actions=num_actions,
     )
-    success_entry_generator.generate_success_entries()
     print(success_entry_generator.success_entries)
     print(f"Running success entry generation with {processes} processes for env width {width} for {num_iterations} num_iterations took {process_time() - start_time} seconds.")
