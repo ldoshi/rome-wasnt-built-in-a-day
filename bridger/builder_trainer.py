@@ -233,10 +233,15 @@ class BackwardAlgorithmManager:
         env: gym.Env,
         policy: policies.Policy,
         episode_length: int,
+        move_backward_threshold: float,
+        move_backward_window_size: int,    
     ):
         self._builder = builder.Builder(env)
         self._policy = policy
         self._episode_length = episode_length
+        self._move_backward_window = [False] * move_backward_window_size
+        self._move_backward_window_index = 0
+        self._move_backward_threshold = move_backward_threshold
 
         self._success_entries = success_entries
 
@@ -257,6 +262,8 @@ class BackwardAlgorithmManager:
         
         return self._start_states[trajectory_index]
 
+
+    # TODO(lyric): TEST THIS
     def move_backward_if_necessary(self) -> bool:
         build_result = self._builder.build(
             policy=self._policy,
@@ -265,9 +272,10 @@ class BackwardAlgorithmManager:
             initial_state=self.state(),
         )
 
-        if build_result.success and build_result.reward >= sum(
-            self._success_entry.reward[self._trajectory_index :]
-        ):
+        self._move_backward_window[self._move_backward_window_index] = build_result.success and (build_result.reward >= sum(            self._success_entry.reward[self._trajectory_index :]   ))
+        self._move_backward_window_index =         (self._move_backward_window_index + 1) % len(self._move_backward_window)
+
+        if sum(self._move_backward_window) / len(self._move_backward_window) >= self._move_backward_threshold:
             self._trajectory_index -= 1
             return True
         return False
