@@ -7,6 +7,9 @@ import numpy as np
 import multiprocessing
 import functools
 
+from bridger.logging_utils.object_logging import ObjectLogManager
+from bridger import config
+
 @dataclass
 class CacheEntry:
     trajectory: tuple[int]
@@ -125,13 +128,18 @@ def explore(rng, env, cache, num_iterations, num_actions, success_entries):
         rollout(rng, env, start_state, start_entry, cache, num_actions, success_entries)
 
 if __name__ == "__main__":
-    from time import process_time
+    parser = config.get_hyperparam_parser(
+        config.bridger_config,
+        description="Hyperparameter Parser for the BridgeBuilderModel",
+        parser=None,
+    )
+    hparams = parser.parse_args()
 
-    start_time = process_time()
     processes = 1
-    width = 6
-    num_iterations = 1000
-    num_actions = 8
+    width = hparams.env_width
+    num_iterations = hparams.max_training_batches
+    num_actions = hparams.go_explore_num_actions
+
     success_entry_generator = SuccessEntryGenerator(
         processes=processes,
         width=width,
@@ -139,5 +147,7 @@ if __name__ == "__main__":
         num_iterations=num_iterations,
         num_actions=num_actions,
     )
+
+    object_logger = ObjectLogManager("object_logging", "success_entry")
     print(success_entry_generator.success_entries)
-    print(f"Running success entry generation with {processes} processes for env width {width} for {num_iterations} num_iterations took {process_time() - start_time} seconds.")
+    object_logger.log("success_entry.pkl", success_entry_generator.success_entries)

@@ -9,9 +9,12 @@ from bridger import builder
 import lightning
 import torch
 from typing import Union, Optional, Callable, Hashable
+import os
 
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
+from bridger.go_explore_phase_1 import SuccessEntry
+from bridger.logging_utils import object_log_readers
 
 
 from bridger import (
@@ -220,14 +223,6 @@ class StateActionCache:
 # TODO(arvind): Redesign the signature checking mechanism. Using
 # config.validate_input# is not robust with changes in Lightning functionality
 
-
-# TODO(lyric): Refactor and align with Joseph.
-@dataclasses.dataclass(frozen=True)
-class SuccessEntry:
-    trajectory: tuple[int]
-    reward: tuple[float]
-
-
 # First impl: train until reward is >=. Soften this later, especially
 # if we vary envs and also consider a success rate.
 class BackwardAlgorithmManager:
@@ -244,9 +239,6 @@ class BackwardAlgorithmManager:
         self._episode_length = episode_length
 
         self._success_entries = success_entries
-        assert (
-            len(self._success_entries) == 1
-        ), "Started by assuming a single success entry for guidance."
 
         state = env.reset()
         self._start_states = []
@@ -395,11 +387,8 @@ class BridgeBuilderModel(lightning.LightningModule):
                 )
             )
 
-        #        with open(self.hparams.go_explore_success_entries_path) as f:
-        #            success_entries = pickle.load(f)
-        success_entries = {
-            SuccessEntry(trajectory=(0, 1, 4, 3), reward=(-0.1, -0.1, -0.1, -0.1))
-        }
+        success_entries = object_log_readers.read_object_log(os.path.join(os.getcwd(), self.hparams.object_logging_base_dir, self.hparams.go_explore_success_entries_path))
+
         self._backward_algorithm_manager = BackwardAlgorithmManager(
             success_entries=success_entries,
             env=self._validation_env,
