@@ -13,9 +13,8 @@ import os
 
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
-from bridger.go_explore_phase_1 import SuccessEntry
 from bridger.logging_utils import object_log_readers
-
+from bridger.logging_utils.log_entry import SuccessEntry
 
 from bridger import (
     config,
@@ -395,7 +394,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                 )
             )
 
-        success_entries = object_log_readers.read_object_log(os.path.join(os.getcwd(), self.hparams.object_logging_base_dir, self.hparams.go_explore_success_entries_path))
+        success_entries = object_log_manager.read_base_dir_log_file(self.hparams.go_explore_success_entries_path)
 
         self._backward_algorithm_manager = BackwardAlgorithmManager(
             success_entries=success_entries,

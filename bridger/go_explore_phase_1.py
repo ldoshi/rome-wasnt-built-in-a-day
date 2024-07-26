@@ -9,6 +9,7 @@ import functools
 
 from bridger.logging_utils.object_logging import ObjectLogManager
 from bridger import config
+from bridger.logging_utils.log_entry import SuccessEntry
 
 @dataclass
 class CacheEntry:
@@ -17,11 +18,6 @@ class CacheEntry:
     steps_since_led_to_something_new: int = 0
     sampled_count: int = 0
     visit_count: int = 1
-
-@dataclass(frozen=True)
-class SuccessEntry:
-    trajectory: tuple[int]
-    rewards: tuple[float]
 
 class SuccessEntryGenerator:
     def __init__(
@@ -148,6 +144,5 @@ if __name__ == "__main__":
         num_actions=num_actions,
     )
 
-    object_logger = ObjectLogManager("object_logging", "success_entry")
-    print(success_entry_generator.success_entries)
-    object_logger.log("success_entry.pkl", success_entry_generator.success_entries)
+    with ObjectLogManager("object_logging", "success_entry") as object_logger:
+        object_logger.log("success_entry.pkl", success_entry_generator.success_entries)
