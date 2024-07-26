@@ -245,6 +245,7 @@ class BackwardAlgorithmManager:
         move_backward_threshold: float,
         move_backward_window_size: int,
     ):
+        self.iteration = 0
         self._builder = builder.Builder(env)
         self._policy = policy
         self._episode_length = episode_length
@@ -267,12 +268,10 @@ class BackwardAlgorithmManager:
 
     def state(self) -> np.ndarray:
         # TODO(lyric): Initial impl: just return the current trajectory index without jitter
-        trajectory_index = max(0, self._trajectory_index)
+        return self._start_states[self._trajectory_index]
 
-        return self._start_states[trajectory_index]
-
-    # TODO(lyric): TEST THIS
     def move_backward_if_necessary(self) -> bool:
+        self.iteration += 1
         build_result = self._builder.build(
             policy=self._policy,
             episode_length=self._episode_length,
@@ -280,23 +279,21 @@ class BackwardAlgorithmManager:
             initial_state=self.state(),
         )
 
-        self._move_backward_window[self._move_backward_window_index] = (
-            build_result.success
-            and (
-                build_result.reward
-                >= sum(self._success_entry.reward[self._trajectory_index :])
-            )
-        )
-        self._move_backward_window_index = (self._move_backward_window_index + 1) % len(
-            self._move_backward_window
-        )
+        entry = build_result.success and (build_result.reward >= sum(            self._success_entry.reward[self._trajectory_index :]   ))
+        if entry:
+            print('success at ' , self.iteration, ' : ' , build_result.success , ' and reward ' , build_result.reward, ' vs ' , self._success_entry.reward[self._trajectory_index :])
+        
+        self._move_backward_window[self._move_backward_window_index] = entry
+        
+        self._move_backward_window_index =         (self._move_backward_window_index + 1) % len(self._move_backward_window)
 
-        if (
-            sum(self._move_backward_window) / len(self._move_backward_window)
-            >= self._move_backward_threshold
-        ):
+#        print("comparing : " ,  (sum(self._move_backward_window) / len(self._move_backward_window)), " vs " , self._move_backward_threshold)
+        
+        if ((sum(self._move_backward_window) / len(self._move_backward_window)) >= self._move_backward_threshold) and self._trajectory_index > 0:
             self._trajectory_index -= 1
+            self._move_backward_window = [False] * len(self._move_backward_window)
             return True
+        
         return False
 
 
@@ -418,13 +415,17 @@ class BridgeBuilderModel(lightning.LightningModule):
             self.hparams.go_explore_success_entries_path
         )
 
+        success_entries = {
+            SuccessEntry(trajectory=(0, 1, 4, 3), reward=(-0.1, -0.1, -0.1, -0.1))
+            SuccessEntry(trajectory=(0, 1, 2, 6, 5, 4), reward=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
+        }
         self._backward_algorithm_manager = BackwardAlgorithmManager(
             success_entries=success_entries,
             env=self._validation_env,
             policy=self._validation_policy,
             episode_length=self.hparams.max_episode_length,
-            move_backward_threshold=0.2,
-            move_backward_window_size=10,
+            move_backward_threshold=.5,
+            move_backward_window_size=11,
         )
 
         self._make_initial_memories()
@@ -468,6 +469,8 @@ class BridgeBuilderModel(lightning.LightningModule):
             self._record_q_values_debug_helper()
 
         moved_back = self._backward_algorithm_manager.move_backward_if_necessary()
+        if moved_back:
+            print("MOVED BACK!")
         self.log(
             "moved_back",
             moved_back,
@@ -751,7 +754,7 @@ class BridgeBuilderModel(lightning.LightningModule):
 
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
-            "train_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
+            "train_loss", loss, on_step=False, on_epoch=True, prog_bar=False, logger=True
         )
         self.log(
             "epsilon",
