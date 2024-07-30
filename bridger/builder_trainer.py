@@ -135,7 +135,13 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
     The model underpinning the policy refers to the same one being
     trained and will thus evolve over time."""
 
-    def __init__(self, env: gym.Env, policy: policies.Policy, episode_length: int, initial_state: np.ndarray, ):
+    def __init__(
+        self,
+        env: gym.Env,
+        policy: policies.Policy,
+        episode_length: int,
+        initial_state: np.ndarray,
+    ):
         self._builder = builder.Builder(env)
         self._policy = policy
         self._episode_length = episode_length
@@ -145,7 +151,10 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
         """Yields the result of a single building episode each call."""
         while True:
             build_result = self._builder.build(
-                self._policy, self._episode_length, render=False, initial_state=self._initial_state
+                self._policy,
+                self._episode_length,
+                render=False,
+                initial_state=self._initial_state,
             )
             yield [build_result.success, build_result.reward, build_result.steps]
 
@@ -222,6 +231,7 @@ class StateActionCache:
 # TODO(arvind): Redesign the signature checking mechanism. Using
 # config.validate_input# is not robust with changes in Lightning functionality
 
+
 # First impl: train until reward is >=. Soften this later, especially
 # if we vary envs and also consider a success rate.
 class BackwardAlgorithmManager:
@@ -233,7 +243,7 @@ class BackwardAlgorithmManager:
         policy: policies.Policy,
         episode_length: int,
         move_backward_threshold: float,
-        move_backward_window_size: int,    
+        move_backward_window_size: int,
     ):
         self._builder = builder.Builder(env)
         self._policy = policy
@@ -247,7 +257,7 @@ class BackwardAlgorithmManager:
         state = env.reset()
         self._start_states = []
 
-        self._success_entry = next(iter(success_entries))
+        self._success_entry = next(iter(next(iter(success_entries))))
         for action in self._success_entry.trajectory:
             self._start_states.append(state)
             state, reward, done, _ = env.step(action)
@@ -257,10 +267,9 @@ class BackwardAlgorithmManager:
 
     def state(self) -> np.ndarray:
         # TODO(lyric): Initial impl: just return the current trajectory index without jitter
-        trajectory_index =max(0, self._trajectory_index)
-        
-        return self._start_states[trajectory_index]
+        trajectory_index = max(0, self._trajectory_index)
 
+        return self._start_states[trajectory_index]
 
     # TODO(lyric): TEST THIS
     def move_backward_if_necessary(self) -> bool:
@@ -271,10 +280,21 @@ class BackwardAlgorithmManager:
             initial_state=self.state(),
         )
 
-        self._move_backward_window[self._move_backward_window_index] = build_result.success and (build_result.reward >= sum(            self._success_entry.reward[self._trajectory_index :]   ))
-        self._move_backward_window_index =         (self._move_backward_window_index + 1) % len(self._move_backward_window)
+        self._move_backward_window[self._move_backward_window_index] = (
+            build_result.success
+            and (
+                build_result.reward
+                >= sum(self._success_entry.reward[self._trajectory_index :])
+            )
+        )
+        self._move_backward_window_index = (self._move_backward_window_index + 1) % len(
+            self._move_backward_window
+        )
 
-        if sum(self._move_backward_window) / len(self._move_backward_window) >= self._move_backward_threshold:
+        if (
+            sum(self._move_backward_window) / len(self._move_backward_window)
+            >= self._move_backward_threshold
+        ):
             self._trajectory_index -= 1
             return True
         return False
@@ -394,13 +414,17 @@ class BridgeBuilderModel(lightning.LightningModule):
                 )
             )
 
-        success_entries = object_log_manager.read_base_dir_log_file(self.hparams.go_explore_success_entries_path)
+        success_entries = object_log_manager.read_base_dir_log_file(
+            self.hparams.go_explore_success_entries_path
+        )
 
         self._backward_algorithm_manager = BackwardAlgorithmManager(
             success_entries=success_entries,
             env=self._validation_env,
             policy=self._validation_policy,
             episode_length=self.hparams.max_episode_length,
+            move_backward_threshold=0.2,
+            move_backward_window_size=10,
         )
 
         self._make_initial_memories()
@@ -445,7 +469,12 @@ class BridgeBuilderModel(lightning.LightningModule):
 
         moved_back = self._backward_algorithm_manager.move_backward_if_necessary()
         self.log(
-            "moved_back", moved_back, on_step=False,on_epoch=True, prog_bar=False,logger=True
+            "moved_back",
+            moved_back,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
         )
 
         self.make_memories(batch_idx=self.global_step)
