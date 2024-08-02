@@ -2,6 +2,7 @@ import argparse
 import dataclasses
 import IPython
 import copy
+import functools
 import gym
 import pickle
 import numpy as np
@@ -234,31 +235,25 @@ class StateActionCache:
 
 # First impl: train until reward is >=. Soften this later, especially
 # if we vary envs and also consider a success rate.
-class BackwardAlgorithmManager:
+class BackwardAlgorithm:
 
     def __init__(
         self,
-        success_entries: set[SuccessEntry],
+        success_entry: SuccessEntry,
         env: gym.Env,
-        policy: policies.Policy,
-        episode_length: int,
         move_backward_threshold: float,
         move_backward_window_size: int,
     ):
         self.iteration = 0
-        self._builder = builder.Builder(env)
-        self._policy = policy
-        self._episode_length = episode_length
         self._move_backward_window = [False] * move_backward_window_size
         self._move_backward_window_index = 0
         self._move_backward_threshold = move_backward_threshold
 
-        self._success_entries = success_entries
+        self._success_entry = success_entry
 
         state = env.reset()
         self._start_states = []
 
-        self._success_entry = next(iter(next(iter(success_entries))))
         for action in self._success_entry.trajectory:
             self._start_states.append(state)
             state, reward, done, _ = env.step(action)
@@ -270,15 +265,10 @@ class BackwardAlgorithmManager:
         # TODO(lyric): Initial impl: just return the current trajectory index without jitter
         return self._start_states[self._trajectory_index]
 
-    def move_backward_if_necessary(self) -> bool:
+    def move_backward_if_necessary(self,builder_fn: Callable[[np.ndarray], builder.BuildResult] ) -> [bool, bool]:
         self.iteration += 1
-        build_result = self._builder.build(
-            policy=self._policy,
-            episode_length=self._episode_length,
-            render=False,
-            initial_state=self.state(),
-        )
 
+        build_result = builder_fn(initial_state=self.state())
         entry = build_result.success and (build_result.reward >= sum(            self._success_entry.reward[self._trajectory_index :]   ))
         if entry:
             print('success at ' , self.iteration, ' : ' , build_result.success , ' and reward ' , build_result.reward, ' vs ' , self._success_entry.reward[self._trajectory_index :])
@@ -292,11 +282,42 @@ class BackwardAlgorithmManager:
         if ((sum(self._move_backward_window) / len(self._move_backward_window)) >= self._move_backward_threshold) and self._trajectory_index > 0:
             self._trajectory_index -= 1
             self._move_backward_window = [False] * len(self._move_backward_window)
-            return True
+            return True, self._trajectory_index == 0 
         
-        return False
+        return False, self._trajectory_index == 0 
 
 
+class BackwardAlgorithmManager:
+
+    def __init__(
+        self,
+        success_entries: set[SuccessEntry],
+        env: gym.Env,
+        policy: policies.Policy,
+        episode_length: int,
+        move_backward_threshold: float,
+        move_backward_window_size: int,    
+    ):
+        self._backward_algorithms = [BackwardAlgorithm(success_entry=success_entry, env=env, move_backward_threshold=move_backward_threshold, move_backward_window_size=move_backward_window_size) for success_entry in success_entries]
+        
+        self._build_fn = functools.partial(builder.Builder(env).build, policy=policy, episode_length=episode_length, render=False)
+
+
+    def state(self) -> np.ndarray:
+        entry_index = np.random.randint(low=0, high=len(self._backward_algorithms))
+        return self._backward_algorithms[entry_index].state()
+
+    def move_backward_if_necessary(self) -> tuple[int, int]:
+        moved_backward_count = 0
+        completed_count = 0
+
+        for backward_algorithm in self._backward_algorithms:
+            moved_backward, completed = backward_algorithm.move_backward_if_necessary(self._build_fn)
+            moved_backward_count += int(moved_backward)
+            completed_count += int(completed)
+            
+        return moved_backward_count, completed_count
+    
 # pylint: disable=too-many-instance-attributes
 class BridgeBuilderModel(lightning.LightningModule):
     @config.validate_input("BridgeBuilderModel", config.bridger_config)
@@ -416,8 +437,8 @@ class BridgeBuilderModel(lightning.LightningModule):
         )
 
         success_entries = {
-            SuccessEntry(trajectory=(0, 1, 4, 3), reward=(-0.1, -0.1, -0.1, -0.1))
-            SuccessEntry(trajectory=(0, 1, 2, 6, 5, 4), reward=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
+            SuccessEntry(trajectory=(0, 1, 4, 3), reward=(-0.1, -0.1, -0.1, -0.1)),
+            SuccessEntry(trajectory=(0, 4, 3, 1), reward=(-0.1, -0.1, -0.1, -0.1))
         }
         self._backward_algorithm_manager = BackwardAlgorithmManager(
             success_entries=success_entries,
@@ -468,16 +489,14 @@ class BridgeBuilderModel(lightning.LightningModule):
         if self.hparams.debug:
             self._record_q_values_debug_helper()
 
-        moved_back = self._backward_algorithm_manager.move_backward_if_necessary()
-        if moved_back:
-            print("MOVED BACK!")
+        moved_backward_count, completed_count = self._backward_algorithm_manager.move_backward_if_necessary()
+        if moved_backward_count:
+            print("Moved backward " , moved_backward_count, ' with ' , completed_count, ' completed.')
         self.log(
-            "moved_back",
-            moved_back,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=False,
-            logger=True,
+            "moved_backward_count", moved_backward_count, on_step=False,on_epoch=True, prog_bar=False,logger=True
+        )
+        self.log(
+            "completed_count", completed_count, on_step=False,on_epoch=True, prog_bar=False,logger=True
         )
 
         self.make_memories(batch_idx=self.global_step)
