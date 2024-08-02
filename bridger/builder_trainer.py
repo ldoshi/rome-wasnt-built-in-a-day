@@ -269,9 +269,9 @@ class BackwardAlgorithm:
         self.iteration += 1
 
         build_result = builder_fn(initial_state=self.state())
-        entry = build_result.success and (build_result.reward >= sum(            self._success_entry.reward[self._trajectory_index :]   ))
+        entry = build_result.success and (build_result.reward >= sum(            self._success_entry.rewards[self._trajectory_index :]   ))
         if entry:
-            print('success at ' , self.iteration, ' : ' , build_result.success , ' and reward ' , build_result.reward, ' vs ' , self._success_entry.reward[self._trajectory_index :])
+            print('success at ' , self.iteration, ' : ' , build_result.success , ' and reward ' , build_result.reward, ' vs ' , self._success_entry.rewards[self._trajectory_index :])
         
         self._move_backward_window[self._move_backward_window_index] = entry
         
@@ -436,10 +436,11 @@ class BridgeBuilderModel(lightning.LightningModule):
             self.hparams.go_explore_success_entries_path
         )
 
-        success_entries = {
-            SuccessEntry(trajectory=(0, 1, 4, 3), reward=(-0.1, -0.1, -0.1, -0.1)),
-            SuccessEntry(trajectory=(0, 4, 3, 1), reward=(-0.1, -0.1, -0.1, -0.1))
-        }
+        # TODO(lyric): Delete convenience override after a little more testing.
+        # success_entries = {
+        #     SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
+        #     SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
+        # }
         self._backward_algorithm_manager = BackwardAlgorithmManager(
             success_entries=success_entries,
             env=self._validation_env,
