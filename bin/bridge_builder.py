@@ -98,6 +98,7 @@ def run():
             ]
 
         trainer = Trainer(
+            accelerator="gpu",
             gradient_clip_val=hparams.gradient_clip_val,
             check_val_every_n_epoch=hparams.val_check_interval,
             # The validation batch size can be adjusted via a config, but

@@ -169,7 +169,7 @@ class Builder:
         for i in range(episode_length):
             # This lint error seems to be a torch+pylint issue in general.
             # pylint: disable=not-callable
-            state, reward, success, _ = self._env.step(policy(torch.tensor(state)))
+            state, reward, success, _ = self._env.step(policy(state))
             total_reward += reward
             if render:
                 self._env.render()

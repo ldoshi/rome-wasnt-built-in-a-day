@@ -255,7 +255,6 @@ class BackwardAlgorithmManager:
         for action in self._success_entry.trajectory:
             self._start_states.append(state)
             state, reward, done, _ = env.step(action)
-        assert done
 
         self._trajectory_index = len(self._start_states) - 1
 
@@ -398,6 +397,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         #        with open(self.hparams.go_explore_success_entries_path) as f:
         #            success_entries = pickle.load(f)
         success_entries = {
+#            SuccessEntry(trajectory=(0, 2), reward=(-0.1, -0.1))
             SuccessEntry(trajectory=(0, 1, 4, 3), reward=(-0.1, -0.1, -0.1, -0.1))
         }
         self._backward_algorithm_manager = BackwardAlgorithmManager(
@@ -493,7 +493,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                 _, _, start_state, _, _, _, _ = next(self.memories)
                 if self.hparams.debug:
                     self._state_visit_logger.log_occurrence(
-                        batch_idx=batch_idx, object=torch.from_numpy(start_state)
+                        batch_idx=batch_idx, object=start_state
                     )
 
     def _memory_generator(
@@ -533,7 +533,8 @@ class BridgeBuilderModel(lightning.LightningModule):
                 total_step_idx += 1
                 if success:
                     break
-            self.state = self.env.reset(self._backward_algorithm_manager.state())
+#            self.state = self.env.reset(self._backward_algorithm_manager.state())
+            self.state = self.env.reset()
             episode_idx += 1
 
     def _checkpoint(self, thresholds: dict[str, int]) -> None:
@@ -633,8 +634,9 @@ class BridgeBuilderModel(lightning.LightningModule):
         if self.hparams.interactive_mode and self.next_action is not None:
             action = self.next_action
         else:
+            print(state.is_cuda, "hello lyric")
             action = self.policy(
-                torch.as_tensor(state, dtype=torch.float), epsilon=self.epsilon
+                state, epsilon=self.epsilon
             )
 
         next_state, reward, done, _ = self.env.step(action)
@@ -875,7 +877,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         return DataLoader(
             self.replay_buffer,
             batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
+            # num_workers=self.hparams.num_workers,
         )
 
     def val_dataloader(self) -> DataLoader:

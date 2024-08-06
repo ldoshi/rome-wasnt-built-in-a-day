@@ -8,13 +8,14 @@ import multiprocessing
 import torch
 import torch.nn
 import torch.nn.functional as F
+import lightning
 
 from bridger import hash_utils
 
 from typing import Any, Callable, Optional
 
 
-def _update_target(tau: float, q: torch.nn.Module, target: torch.nn.Module) -> None:
+def _update_target(tau: float, q: lightning.LightningModule, target: lightning.LightningModule) -> None:
     """Updates the target network weights based on the q network weights.
 
     The target network is updated using a weighted sum of its current
@@ -30,7 +31,7 @@ def _update_target(tau: float, q: torch.nn.Module, target: torch.nn.Module) -> N
     target.load_state_dict(params)
 
 
-class QManager(abc.ABC, torch.nn.Module):
+class QManager(abc.ABC, lightning.LightningModule):
     """Base class to interact with a q function and its target.
 
     The q and its target are coupled to ensure they have the same
@@ -48,13 +49,13 @@ class QManager(abc.ABC, torch.nn.Module):
 
     @property
     @abc.abstractmethod
-    def q(self) -> torch.nn.Module:
+    def q(self) -> lightning.LightningModule:
         """Accessor to evaluate the q function."""
         pass
 
     @property
     @abc.abstractmethod
-    def target(self) -> torch.nn.Module:
+    def target(self) -> lightning.LightningModule:
         """Accessor to evaluate the target function."""
         pass
 
@@ -103,15 +104,15 @@ class CNNQManager(QManager):
         _update_target(self._tau, self._q, self._target)
 
     @property
-    def q(self) -> torch.nn.Module:
+    def q(self) -> lightning.LightningModule:
         return self._q
 
     @property
-    def target(self) -> torch.nn.Module:
+    def target(self) -> lightning.LightningModule:
         return self._target
 
 
-class CNNQ(torch.nn.Module):
+class CNNQ(lightning.LightningModule):
     """Base class for CNN Q-function neural network module."""
 
     def __init__(self, image_height: int, image_width: int, num_actions: int):
@@ -139,13 +140,19 @@ class CNNQ(torch.nn.Module):
         self.DNN = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
 
     def forward(self, x):
+        print('forward 0', x.is_cuda)
         x = x.reshape(-1, self.image_height, self.image_width)
+        print('forward 1', x.is_cuda)
         x = encode_enum_state_to_channels(x, self.CNN[0].in_channels).float()
+        print('forward 2', x.is_cuda)
+        print(self.CNN[0])
         for layer in self.CNN:
-            x = torch.relu(layer(x))
-        x = self.DNN[0](x.reshape(x.shape[0], -1))
+            x = torch.relu(layer.cuda()(x))
+            print('forward 3', x.is_cuda)
+        x = self.DNN[0].cuda()(x.reshape(x.shape[0], -1))
         for layer in self.DNN[1:]:
-            x = layer(torch.relu(x))
+            x = layer.cuda()(torch.relu(x))
+            print('forward 4', x.is_cuda)
         return x
 
 
@@ -194,11 +201,11 @@ class TabularQManager(QManager):
         _update_target(self._tau, self._q, self._target)
 
     @property
-    def q(self) -> torch.nn.Module:
+    def q(self) -> lightning.LightningModule:
         return self._q
 
     @property
-    def target(self) -> torch.nn.Module:
+    def target(self) -> lightning.LightningModule:
         return self._target
 
 
@@ -225,7 +232,7 @@ def _collect_parameters(
     return state_hashes
 
 
-class TabularQ(torch.nn.Module):
+class TabularQ(lightning.LightningModule):
     """A Q-function based on a look-up table.
 
     This implementation is intended for debugging in simpler
