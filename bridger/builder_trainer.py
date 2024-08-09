@@ -271,7 +271,7 @@ class BackwardAlgorithmManager:
             render=False,
             initial_state=self.state(),
         )
-
+        
         if build_result.success and build_result.reward >= sum(
             self._success_entry.reward[self._trajectory_index :]
         ):
@@ -634,7 +634,6 @@ class BridgeBuilderModel(lightning.LightningModule):
         if self.hparams.interactive_mode and self.next_action is not None:
             action = self.next_action
         else:
-            print(state.is_cuda, "hello lyric")
             action = self.policy(
                 state, epsilon=self.epsilon
             )
@@ -889,7 +888,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                 episode_length=self.hparams.max_episode_length,
             ),
             batch_size=self.hparams.val_batch_size,
-            num_workers=self.hparams.num_workers,
+#            num_workers=self.hparams.num_workers,
         )
 
     # TODO(arvind): Override hooks to load data appropriately for test

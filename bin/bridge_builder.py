@@ -137,6 +137,8 @@ def run():
                 hparams.tabular_q_initialization_brick_count, demo_episode_length
             )
 
+        # See CNNQ for the reason we need this.
+        model.q_manager.q.cudaify()
         build_evaluator = builder.BuildEvaluator(
             env=evaluation_env,
             policy=model.trained_policy,

@@ -62,14 +62,10 @@ class EpsilonGreedyPolicy(EstimatorPolicy):
     def get_probabilities(self, state, epsilon=None):
         if epsilon is None:
             epsilon = self.epsilon
-        print("policies -1: " , state.is_cuda)
-        print("policies Q: " , self.Q(state).is_cuda)
         q_values = self.Q(state).squeeze()
-        print("policies 0: " , q_values.is_cuda)
         exploit = torch.where(q_values == q_values.max(), 1, 0)
-        print("policies 1: " , exploit.is_cuda)
+
         explore = torch.full(q_values.shape[0:], 1 / q_values.shape[0]).cuda()
-        print("policies 2: " , explore.is_cuda)
         probabilities = (1 - epsilon) * exploit + epsilon * explore
         return probabilities
 

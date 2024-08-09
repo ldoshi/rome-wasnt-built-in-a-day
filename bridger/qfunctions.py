@@ -138,21 +138,40 @@ class CNNQ(lightning.LightningModule):
         dense_widths = [C * H * W, 64, num_actions]
         args_iter = zip(dense_widths[:-1], dense_widths[1:])
         self.DNN = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
+        self.cudaify()
+        
 
+    # After training, Trainer.fit moves the model off the gpu. The
+    # cudaify() function can be used to move the model back onto the
+    # gpu. This is need when using the model after Trainer.fit because
+    # we currently force the input tensor onto the gpu with every
+    # forward call.
+    #
+    # We currently chose to called x.cuda() on forward so that there
+    # is exactly one place where all state tensors that *must* be on
+    # device are moved to device and no extra tensors are. We're
+    # undecided if it's strange to make this part of the model but at
+    # least it ensures the .cuda() action happens in a single place in
+    # case we change the design later.
+    #
+    # Note: We need to call cuda() in policies.py as well when
+    # constructing a tensor of 1/nA for exploration weighting.
+    def cudaify(self):
+        for i in range(len(self.CNN)):
+            self.CNN[i] = self.CNN[i].cuda()
+        for i in range(len(self.DNN)):
+            self.DNN[i] = self.DNN[i].cuda()
+        
+        
     def forward(self, x):
-        print('forward 0', x.is_cuda)
+        x = x.cuda()
         x = x.reshape(-1, self.image_height, self.image_width)
-        print('forward 1', x.is_cuda)
         x = encode_enum_state_to_channels(x, self.CNN[0].in_channels).float()
-        print('forward 2', x.is_cuda)
-        print(self.CNN[0])
         for layer in self.CNN:
-            x = torch.relu(layer.cuda()(x))
-            print('forward 3', x.is_cuda)
-        x = self.DNN[0].cuda()(x.reshape(x.shape[0], -1))
+            x = torch.relu(layer(x))
+        x = self.DNN[0](x.reshape(x.shape[0], -1))
         for layer in self.DNN[1:]:
-            x = layer.cuda()(torch.relu(x))
-            print('forward 4', x.is_cuda)
+            x = layer(torch.relu(x))
         return x
 
 
