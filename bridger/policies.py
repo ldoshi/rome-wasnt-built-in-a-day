@@ -65,6 +65,8 @@ class EpsilonGreedyPolicy(EstimatorPolicy):
         q_values = self.Q(state).squeeze()
         exploit = torch.where(q_values == q_values.max(), 1, 0)
 
+        # Note: We need to call cuda() for explore when constructing a
+        # tensor of 1/nA for exploration weighting. 
         explore = torch.full(q_values.shape[0:], 1 / q_values.shape[0]).cuda()
         probabilities = (1 - epsilon) * exploit + epsilon * explore
         return probabilities

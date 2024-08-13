@@ -164,8 +164,7 @@ class Builder:
           many steps were actually taken. The steps taken may be less
           than episode_length if the construction is successful.
         """
-#        state = self._env.reset(initial_state)
-        state = self._env.reset()
+        state = self._env.reset(initial_state)
         total_reward = 0
         for i in range(episode_length):
             # This lint error seems to be a torch+pylint issue in general.

@@ -261,7 +261,6 @@ class BackwardAlgorithmManager:
     def state(self) -> np.ndarray:
         # TODO(lyric): Initial impl: just return the current trajectory index without jitter
         trajectory_index =max(0, self._trajectory_index)
-        
         return self._start_states[trajectory_index]
 
     def move_backward_if_necessary(self) -> bool:
@@ -271,7 +270,7 @@ class BackwardAlgorithmManager:
             render=False,
             initial_state=self.state(),
         )
-        
+
         if build_result.success and build_result.reward >= sum(
             self._success_entry.reward[self._trajectory_index :]
         ):
@@ -460,6 +459,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             _FREQUENTLY_VISITED_STATE_COUNT
         )
 
+        frequently_visted_states = [x.cuda() for x in frequently_visted_states]
         frequently_visted_states_tensor = torch.stack(frequently_visted_states)
         for state, q_values, q_target_values in zip(
             frequently_visted_states,
@@ -533,8 +533,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                 total_step_idx += 1
                 if success:
                     break
-#            self.state = self.env.reset(self._backward_algorithm_manager.state())
-            self.state = self.env.reset()
+            self.state = self.env.reset(self._backward_algorithm_manager.state())
             episode_idx += 1
 
     def _checkpoint(self, thresholds: dict[str, int]) -> None:
