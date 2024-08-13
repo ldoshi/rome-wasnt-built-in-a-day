@@ -117,3 +117,8 @@ class ActionInversionReportEntry:
     state_id: int
     preferred_actions: set[int]
     policy_action: int
+
+@dataclasses.dataclass(frozen=True)
+class SuccessEntry:
+    trajectory: tuple[int]
+    rewards: tuple[float]
