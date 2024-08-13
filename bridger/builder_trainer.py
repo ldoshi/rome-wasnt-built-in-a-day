@@ -257,7 +257,8 @@ class BackwardAlgorithm:
         for action in self._success_entry.trajectory:
             self._start_states.append(state)
             state, reward, done, _ = env.step(action)
-
+        assert done
+            
         self._trajectory_index = len(self._start_states) - 1
 
     def state(self) -> np.ndarray:
