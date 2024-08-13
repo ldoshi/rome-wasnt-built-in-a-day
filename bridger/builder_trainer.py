@@ -258,7 +258,7 @@ class BackwardAlgorithm:
             self._start_states.append(state)
             state, reward, done, _ = env.step(action)
         assert done
-
+            
         self._trajectory_index = len(self._start_states) - 1
 
     def state(self) -> np.ndarray:
@@ -441,6 +441,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         #     SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
         #     SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
         # }
+
         self._backward_algorithm_manager = BackwardAlgorithmManager(
             success_entries=success_entries,
             env=self._validation_env,
@@ -508,6 +509,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             _FREQUENTLY_VISITED_STATE_COUNT
         )
 
+        frequently_visted_states = [x.cuda() for x in frequently_visted_states]
         frequently_visted_states_tensor = torch.stack(frequently_visted_states)
         for state, q_values, q_target_values in zip(
             frequently_visted_states,
@@ -541,7 +543,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                 _, _, start_state, _, _, _, _ = next(self.memories)
                 if self.hparams.debug:
                     self._state_visit_logger.log_occurrence(
-                        batch_idx=batch_idx, object=torch.from_numpy(start_state)
+                        batch_idx=batch_idx, object=start_state
                     )
 
     def _memory_generator(
@@ -682,7 +684,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             action = self.next_action
         else:
             action = self.policy(
-                torch.as_tensor(state, dtype=torch.float), epsilon=self.epsilon
+                state, epsilon=self.epsilon
             )
 
         next_state, reward, done, _ = self.env.step(action)
@@ -923,7 +925,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         return DataLoader(
             self.replay_buffer,
             batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
+            # num_workers=self.hparams.num_workers,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -935,7 +937,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                 episode_length=self.hparams.max_episode_length,
             ),
             batch_size=self.hparams.val_batch_size,
-            num_workers=self.hparams.num_workers,
+#            num_workers=self.hparams.num_workers,
         )
 
     # TODO(arvind): Override hooks to load data appropriately for test
