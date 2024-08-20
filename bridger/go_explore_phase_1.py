@@ -81,7 +81,7 @@ class StateCache:
         key = cache_keys[key_index]
         entry = self._cache[key]
         entry.sampled_count += 1
-        return (np.array(key[1]).reshape(key[0]), entry)
+        return (torch.tensor(key[1]).reshape(key[0]), entry)
 
 def generate_success_entry(
     env: BridgesEnv, num_iterations: int, num_actions: int, seed: int

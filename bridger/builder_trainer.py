@@ -249,11 +249,10 @@ class BackwardAlgorithm:
         self._move_backward_window_index = 0
         self._move_backward_threshold = move_backward_threshold
 
-        self._success_entry = success_entry
+        self._success_entry = next(iter(success_entry))
 
         state = env.reset()
         self._start_states = []
-
         for action in self._success_entry.trajectory:
             self._start_states.append(state)
             state, reward, done, _ = env.step(action)
