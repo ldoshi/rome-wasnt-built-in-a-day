@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 import multiprocessing
 import functools
+import torch
 
 from bridger.logging_utils.object_logging import ObjectLogManager
 from bridger import config
