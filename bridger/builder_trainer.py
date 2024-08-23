@@ -248,8 +248,7 @@ class BackwardAlgorithm:
         self._move_backward_window = [False] * move_backward_window_size
         self._move_backward_window_index = 0
         self._move_backward_threshold = move_backward_threshold
-
-        self._success_entry = next(iter(success_entry))
+        self._success_entry = success_entry
 
         state = env.reset()
         self._start_states = []
@@ -433,14 +432,13 @@ class BridgeBuilderModel(lightning.LightningModule):
 
         success_entries = object_log_manager.read_base_dir_log_file(
             self.hparams.go_explore_success_entries_path
-        )
-
+        )[0]
         # TODO(lyric): Delete convenience override after a little more testing.
         # success_entries = {
         #     SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
         #     SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
         # }
-
+        
         self._backward_algorithm_manager = BackwardAlgorithmManager(
             success_entries=success_entries,
             env=self._validation_env,
