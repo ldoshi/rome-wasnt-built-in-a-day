@@ -16,7 +16,9 @@
 import datetime
 import os
 
+import torch
 from lightning import Trainer
+import lightning.pytorch
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 
@@ -139,7 +141,8 @@ def run():
             )
 
         # See CNNQ for the reason we need this.
-        model.q_manager.q.cudaify()
+        if torch.cuda.is_available():
+            model.q_manager.q.cudaify()
         build_evaluator = builder.BuildEvaluator(
             env=evaluation_env,
             policy=model.trained_policy,

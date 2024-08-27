@@ -15,7 +15,9 @@ from bridger import hash_utils
 from typing import Any, Callable, Optional
 
 
-def _update_target(tau: float, q: lightning.LightningModule, target: lightning.LightningModule) -> None:
+def _update_target(
+    tau: float, q: lightning.LightningModule, target: lightning.LightningModule
+) -> None:
     """Updates the target network weights based on the q network weights.
 
     The target network is updated using a weighted sum of its current
@@ -115,7 +117,12 @@ class CNNQManager(QManager):
 class CNNQ(lightning.LightningModule):
     """Base class for CNN Q-function neural network module."""
 
-    def __init__(self, image_height: int, image_width: int, num_actions: int):
+    def __init__(
+        self,
+        image_height: int,
+        image_width: int,
+        num_actions: int,
+    ):
         super(CNNQ, self).__init__()
         self.image_height = image_height
         self.image_width = image_width
@@ -138,8 +145,8 @@ class CNNQ(lightning.LightningModule):
         dense_widths = [C * H * W, 64, num_actions]
         args_iter = zip(dense_widths[:-1], dense_widths[1:])
         self.DNN = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
-        self.cudaify()
-        
+        if torch.cuda.is_available():
+            self.cudaify()
 
     # After training, Trainer.fit moves the model off the gpu. The
     # cudaify() function can be used to move the model back onto the
@@ -161,10 +168,10 @@ class CNNQ(lightning.LightningModule):
             self.CNN[i] = self.CNN[i].cuda()
         for i in range(len(self.DNN)):
             self.DNN[i] = self.DNN[i].cuda()
-        
-        
+
     def forward(self, x):
-        x = x.cuda()
+        if torch.cuda.is_available():
+            x = x.cuda()
         x = x.reshape(-1, self.image_height, self.image_width)
         x = encode_enum_state_to_channels(x, self.CNN[0].in_channels).float()
         for layer in self.CNN:
