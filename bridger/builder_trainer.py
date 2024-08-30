@@ -243,12 +243,14 @@ class BackwardAlgorithm:
         env: gym.Env,
         move_backward_threshold: float,
         move_backward_window_size: int,
+        jitter: int,
     ):
         self.iteration = 0
         self._move_backward_window = [False] * move_backward_window_size
         self._move_backward_window_index = 0
         self._move_backward_threshold = move_backward_threshold
         self._success_entry = success_entry
+        self._jitter = jitter
 
         state = env.reset()
         self._start_states = []
@@ -260,8 +262,10 @@ class BackwardAlgorithm:
         self._trajectory_index = len(self._start_states) - 1
 
     def state(self) -> np.ndarray:
-        # TODO(lyric): Initial impl: just return the current trajectory index without jitter
-        return self._start_states[self._trajectory_index]
+        start = max(-1 * self._jitter + self._trajectory_index, 0)
+        stop = min(self._jitter + self._trajectory_index, len(self._start_states) - 1)
+        offset = np.random.randint(start, stop + 1)
+        return self._start_states[offset]
 
     def move_backward_if_necessary(
         self, builder_fn: Callable[[np.ndarray], builder.BuildResult]
@@ -314,6 +318,7 @@ class BackwardAlgorithmManager:
         episode_length: int,
         move_backward_threshold: float,
         move_backward_window_size: int,
+        jitter: int,
     ):
         self._backward_algorithms = [
             BackwardAlgorithm(
@@ -321,6 +326,7 @@ class BackwardAlgorithmManager:
                 env=env,
                 move_backward_threshold=move_backward_threshold,
                 move_backward_window_size=move_backward_window_size,
+                jitter=jitter,
             )
             for success_entry in success_entries
         ]
@@ -470,7 +476,9 @@ class BridgeBuilderModel(lightning.LightningModule):
         # TODO(lyric): Delete convenience override after a little more testing.
         success_entries = {
             SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
-            # SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
+            # SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1)),
+            # SuccessEntry(trajectory=(4, 0, 1, 3), rewards=(-0.1, -0.1, -0.1, -0.1))
+            # SuccessEntry(trajectory=(0, 6, 1, 5, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
         }
 
         self._backward_algorithm_manager = BackwardAlgorithmManager(
@@ -480,6 +488,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             episode_length=self.hparams.max_episode_length,
             move_backward_threshold=0.5,
             move_backward_window_size=11,
+            jitter=self.hparams.jitter,
         )
 
         self._make_initial_memories()
