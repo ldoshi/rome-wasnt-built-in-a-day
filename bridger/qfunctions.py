@@ -128,7 +128,7 @@ class CNNQ(lightning.LightningModule):
         self.image_width = image_width
 
         paddings = [1, 1]
-        strides = [2, 1]
+        strides = [1, 1]
         kernel_sizes = [3, 3]
         channel_nums = [3, 4, 8]
 

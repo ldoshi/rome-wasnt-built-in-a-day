@@ -338,9 +338,10 @@ class BackwardAlgorithmManager:
             render=False,
         )
 
-    def state(self) -> np.ndarray:
+    def state(self) -> torch.tensor:
         entry_index = np.random.randint(low=0, high=len(self._backward_algorithms))
-        return self._backward_algorithms[entry_index].state()
+        state = self._backward_algorithms[entry_index].state()
+        return state
 
     def move_backward_if_necessary(self) -> tuple[int, int]:
         moved_backward_count = 0
@@ -458,7 +459,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         self.memories = self._memory_generator()
 
         self.next_action = None
-        self.state = self.env.reset()
+
         self._breakpoint = {"step": 0, "episode": 0}
 
         self._action_inversion_checker = None
@@ -491,7 +492,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             move_backward_window_size=11,
             jitter=self.hparams.jitter,
         )
-
+        self.state = self.env.reset(self._backward_algorithm_manager.state())
         self._make_initial_memories()
 
     @property
