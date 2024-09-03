@@ -5,6 +5,7 @@ object log to the TrainingHistoryDatabase, which supports queries on
 top of logged data.
 
 """
+
 import bisect
 import collections
 import copy
@@ -349,6 +350,7 @@ class TrainingHistoryDatabase:
             )
         self._td_errors.finalize()
 
+        self._batch_action_frequency = StateActionMetricMap()
         self._replay_buffer_state_counts = MetricMap[dict[int, int]]()
         for entry in _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY):
             self._replay_buffer_state_counts.add(
@@ -357,7 +359,17 @@ class TrainingHistoryDatabase:
                     id: count for id, count in entry.replay_buffer_state_counts
                 },
             )
+            assert len(entry.state_ids) == len(entry.actions)
+            for state_id, action in zip(entry.state_ids, entry.actions):
+                action = int(action.item())
+                self._batch_action_frequency.add(
+                    state_id=state_id,
+                    action=action,
+                    batch_idx=entry.batch_idx,
+                    metric_value=action,
+                )
 
+        self._batch_action_frequency.finalize()
         self._replay_buffer_state_counts.finalize()
 
         self.nA = self._td_errors.nA
@@ -402,6 +414,34 @@ class TrainingHistoryDatabase:
           values.
         """
         return self._td_errors.get(
+            state_id=state_id,
+            action=action,
+            start_batch_idx=start_batch_idx,
+            end_batch_idx=end_batch_idx,
+        )
+
+    def get_batch_action_frequencies(
+        self,
+        state_id: int,
+        action: int,
+        start_batch_idx: Optional[int] = None,
+        end_batch_idx: Optional[int] = None,
+    ) -> tuple[list[int], list[float]]:
+        """Retrieves batch-action frequency values for the requested state and action.
+
+        Args:
+          state_id: The state id for which to retrieve td errors.
+          action: The action for which to retrieve td errors.
+          start_batch_idx: The first batch index (inclusive) to consider
+            when filtering the data.
+          end_batch_idx: The last batch index (inclusive) to consider
+            when filtering the data.
+
+        Returns:
+          A tuple of lists of the same length. The first contains
+          batch_idxs and the second contains corresponding action values.
+        """
+        return self._batch_action_frequency.get(
             state_id=state_id,
             action=action,
             start_batch_idx=start_batch_idx,

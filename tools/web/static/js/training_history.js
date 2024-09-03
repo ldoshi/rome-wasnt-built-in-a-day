@@ -153,7 +153,7 @@ function render_plots() {
 	render_state_plot(i, row_data);
 	for (let metric_index = 0; metric_index < row_data['metrics'].length; metric_index++) {
 	    let metric_entry = row_data['metrics'][metric_index];
-	    render_training_plot(metric_entry['metric'], i, metric_index, _DATA['labels'], metric_entry['series_data'], metric_entry['series_labels']);
+	    render_training_plot(metric_entry['metric'], i, metric_index, _DATA['labels'], metric_entry['series_data'], metric_entry['series_labels'], metric_entry['plot_type']);
 	}
     }
 }
@@ -174,7 +174,7 @@ function create_plot_div_structure(state_count, metric_count) {
     $("#plots-holder").html(plot_divs)
 }
 
-function render_training_plot(metric, state_index, metric_index, labels, series_data, series_labels) {
+function render_training_plot(metric, state_index, metric_index, labels, series_data, series_labels, plot_type) {
     let canvas_id = `plot-canvas-${state_index}-metric-${metric_index}`;
     training_plot_html = `<canvas id="${canvas_id}" class="plot-canvas"></canvas>`;
     $(`#plot-holder-${state_index}-metric-${metric_index}`).html(training_plot_html);
@@ -193,7 +193,7 @@ function render_training_plot(metric, state_index, metric_index, labels, series_
     chart_options['plugins']['title']['text'] = metric;
     chart_options['scales']['x']['title']['text'] = 'Batch Index';
     new Chart($(`#${canvas_id}`), {
-	type: 'line',
+	type: plot_type,
 	data: {
             labels: labels,
             datasets: datasets
