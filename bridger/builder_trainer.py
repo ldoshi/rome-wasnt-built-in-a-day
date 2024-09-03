@@ -462,6 +462,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         self._breakpoint = {"step": 0, "episode": 0}
 
         self._action_inversion_checker = None
+        self._moved_backwards: int = 0
         if self.hparams.debug_action_inversion_checker:
             actions = get_actions_for_standard_configuration(self.hparams.env_width)
             self._action_inversion_checker = (
@@ -474,15 +475,15 @@ class BridgeBuilderModel(lightning.LightningModule):
         #     self.hparams.go_explore_success_entries_path
         # )[0]
         # TODO(lyric): Delete convenience override after a little more testing.
-        success_entries = {
-            SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
-            # SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1)),
-            # SuccessEntry(trajectory=(4, 0, 1, 3), rewards=(-0.1, -0.1, -0.1, -0.1))
+        self._success_entries = {
+            # SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
+            SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1)),
+            SuccessEntry(trajectory=(4, 0, 1, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
             # SuccessEntry(trajectory=(0, 6, 1, 5, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
         }
 
         self._backward_algorithm_manager = BackwardAlgorithmManager(
-            success_entries=success_entries,
+            success_entries=self._success_entries,
             env=self._validation_env,
             policy=self._validation_policy,
             episode_length=self.hparams.max_episode_length,
@@ -534,6 +535,8 @@ class BridgeBuilderModel(lightning.LightningModule):
         moved_backward_count, completed_count = (
             self._backward_algorithm_manager.move_backward_if_necessary()
         )
+        self._moved_backwards += moved_backward_count
+
         if moved_backward_count:
             print(
                 "Moved backward ",
@@ -542,9 +545,16 @@ class BridgeBuilderModel(lightning.LightningModule):
                 completed_count,
                 " completed.",
             )
+
+        # self.add_custom_scalar(
+        #     "maximum_move_backwards",
+        #     sum(
+        #         len(success_entry.trajectory) - 1 for success_entry in self._success_entries
+        #     ),
+        # )
         self.log(
             "moved_backward_count",
-            moved_backward_count,
+            self._moved_backwards,
             on_step=False,
             on_epoch=True,
             prog_bar=False,
