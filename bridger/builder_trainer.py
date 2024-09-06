@@ -574,17 +574,17 @@ class BridgeBuilderModel(lightning.LightningModule):
 
     def _record_q_values_debug_helper(self) -> None:
         """Compute and log q values."""
-        frequently_visted_states = self._state_visit_logger.get_top_n(
+        frequently_visited_states = self._state_visit_logger.get_top_n(
             _FREQUENTLY_VISITED_STATE_COUNT
         )
         if torch.cuda.is_available():
             frequently_visted_states = [x.cuda() for x in frequently_visted_states]
 
-        frequently_visted_states_tensor = torch.stack(frequently_visted_states)
+        frequently_visited_states_tensor = torch.stack(frequently_visited_states)
         for state, q_values, q_target_values in zip(
-            frequently_visted_states,
-            self.q_manager.q(frequently_visted_states_tensor).tolist(),
-            self.q_manager.target(frequently_visted_states_tensor).tolist(),
+            frequently_visited_states,
+            self.q_manager.q(frequently_visited_states_tensor).tolist(),
+            self.q_manager.target(frequently_visited_states_tensor).tolist(),
         ):
             state_id = self._state_logger.get_logged_object_id(state)
             for action, (q_value, q_target_value) in enumerate(

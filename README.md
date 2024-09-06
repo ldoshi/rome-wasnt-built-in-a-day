@@ -28,7 +28,7 @@ Today, the bot is learning to build simple bridges across a gap on a 2D grid.
 
 You will need the [gym-bridges](https://github.com/ldoshi/gym-bridges) repo for running the environment.
 
-* Create a virtualenv with _Python 3.9.6_, and activate it.
+* Create a virtualenv with _Python 3.10.*_, and activate it.
   * If you're using python directly
 
     `python3 -m venv venv`
@@ -37,7 +37,7 @@ You will need the [gym-bridges](https://github.com/ldoshi/gym-bridges) repo for 
 
   * If you're using miniconda
 
-    `conda create -n rome python=3.9.6`
+    `conda create -n rome python=3.10.*`
 
     `conda activate rome`
 

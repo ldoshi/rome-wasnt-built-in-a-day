@@ -57,7 +57,11 @@ def _get_int_or_default(name: str, default: Optional[int] = None) -> Optional[in
 
 
 def _get_experiment_names() -> list[str]:
-    return [x for x in sorted(os.listdir(_LOG_DIR)) if x != log_entry.STATE_NORMALIZED_LOG_ENTRY]
+    return [
+        x
+        for x in sorted(os.listdir(_LOG_DIR))
+        if x != log_entry.STATE_NORMALIZED_LOG_ENTRY
+    ]
 
 
 @app.route("/training_history_plot_data", methods=["GET"])
@@ -86,9 +90,20 @@ def training_history_plot_data():
     max_batch_idx = end_batch_idx if end_batch_idx is not None else start_batch_idx
 
     metrics_and_data_fns = [
-        ("td_error", "TD Error", training_history_database.get_td_errors),
-        ("q_value", "Q", training_history_database.get_q_values),
-        ("q_target_value", "Q Target", training_history_database.get_q_target_values),
+        ("td_error", "TD Error", training_history_database.get_td_errors, "line"),
+        ("q_value", "Q", training_history_database.get_q_values, "line"),
+        (
+            "q_target_value",
+            "Q Target",
+            training_history_database.get_q_target_values,
+            "line",
+        ),
+        (
+            "batch_action_frequency",
+            "Sampled in Batch",
+            training_history_database.get_batch_action_frequencies,
+            "scatter",
+        ),
     ]
     for visit_entry in state_visits:
         state_plot_data = {
@@ -97,7 +112,7 @@ def training_history_plot_data():
             "metrics": [],
         }
 
-        for metric, metric_display_name, data_fn in metrics_and_data_fns:
+        for metric, metric_display_name, data_fn, plot_type in metrics_and_data_fns:
             series_data = []
             series_labels = []
             for action in range(training_history_database.nA):
@@ -142,6 +157,7 @@ def training_history_plot_data():
                     "metric": metric_display_name,
                     "series_data": series_data,
                     "series_labels": series_labels,
+                    "plot_type": plot_type,
                 }
             )
 
@@ -168,10 +184,17 @@ def replay_buffer_state_counts_plot_data():
         data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
     )
 
+    # State visits are sorted by most visited to least visited.
+    replay_buffer_states_by_visit_count = [
+        visit_entry.state.tolist()
+        for visit_entry in training_history_database.get_states_by_visit_count()
+    ]
+
     (
         _,
         replay_buffer_state_counts_by_batch,
     ) = training_history_database.get_replay_buffer_state_counts()
+
     # Sum the replay buffer_state_counts.
     total_replay_buffer_state_counts = Counter()
     for batch_replay_buffer_state_counts in replay_buffer_state_counts_by_batch:
@@ -181,6 +204,7 @@ def replay_buffer_state_counts_plot_data():
     print(f"Sibyl replay buffer state counts took {end-start} ms.")
     return {
         "total_replay_buffer_state_counts": total_replay_buffer_state_counts,
+        "replay_buffer_states_by_visit_count": replay_buffer_states_by_visit_count,
     }
 
 
