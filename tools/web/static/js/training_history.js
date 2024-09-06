@@ -172,7 +172,8 @@ function render_plots() {
         metric_index,
         _DATA["labels"],
         metric_entry["series_data"],
-        metric_entry["series_labels"]
+        metric_entry["series_labels"],
+        metric_entry['plot_type']
       );
     }
   }
@@ -200,7 +201,8 @@ function render_training_plot(
   metric_index,
   labels,
   series_data,
-  series_labels
+  series_labels,
+  plot_type
 ) {
   let canvas_id = `plot-canvas-${state_index}-metric-${metric_index}`;
   training_plot_html = `<canvas id="${canvas_id}" class="plot-canvas"></canvas>`;
@@ -222,7 +224,7 @@ function render_training_plot(
   chart_options["plugins"]["title"]["text"] = metric;
   chart_options["scales"]["x"]["title"]["text"] = "Batch Index";
   new Chart($(`#${canvas_id}`), {
-    type: "line",
+    type: plot_type,
     data: {
       labels: labels,
       datasets: datasets,
