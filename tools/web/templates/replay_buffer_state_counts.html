@@ -1,4 +1,5 @@
 <script src= {{ url_for('static',filename='js/replay_buffer_state_counts.js') }}></script>
+<link rel= "stylesheet" type= "text/css" href= {{ url_for('static',filename='css/replay_buffer_state_counts.css') }}>
 
 {% extends 'base.html' %}
 
@@ -27,6 +28,7 @@
 
     <div id="plots-holder"></div>
     <div id="histogram-holder" width="700px"></div>
+    <div id="state-holder" width="700px"></div>
 
     <script>
       $( document ).ready(function() {
