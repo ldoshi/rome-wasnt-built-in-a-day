@@ -36,7 +36,7 @@ class ObjectLogManager:
         Args:
           object_logging_base_dir: The name of the directory to create.
           experiment_name: The name of the experiment to create.
-          create_experiment_dir: Whether to create a file directory with the 
+          create_experiment_dir: Whether to create an experiment file directory.
         """
         self._object_loggers = {}
         self._base_dir = object_logging_base_dir
