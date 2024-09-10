@@ -1,0 +1,21 @@
+name: Lint
+on: [pull_request, push]
+permissions:
+  checks: write
+  contents: write
+jobs:
+  run-linters:
+    name: Run Linters
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out main repository
+        uses: actions/checkout@v3
+    
+      - name: Run linters
+        uses: wearerequired/lint-action@v2.3.0
+        uses: psf/black@stable
+        with:
+          auto_fix: true
+          black: true
+          black_auto_fix: true
