@@ -29,17 +29,6 @@ jobs:
           cd rome/
           pip install -r requirements.txt
           pip install -r dev_requirements.txt
-      - name: Lint with black and auto-fix
-        uses: wearerequired/lint-action@v2.3.0
-        with:
-          auto_fix: true
-          black_dir: rome/
-          black: true
-          black_auto_fix: true
-      - name: Lint with black (re-check)
-        uses: psf/black@stable
-        with:
-          version: "24.4.0"
       - name: Check types with pytype
         run: |
           cd rome/bridger
