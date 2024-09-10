@@ -10,6 +10,7 @@ Usage:
     logger.log("buffer", buffer_event)
 
 """
+
 from typing import Any, Callable, Optional
 
 import collections
@@ -25,10 +26,16 @@ from collections.abc import Hashable
 from bridger.logging_utils import log_entry
 from bridger.logging_utils.object_log_readers import read_object_log
 
+
 class ObjectLogManager:
     """Provides a unified interface to log pickle-able objects."""
 
-    def __init__(self, object_logging_base_dir: str, experiment_name: str, create_experiment_dir: bool = False):
+    def __init__(
+        self,
+        object_logging_base_dir: str,
+        experiment_name: str,
+        create_experiment_dir: bool = False,
+    ):
         """Creates directory dirname to store logs.
 
         Clears the contents of the directory if the dirname existed previously.
@@ -36,7 +43,7 @@ class ObjectLogManager:
         Args:
           object_logging_base_dir: The name of the directory to create.
           experiment_name: The name of the experiment to create.
-          create_experiment_dir: Whether to create a file directory with the 
+          create_experiment_dir: Whether to create a file directory with the
         """
         self._object_loggers = {}
         self._base_dir = object_logging_base_dir
@@ -46,7 +53,6 @@ class ObjectLogManager:
         if create_experiment_dir:
             path = pathlib.Path(self._experiment_dir)
             path.mkdir(parents=True, exist_ok=True)
-
 
     def __enter__(self):
         return self
@@ -228,7 +234,6 @@ class LoggerAndNormalizer:
 # tracking as a sliding window over the most recent b batches instead
 # over all time.
 class OccurrenceLogger:
-
     """Logs the occurrence of an object with its batch_idx.
 
     The OccurrenceLogger also maintains metadata of how frequently
