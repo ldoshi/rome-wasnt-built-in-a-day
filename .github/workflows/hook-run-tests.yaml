@@ -20,6 +20,12 @@ jobs:
         with:
           repository: ldoshi/gym-bridges
           path: gym-bridges
+      - name: Linter
+        uses: wearerequired/lint-action@v2.3.0
+        with:
+          auto_fix: true
+          black: true
+          black_auto_fix: true
       - name: Build gym-bridges
         run: |
           cd gym-bridges/
@@ -29,11 +35,6 @@ jobs:
           cd rome/
           pip install -r requirements.txt
           pip install -r dev_requirements.txt
-      - name: Auto-fixing for Linter
-        uses: wearerequired/lint-action@v2.3.0
-        with:
-          black: true
-          bkac_auto_fix: true
       - name: Check types with pytype
         run: |
           cd rome/bridger
