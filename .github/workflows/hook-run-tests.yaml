@@ -29,14 +29,11 @@ jobs:
           cd rome/
           pip install -r requirements.txt
           pip install -r dev_requirements.txt
-      - name: Lint with black
-        uses: psf/black@stable
-        with:
-          version: "24.4.0"
       - name: Auto-fixing for Linter
         uses: wearerequired/lint-action@v2.3.0
         with:
           black: true
+          bkac_auto_fix: true
       - name: Check types with pytype
         run: |
           cd rome/bridger
