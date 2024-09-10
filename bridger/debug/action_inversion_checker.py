@@ -157,11 +157,13 @@ class ActionInversionChecker:
                 preferred_actions.append((index, action_list[action_index]))
 
         if preferred_actions:
-            self._states_to_preferred_actions[
-                self._state_hash_fn(state)
-            ] = PreferredActionEntry(
-                state=torch.Tensor(state),
-                preferred_actions=set([element[1] for element in preferred_actions]),
+            self._states_to_preferred_actions[self._state_hash_fn(state)] = (
+                PreferredActionEntry(
+                    state=torch.Tensor(state),
+                    preferred_actions=set(
+                        [element[1] for element in preferred_actions]
+                    ),
+                )
             )
 
             for index, action in preferred_actions:
