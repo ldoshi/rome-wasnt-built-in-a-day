@@ -33,6 +33,10 @@ jobs:
         uses: psf/black@stable
         with:
           version: "24.4.0"
+      - name: Auto-fixing for Linter
+        uses: wearerequired/lint-action@v2.3.0
+        with:
+          black: true
       - name: Check types with pytype
         run: |
           cd rome/bridger
