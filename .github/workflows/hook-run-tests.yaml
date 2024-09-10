@@ -33,6 +33,7 @@ jobs:
         uses: wearerequired/lint-action@v2.3.0
         with:
           auto_fix: true
+          black_dir: rome/
           black: true
           black_auto_fix: true
       - name: Lint with black (re-check)
