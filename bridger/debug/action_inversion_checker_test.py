@@ -1,4 +1,5 @@
 """Tests for the action_inversion_checker tool."""
+
 import unittest
 
 import copy

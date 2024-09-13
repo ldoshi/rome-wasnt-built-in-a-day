@@ -58,7 +58,9 @@ def run():
 
     full_experiment_name = _get_full_experiment_name(hparams.experiment_name)
     with object_logging.ObjectLogManager(
-        hparams.object_logging_base_dir, full_experiment_name, create_experiment_dir=hparams.debug
+        hparams.object_logging_base_dir,
+        full_experiment_name,
+        create_experiment_dir=hparams.debug,
     ) as object_log_manager:
         if hparams.load_checkpoint_path:
             # TODO(arvind): Decide on and implement the functionality we'd like to

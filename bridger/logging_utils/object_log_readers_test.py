@@ -259,7 +259,7 @@ class TestTrainingHistoryDatabase(unittest.TestCase):
 
         state_ids = list(range(3))
         actions = [0, 1, 2]
-        for (state_id, action) in itertools.product(state_ids, actions):
+        for state_id, action in itertools.product(state_ids, actions):
             batch_idxs, td_errors = self.training_history_database.get_td_errors(
                 state_id=state_id, action=action
             )
