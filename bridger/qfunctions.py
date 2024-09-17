@@ -272,20 +272,20 @@ class TabularQ(torch.nn.Module):
 
         state_hashes = set()
         state_hashes.add(self._internal_hash(env.reset()))
-
         with multiprocessing.Pool() as pool:
             for hashes in pool.map(
                 _collect_parameters_function,
                 itertools.product(range(env.nA), repeat=initial_brick_count),
             ):
                 state_hashes.update(hashes)
-
         for state_hash in state_hashes:
+            # Remove decimals from string representation of state hashes. torch.nn.Parameter does not support `.` in Parameter name.
+            state_hash = state_hash.replace(".0", "")
             self._q[state_hash] = torch.nn.Parameter(
                 torch.rand(env.nA, requires_grad=True)
             )
 
-    def _internal_hash(self, x) -> str:
+    def _internal_hash(self, x: torch.Tensor) -> str:
         """Hashes states per component requirements.
 
         ParameterDict does not allow non-str as dict keys. The
