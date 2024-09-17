@@ -51,7 +51,7 @@ class DatasetGenerator:
         self._log_filename_directory: str = log_filename_directory
         self._n_bricks: int = n_bricks
         self._k: int = k
-        self._bridges: list[np.array] = []
+        self._bridges: list[np.ndarray] = []
         self._is_bridge: list[bool] = []
         self._is_bridge_and_uses_less_than_k_bricks: list[bool] = []
         self._bridge_height: list[int] = []
@@ -65,8 +65,7 @@ class DatasetGenerator:
                     [brick == self._env.StateType.BRICK for brick in row]
                     for row in next_state
                 ]
-                // 2
-            )
+            ) // 2
 
             # Calculate the height of the state.
             bridge_height = next_state.shape[0] - 1
