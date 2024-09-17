@@ -134,9 +134,12 @@ class CNNQ(torch.nn.Module):
             H = int((H + 2 * padding - kernel_size) / stride) + 1
             W = int((W + 2 * padding - kernel_size) / stride) + 1
         C = channel_nums[-1]
-        dense_widths = [C * H * W, 64, num_actions]
+        dense_widths = [C * H * W, 64]
         args_iter = zip(dense_widths[:-1], dense_widths[1:])
         self.DNN = torch.nn.ModuleList([torch.nn.Linear(*args) for args in args_iter])
+
+        self.action_head = torch.nn.Linear(in_features=64, out_features=num_actions)
+        self.value_head = torch.nn.Linear(in_features=64, out_features=1)
 
     def forward(self, x):
         x = x.reshape(-1, self.image_height, self.image_width)
@@ -146,7 +149,11 @@ class CNNQ(torch.nn.Module):
         x = self.DNN[0](x.reshape(x.shape[0], -1))
         for layer in self.DNN[1:]:
             x = layer(torch.relu(x))
-        return x
+
+        action_logits = self.action_head(x)
+        value_logit = self.value_head(x)
+
+        return F.softmax(action_logits, dim=1), torch.tanh(value_logit)
 
 
 def encode_enum_state_to_channels(state_tensor: torch.Tensor, num_channels: int):
