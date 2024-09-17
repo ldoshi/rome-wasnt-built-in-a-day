@@ -60,12 +60,15 @@ class DatasetGenerator:
 
     def generate_dataset(self):
         for _, _, next_state, _, done in n_bricks(self._n_bricks, self._env):
-            brick_count = np.sum(
-                [
-                    [brick == self._env.StateType.BRICK for brick in row]
-                    for row in next_state
-                ]
-            ) // 2
+            brick_count = (
+                np.sum(
+                    [
+                        [brick == self._env.StateType.BRICK for brick in row]
+                        for row in next_state
+                    ]
+                )
+                // 2
+            )
 
             # Calculate the height of the state.
             bridge_height = next_state.shape[0] - 1
