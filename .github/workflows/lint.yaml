@@ -1,0 +1,30 @@
+name: Lint
+on: [pull_request, push]
+permissions:
+  checks: write
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10.9"]
+    steps:
+      - name: Set up Python ${{ matrix.python-version}}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+      - name: Install Black
+        run: pip install black
+      - name: Lint with black and auto-fix
+        uses: wearerequired/lint-action@v2.3.0
+        with:
+          auto_fix: true
+          black: true
+          black_auto_fix: true
+      - name: Lint with black (re-check)
+        uses: psf/black@stable
+        with:
+          version: "24.4.0"

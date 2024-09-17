@@ -41,8 +41,10 @@ def _only_reset_state(
         next_state, reward, done, _ = env.step(action)
         yield state, action, next_state, reward, done
 
-        
-def _single_column(env: gym.Env) -> Generator[tuple[Any, Any, Any, Any, Any], None, None]:
+
+def _single_column(
+    env: gym.Env,
+) -> Generator[tuple[Any, Any, Any, Any, Any], None, None]:
     state = env.reset()
     for i in range(10):
         for action in range(env.nA):
@@ -51,8 +53,8 @@ def _single_column(env: gym.Env) -> Generator[tuple[Any, Any, Any, Any, Any], No
             yield state, action, next_state, reward, done
 
         env.reset(state)
-        state, _, _, _ = env.step(0)  
-        
+        state, _, _, _ = env.step(0)
+
 
 def _standard_configuration_bridge_states(
     env: gym.Env,
@@ -132,7 +134,7 @@ def _n_bricks(
 
 
 STRATEGY_ONLY_RESET_STATE = "only_reset_state"
-STRATEGY_SINGLE_COLUMN = "single_column"            
+STRATEGY_SINGLE_COLUMN = "single_column"
 STRATEGY_STANDARD_CONFIGURATION_BRIDGE_STATES = "standard_configuration_bridge_states"
 STRATEGY_2_BRICKS = "2_bricks"
 STRATEGY_4_BRICKS = "4_bricks"
@@ -189,7 +191,7 @@ def initialize_replay_buffer(
         )
 
     experience_count = 0
-    for (state, action, next_state, reward, done) in _STRATEGY_MAP[strategy](env=env):
+    for state, action, next_state, reward, done in _STRATEGY_MAP[strategy](env=env):
 
         if state_visit_logger:
             state_visit_logger.log_occurrence(

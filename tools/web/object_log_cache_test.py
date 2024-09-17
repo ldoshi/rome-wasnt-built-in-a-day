@@ -1,4 +1,5 @@
 """Tests for object_log_cache."""
+
 import unittest
 
 import shutil
