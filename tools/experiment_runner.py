@@ -73,7 +73,7 @@ def _executor(
     experiment_name_prefix: str,
     args: list[Any],
     sweep_keys: list[str],
-    iteration_values: list[list[Any]],
+    iteration_values: tuple[Any],
 ) -> list[str]:
 
     iteration_args = copy.deepcopy(args)
