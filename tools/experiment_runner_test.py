@@ -37,7 +37,7 @@ def _get_value(args: list[str], key: str) -> str:
 
 
 def _execute_fn(args: list[str]) -> None:
-    return args
+    return
 
 
 class ExperimentRunnerTest(unittest.TestCase):
