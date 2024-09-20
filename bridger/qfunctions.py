@@ -279,8 +279,6 @@ class TabularQ(torch.nn.Module):
             ):
                 state_hashes.update(hashes)
         for state_hash in state_hashes:
-            # Remove decimals from string representation of state hashes. torch.nn.Parameter does not support `.` in Parameter name.
-            state_hash = state_hash.replace(".0", "")
             self._q[state_hash] = torch.nn.Parameter(
                 torch.rand(env.nA, requires_grad=True)
             )
@@ -293,7 +291,7 @@ class TabularQ(torch.nn.Module):
         and tensors consistent.
         """
 
-        return str(self._hash_fn(x))
+        return str(self._hash_fn(x.int()))
 
     def forward(self, x):
         # The tensor must be converted to int to match the state hash
