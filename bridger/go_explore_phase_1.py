@@ -12,6 +12,7 @@ from bridger.logging_utils.object_logging import ObjectLogManager
 from bridger import config
 from bridger.logging_utils.log_entry import SuccessEntry
 
+
 @dataclass
 class CacheEntry:
     trajectory: tuple[int]
@@ -19,6 +20,7 @@ class CacheEntry:
     steps_since_led_to_something_new: int = 0
     sampled_count: int = 0
     visit_count: int = 1
+
 
 class SuccessEntryGenerator:
     def __init__(
@@ -48,6 +50,7 @@ class SuccessEntryGenerator:
             for success_entries in pool.map(_collect_generate_success_entry, seeds):
                 self.success_entries.update(set(success_entries))
 
+
 class StateCache:
 
     _cache: dict[Any, CacheEntry] = {}
@@ -55,7 +58,9 @@ class StateCache:
     def __init__(self, rng):
         self._rng = rng
 
-    def update_times_since_led_to_something_new(self, state, led_to_something_to_new: bool) -> None:
+    def update_times_since_led_to_something_new(
+        self, state, led_to_something_to_new: bool
+    ) -> None:
         key = hash_utils.hash_tensor(state)
         assert key in self._cache
         if led_to_something_to_new:
@@ -68,7 +73,10 @@ class StateCache:
         if key in self._cache:
             entry = self._cache[key]
             entry.visit_count += 1
-            if sum(rewards) > sum(entry.rewards) or (sum(rewards) == sum(entry.rewards) and len(trajectory) < len(entry.trajectory)):
+            if sum(rewards) > sum(entry.rewards) or (
+                sum(rewards) == sum(entry.rewards)
+                and len(trajectory) < len(entry.trajectory)
+            ):
                 entry.rewards = rewards
                 entry.trajectory = trajectory
         else:
@@ -83,6 +91,7 @@ class StateCache:
         entry = self._cache[key]
         entry.sampled_count += 1
         return (torch.tensor(key[1]).reshape(key[0]), entry)
+
 
 def generate_success_entry(
     env: BridgesEnv, num_iterations: int, num_actions: int, seed: int
@@ -110,7 +119,9 @@ def rollout(rng, env, start_state, start_entry, cache, num_actions, success_entr
         next_state, reward, done, _ = env.step(action)
         rewards += (reward,)
         if done:
-            success_entries.append(SuccessEntry(trajectory=current_trajectory, rewards=rewards))
+            success_entries.append(
+                SuccessEntry(trajectory=current_trajectory, rewards=rewards)
+            )
             led_to_something_new = True
             break
 
@@ -118,11 +129,13 @@ def rollout(rng, env, start_state, start_entry, cache, num_actions, success_entr
 
     cache.update_times_since_led_to_something_new(start_state, led_to_something_new)
 
+
 def explore(rng, env, cache, num_iterations, num_actions, success_entries):
 
     for _ in range(num_iterations):
         start_state, start_entry = cache.sample()
         rollout(rng, env, start_state, start_entry, cache, num_actions, success_entries)
+
 
 if __name__ == "__main__":
     parser = config.get_hyperparam_parser(

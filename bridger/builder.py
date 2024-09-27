@@ -88,7 +88,7 @@ class BuildEvaluator:
         Returning the full ordered list enables comparing success and
         failure points for different policies.
 
-       """
+        """
         return np.array([build_result.reward for build_result in self._build_results])
 
     @property
