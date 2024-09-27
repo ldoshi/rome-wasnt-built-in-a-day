@@ -101,7 +101,5 @@ hparam_dict[key]["help"] = help_str
 
 key = "tag"
 hparam_dict[key] = {"type": str, "default": ""}
-help_str = (
-    "A tag to keep notes on the experiment run"
-)
+help_str = "A tag to keep notes on the experiment run"
 hparam_dict[key]["help"] = help_str
