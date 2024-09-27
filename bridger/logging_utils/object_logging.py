@@ -20,6 +20,7 @@ import pickle
 import os
 import pathlib
 import torch
+import json
 
 from collections.abc import Hashable
 
@@ -369,3 +370,16 @@ class ObjectLogger:
     def close(self):
         self._flush_buffer()
         self._log_file.close()
+
+
+MODEL_PARAMETERS_JSON = "hparams.json"
+
+
+def log_model_parameters(
+    object_log_manager: ObjectLogManager, model_parameters: dict[str, str]
+):
+    """Logs experiment run-time arguments in experiment directory for historical look-back."""
+    with open(
+        os.path.join(object_log_manager._experiment_dir, MODEL_PARAMETERS_JSON), "w"
+    ) as f:
+        f.write(json.dumps(model_parameters))
