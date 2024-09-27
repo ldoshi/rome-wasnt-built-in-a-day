@@ -70,6 +70,7 @@ class QManagerTest(unittest.TestCase):
         # details for creating keys from both TabularQManager and
         # ParameterDict. This is suboptimal but was practical.
         x_hashed = f"_q.{str(hash_utils.hash_tensor(x.int()))}"
+
         if x_hashed in q_params:
             params_key = x_hashed
         else:

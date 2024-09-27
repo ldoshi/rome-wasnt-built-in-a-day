@@ -1,4 +1,5 @@
 """Tests for plot_utils."""
+
 import pandas as pd
 import unittest
 

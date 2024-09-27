@@ -461,6 +461,11 @@ class BridgeBuilderModel(lightning.LightningModule):
         self.next_action = None
 
         self._breakpoint = {"step": 0, "episode": 0}
+        if self.hparams.debug:
+            self._model_parameters_logger = object_logging.log_model_parameters(
+                object_log_manager=self._object_log_manager,
+                model_parameters=self.hparams,
+            )
 
         self._action_inversion_checker = None
         self._moved_backwards: int = 0
