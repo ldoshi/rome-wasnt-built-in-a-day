@@ -98,3 +98,8 @@ help_str = (
     "The number of checks with no improvement after which training will be stopped"
 )
 hparam_dict[key]["help"] = help_str
+
+key = "tag"
+hparam_dict[key] = {"type": str, "default": ""}
+help_str = "A tag to keep notes on the experiment run"
+hparam_dict[key]["help"] = help_str
