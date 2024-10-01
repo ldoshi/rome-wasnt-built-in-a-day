@@ -71,7 +71,7 @@ let _COLORS = [
 ];
 
 function render_dropdown(data) {
-  const container = document.getElementById("hparams_data");
+  const container = $("#hparams_data")[0];
   for (const [key, value] of Object.entries(data)) {
     container.value += `${key}: ${value}\n`;
   }
