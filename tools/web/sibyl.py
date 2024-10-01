@@ -109,6 +109,7 @@ def training_history_plot_data():
         state_plot_data = {
             "visit_count": visit_entry.visit_count,
             "state": visit_entry.state.tolist(),
+            "state_idx": visit_entry.state_id,
             "metrics": [],
         }
 
