@@ -3,6 +3,7 @@ import flask
 import os
 import threading
 import time
+import json
 
 from typing import Any, Optional
 
@@ -80,6 +81,10 @@ def training_history_plot_data():
         experiment_name=experiment_name,
         data_key=object_log_cache.TRAINING_HISTORY_DATABASE_KEY,
     )
+
+    hparams_data = None
+    with open(os.path.join(_LOG_DIR, experiment_name, "hparams.json")) as f:
+        hparams_data = json.load(f)
 
     state_visits = training_history_database.get_states_by_visit_count(
         n=number_of_states,
@@ -168,6 +173,7 @@ def training_history_plot_data():
     print(f"Sibyl training_history_plot_data took {end-start} ms.")
     return {
         "plot_data": plot_data,
+        "hparams_data": hparams_data,
         "labels": list(range(min_batch_idx, max_batch_idx + 1)),
     }
 
