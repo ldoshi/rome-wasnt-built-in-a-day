@@ -70,6 +70,13 @@ let _COLORS = [
   "rgba(127, 0, 127, 1)",
 ];
 
+function render_dropdown(data) {
+  const container = document.getElementById("hparams_data");
+  for (const [key, value] of Object.entries(data)) {
+    container.value += `${key}: ${value}\n`;
+  }
+}
+
 let _DATA = null;
 
 let _STATE_FILTER = null;
@@ -86,6 +93,7 @@ function update_plots() {
     function (data, response) {
       _DATA = data;
       render_plots();
+      render_dropdown(_DATA["hparams_data"]);
       $("#current-experiment-name").html(plot_params["experiment_name"]);
     }
   )
@@ -173,7 +181,7 @@ function render_plots() {
         _DATA["labels"],
         metric_entry["series_data"],
         metric_entry["series_labels"],
-        metric_entry['plot_type']
+        metric_entry["plot_type"]
       );
     }
   }
