@@ -1,16 +1,21 @@
 import argparse
+import dataclasses
 import IPython
 import copy
+import functools
 import gym
+import pickle
 import numpy as np
 from bridger import builder
 import lightning
 import torch
 from typing import Union, Optional, Callable, Hashable
+import os
 
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
-
+from bridger.logging_utils import object_log_readers
+from bridger.logging_utils.log_entry import SuccessEntry
 
 from bridger import (
     config,
@@ -131,16 +136,26 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
     The model underpinning the policy refers to the same one being
     trained and will thus evolve over time."""
 
-    def __init__(self, env: gym.Env, policy: policies.Policy, episode_length: int):
+    def __init__(
+        self,
+        env: gym.Env,
+        policy: policies.Policy,
+        episode_length: int,
+        initial_state: np.ndarray,
+    ):
         self._builder = builder.Builder(env)
         self._policy = policy
         self._episode_length = episode_length
+        self._initial_state = initial_state
 
     def __iter__(self):
         """Yields the result of a single building episode each call."""
         while True:
             build_result = self._builder.build(
-                self._policy, self._episode_length, render=False
+                self._policy,
+                self._episode_length,
+                render=False,
+                initial_state=self._initial_state,
             )
             yield [build_result.success, build_result.reward, build_result.steps]
 
@@ -216,6 +231,130 @@ class StateActionCache:
 
 # TODO(arvind): Redesign the signature checking mechanism. Using
 # config.validate_input# is not robust with changes in Lightning functionality
+
+
+# First impl: train until reward is >=. Soften this later, especially
+# if we vary envs and also consider a success rate.
+class BackwardAlgorithm:
+
+    def __init__(
+        self,
+        success_entry: SuccessEntry,
+        env: gym.Env,
+        move_backward_threshold: float,
+        move_backward_window_size: int,
+        jitter: int,
+    ):
+        self.iteration = 0
+        self._move_backward_window = [False] * move_backward_window_size
+        self._move_backward_window_index = 0
+        self._move_backward_threshold = move_backward_threshold
+        self._success_entry = success_entry
+        self._jitter = jitter
+
+        state = env.reset()
+        self._start_states = []
+        for action in self._success_entry.trajectory:
+            self._start_states.append(state)
+            state, reward, done, _ = env.step(action)
+        assert done
+
+        self._trajectory_index = len(self._start_states) - 1
+
+    def state(self) -> np.ndarray:
+        start = max(-1 * self._jitter + self._trajectory_index, 0)
+        stop = min(self._jitter + self._trajectory_index, len(self._start_states) - 1)
+        offset = np.random.randint(start, stop + 1)
+        return self._start_states[offset]
+
+    def move_backward_if_necessary(
+        self, builder_fn: Callable[[np.ndarray], builder.BuildResult]
+    ) -> [bool, bool]:
+        self.iteration += 1
+
+        build_result = builder_fn(initial_state=self.state())
+        entry = build_result.success and (
+            build_result.reward
+            >= sum(self._success_entry.rewards[self._trajectory_index :])
+        )
+        if entry:
+            print(
+                "success at ",
+                self.iteration,
+                " : ",
+                build_result.success,
+                " and reward ",
+                build_result.reward,
+                " vs ",
+                self._success_entry.rewards[self._trajectory_index :],
+            )
+
+        self._move_backward_window[self._move_backward_window_index] = entry
+
+        self._move_backward_window_index = (self._move_backward_window_index + 1) % len(
+            self._move_backward_window
+        )
+
+        #        print("comparing : " ,  (sum(self._move_backward_window) / len(self._move_backward_window)), " vs " , self._move_backward_threshold)
+
+        if (
+            (sum(self._move_backward_window) / len(self._move_backward_window))
+            >= self._move_backward_threshold
+        ) and self._trajectory_index > 0:
+            self._trajectory_index -= 1
+            self._move_backward_window = [False] * len(self._move_backward_window)
+            return True, self._trajectory_index == 0
+
+        return False, self._trajectory_index == 0
+
+
+class BackwardAlgorithmManager:
+
+    def __init__(
+        self,
+        success_entries: set[SuccessEntry],
+        env: gym.Env,
+        policy: policies.Policy,
+        episode_length: int,
+        move_backward_threshold: float,
+        move_backward_window_size: int,
+        jitter: int,
+    ):
+        self._backward_algorithms = [
+            BackwardAlgorithm(
+                success_entry=success_entry,
+                env=env,
+                move_backward_threshold=move_backward_threshold,
+                move_backward_window_size=move_backward_window_size,
+                jitter=jitter,
+            )
+            for success_entry in success_entries
+        ]
+
+        self._build_fn = functools.partial(
+            builder.Builder(env).build,
+            policy=policy,
+            episode_length=episode_length,
+            render=False,
+        )
+
+    def state(self) -> torch.tensor:
+        entry_index = np.random.randint(low=0, high=len(self._backward_algorithms))
+        state = self._backward_algorithms[entry_index].state()
+        return state
+
+    def move_backward_if_necessary(self) -> tuple[int, int]:
+        moved_backward_count = 0
+        completed_count = 0
+
+        for backward_algorithm in self._backward_algorithms:
+            moved_backward, completed = backward_algorithm.move_backward_if_necessary(
+                self._build_fn
+            )
+            moved_backward_count += int(moved_backward)
+            completed_count += int(completed)
+
+        return moved_backward_count, completed_count
 
 
 # pylint: disable=too-many-instance-attributes
@@ -320,7 +459,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         self.memories = self._memory_generator()
 
         self.next_action = None
-        self.state = self.env.reset()
+
         self._breakpoint = {"step": 0, "episode": 0}
         if self.hparams.debug:
             self._model_parameters_logger = object_logging.log_model_parameters(
@@ -329,6 +468,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             )
 
         self._action_inversion_checker = None
+        self._moved_backwards: int = 0
         if self.hparams.debug_action_inversion_checker:
             actions = get_actions_for_standard_configuration(self.hparams.env_width)
             self._action_inversion_checker = (
@@ -337,6 +477,27 @@ class BridgeBuilderModel(lightning.LightningModule):
                 )
             )
 
+
+#        self._success_entries = object_log_manager.read_base_dir_log_file(
+ #           self.hparams.go_explore_success_entries_path
+  #      )
+
+        # TODO(lyric): Delete convenience override after a little more testing.
+        self._success_entries = {
+#        SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
+        #     SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
+            SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
+        }
+        self._backward_algorithm_manager = BackwardAlgorithmManager(
+            success_entries=self._success_entries,
+            env=self._validation_env,
+            policy=self._validation_policy,
+            episode_length=self.hparams.max_episode_length,
+            move_backward_threshold=0.5,
+            move_backward_window_size=11,
+            jitter=self.hparams.jitter,
+        )
+        self.state = self.env.reset(self._backward_algorithm_manager.state())
         self._make_initial_memories()
 
     @property
@@ -358,7 +519,14 @@ class BridgeBuilderModel(lightning.LightningModule):
             self.make_memories(
                 batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
             )
+            
+    def on_before_optimizer_step(self, optimizer):
+        # Compute the 2-norm for each layer
+        # If using mixed precision, the gradients are already unscaled here
+        norms = grad_norm(self.q_manager.q, norm_type=2)
+        self.log_dict(norms)
 
+            
     def on_train_batch_end(
         self,
         outputs: Union[torch.Tensor, dict[str, Any]],
@@ -376,6 +544,44 @@ class BridgeBuilderModel(lightning.LightningModule):
 
         if self.hparams.debug:
             self._record_q_values_debug_helper()
+
+        moved_backward_count, completed_count = (
+            self._backward_algorithm_manager.move_backward_if_necessary()
+        )
+        self._moved_backwards += moved_backward_count
+
+        if moved_backward_count:
+            print(
+                "Moved backward ",
+                moved_backward_count,
+                " with ",
+                completed_count,
+                " completed.",
+            )
+
+        # self.add_custom_scalar(
+        #     "maximum_move_backwards",
+        #     sum(
+        #         len(success_entry.trajectory) - 1 for success_entry in self._success_entries
+        #     ),
+        # )
+        self.log(
+            "moved_backward_count",
+            self._moved_backwards,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "completed_count",
+            completed_count,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+        )
+
         self.make_memories(batch_idx=self.global_step)
 
     def _record_q_values_debug_helper(self) -> None:
@@ -383,6 +589,8 @@ class BridgeBuilderModel(lightning.LightningModule):
         frequently_visited_states = self._state_visit_logger.get_top_n(
             _FREQUENTLY_VISITED_STATE_COUNT
         )
+        if torch.cuda.is_available():
+            frequently_visited_states = [x.cuda() for x in frequently_visited_states]
 
         frequently_visited_states_tensor = torch.stack(frequently_visited_states)
         for state, q_values, q_target_values in zip(
@@ -417,7 +625,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                 _, _, start_state, _, _, _, _ = next(self.memories)
                 if self.hparams.debug:
                     self._state_visit_logger.log_occurrence(
-                        batch_idx=batch_idx, object=torch.from_numpy(start_state)
+                        batch_idx=batch_idx, object=start_state
                     )
 
     def _memory_generator(
@@ -457,7 +665,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                 total_step_idx += 1
                 if success:
                     break
-            self.state = self.env.reset()
+            self.state = self.env.reset(self._backward_algorithm_manager.state())
             episode_idx += 1
 
     def _checkpoint(self, thresholds: dict[str, int]) -> None:
@@ -557,9 +765,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         if self.hparams.interactive_mode and self.next_action is not None:
             action = self.next_action
         else:
-            action = self.policy(
-                torch.as_tensor(state, dtype=torch.float), epsilon=self.epsilon
-            )
+            action = self.policy(state, epsilon=self.epsilon)
 
         next_state, reward, done, _ = self.env.step(action)
         self.state = next_state
@@ -650,14 +856,19 @@ class BridgeBuilderModel(lightning.LightningModule):
 
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
-            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "train_loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
         )
         self.log(
             "epsilon",
             self.epsilon,
-            on_step=True,
+            on_step=False,
             on_epoch=True,
-            prog_bar=True,
+            prog_bar=False,
             logger=True,
         )
 
@@ -779,7 +990,6 @@ class BridgeBuilderModel(lightning.LightningModule):
     def validation_step(self, batch, batch_idx):
         """Runs a single validation step based on a policy."""
         success, rewards, steps = batch
-
         self.log("val_success", torch.sum(success) / len(batch))
         self.log("val_reward", torch.Tensor.float(rewards).mean())
         self.log("val_steps", torch.Tensor.float(steps).mean())
@@ -800,18 +1010,19 @@ class BridgeBuilderModel(lightning.LightningModule):
         return DataLoader(
             self.replay_buffer,
             batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
+            # num_workers=self.hparams.num_workers,
         )
 
     def val_dataloader(self) -> DataLoader:
         return DataLoader(
             ValidationBuilder(
                 env=self._validation_env,
+                initial_state=self._backward_algorithm_manager.state(),
                 policy=self._validation_policy,
                 episode_length=self.hparams.max_episode_length,
             ),
             batch_size=self.hparams.val_batch_size,
-            num_workers=self.hparams.num_workers,
+            #            num_workers=self.hparams.num_workers,
         )
 
     # TODO(arvind): Override hooks to load data appropriately for test

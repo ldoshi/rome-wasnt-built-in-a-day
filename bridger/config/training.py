@@ -99,6 +99,21 @@ help_str = (
 )
 hparam_dict[key]["help"] = help_str
 
+key = "go_explore_success_entries_path"
+hparam_dict[key] = {"type": str, "default": "success_entry/success_entry.pkl"}
+help_str = "Path to the file containing SuccessEntry members discovered by go_explore."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_num_actions"
+hparam_dict[key] = {"type": int, "default": 8}
+help_str = "The number of actions to take in an exploration rollout for go-explore."
+hparam_dict[key]["help"] = help_str
+
+key = "jitter"
+hparam_dict[key] = {"type": int, "default": 0}
+help_str = "The backwards algorithm range in which the state is selected from."
+hparam_dict[key]["help"] = help_str
+
 key = "tag"
 hparam_dict[key] = {"type": str, "default": ""}
 help_str = "A tag to keep notes on the experiment run"

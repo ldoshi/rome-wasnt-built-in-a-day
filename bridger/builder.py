@@ -142,7 +142,11 @@ class Builder:
         self._env = env
 
     def build(
-        self, policy: policies.Policy, episode_length: int, render: bool = True
+        self,
+        policy: policies.Policy,
+        episode_length: int,
+        render: bool = True,
+        initial_state: np.ndarray | None = None,
     ) -> BuildResult:
         """Builds following the provided policy.
 
@@ -160,12 +164,12 @@ class Builder:
           many steps were actually taken. The steps taken may be less
           than episode_length if the construction is successful.
         """
-        state = self._env.reset()
+        state = self._env.reset(initial_state)
         total_reward = 0
         for i in range(episode_length):
             # This lint error seems to be a torch+pylint issue in general.
             # pylint: disable=not-callable
-            state, reward, success, _ = self._env.step(policy(torch.tensor(state)))
+            state, reward, success, _ = self._env.step(policy(state))
             total_reward += reward
             if render:
                 self._env.render()

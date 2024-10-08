@@ -1,4 +1,4 @@
-let _MAX_RENDER_COUNT = 20;
+let _MAX_RENDER_COUNT = 50
 
 let _CHART_OPTIONS_TEMPLATE = {
   scales: {
