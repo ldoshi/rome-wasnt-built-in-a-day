@@ -118,6 +118,7 @@ def run():
             reload_dataloaders_every_n_epochs=1,
             callbacks=callbacks,
             enable_progress_bar=False,
+            detect_anomaly=True
         )
 
         trainer.fit(model)
