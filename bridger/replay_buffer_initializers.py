@@ -53,8 +53,8 @@ def _single_column(
             yield state, action, next_state, reward, done
 
         env.reset(state)
-        state, _, _, _ = env.step(0)  
-        
+        state, _, _, _ = env.step(0)
+
 
 def _debug_env_4(env: gym.Env) -> Generator[tuple[Any, Any, Any, Any, Any], None, None]:
     state = env.reset()
@@ -149,7 +149,7 @@ def _n_bricks(
 
 STRATEGY_ONLY_RESET_STATE = "only_reset_state"
 STRATEGY_SINGLE_COLUMN = "single_column"
-STRATEGY_DEBUG_ENV_4 = "debug_env_4"            
+STRATEGY_DEBUG_ENV_4 = "debug_env_4"
 STRATEGY_STANDARD_CONFIGURATION_BRIDGE_STATES = "standard_configuration_bridge_states"
 STRATEGY_2_BRICKS = "2_bricks"
 STRATEGY_4_BRICKS = "4_bricks"
@@ -215,11 +215,7 @@ def initialize_replay_buffer(
                 object=state,
             )
 
-        state_id = (
-            state_logger.get_logged_object_id(state)
-            if state_logger
-            else None
-        )
+        state_id = state_logger.get_logged_object_id(state) if state_logger else None
 
         add_new_experience(state, action, next_state, reward, done, state_id)
         experience_count += 1

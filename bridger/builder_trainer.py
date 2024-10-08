@@ -477,15 +477,14 @@ class BridgeBuilderModel(lightning.LightningModule):
                 )
             )
 
-
-#        self._success_entries = object_log_manager.read_base_dir_log_file(
- #           self.hparams.go_explore_success_entries_path
-  #      )
+        #        self._success_entries = object_log_manager.read_base_dir_log_file(
+        #           self.hparams.go_explore_success_entries_path
+        #      )
 
         # TODO(lyric): Delete convenience override after a little more testing.
         self._success_entries = {
-#        SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
-        #     SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
+            #        SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
+            #     SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
             SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
         }
         self._backward_algorithm_manager = BackwardAlgorithmManager(
@@ -519,14 +518,13 @@ class BridgeBuilderModel(lightning.LightningModule):
             self.make_memories(
                 batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
             )
-            
+
     def on_before_optimizer_step(self, optimizer):
         # Compute the 2-norm for each layer
         # If using mixed precision, the gradients are already unscaled here
         norms = grad_norm(self.q_manager.q, norm_type=2)
         self.log_dict(norms)
 
-            
     def on_train_batch_end(
         self,
         outputs: Union[torch.Tensor, dict[str, Any]],
