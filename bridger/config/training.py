@@ -113,3 +113,8 @@ key = "jitter"
 hparam_dict[key] = {"type": int, "default": 0}
 help_str = "The backwards algorithm range in which the state is selected from."
 hparam_dict[key]["help"] = help_str
+
+key = "tag"
+hparam_dict[key] = {"type": str, "default": ""}
+help_str = "A tag to keep notes on the experiment run"
+hparam_dict[key]["help"] = help_str

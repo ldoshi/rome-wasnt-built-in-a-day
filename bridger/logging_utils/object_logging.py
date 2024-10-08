@@ -382,4 +382,4 @@ def log_model_parameters(
     with open(
         os.path.join(object_log_manager._experiment_dir, MODEL_PARAMETERS_JSON), "w"
     ) as f:
-        f.write(json.dumps(model_parameters))
+        f.write(json.dumps(model_parameters, indent=4))
