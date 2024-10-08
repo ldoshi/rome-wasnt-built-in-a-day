@@ -477,17 +477,17 @@ class BridgeBuilderModel(lightning.LightningModule):
                 )
             )
 
-        # success_entries = object_log_manager.read_base_dir_log_file(
-        #     self.hparams.go_explore_success_entries_path
-        # )[0]
+
+#        self._success_entries = object_log_manager.read_base_dir_log_file(
+ #           self.hparams.go_explore_success_entries_path
+  #      )
+
         # TODO(lyric): Delete convenience override after a little more testing.
         self._success_entries = {
-            # SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
-            SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1)),
-            SuccessEntry(trajectory=(4, 0, 1, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
-            # SuccessEntry(trajectory=(0, 6, 1, 5, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
+#        SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
+        #     SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
+            SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
         }
-
         self._backward_algorithm_manager = BackwardAlgorithmManager(
             success_entries=self._success_entries,
             env=self._validation_env,
@@ -583,7 +583,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             _FREQUENTLY_VISITED_STATE_COUNT
         )
         if torch.cuda.is_available():
-            frequently_visted_states = [x.cuda() for x in frequently_visted_states]
+            frequently_visited_states = [x.cuda() for x in frequently_visited_states]
 
         frequently_visited_states_tensor = torch.stack(frequently_visited_states)
         for state, q_values, q_target_values in zip(
