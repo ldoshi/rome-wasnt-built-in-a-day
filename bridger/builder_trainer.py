@@ -619,12 +619,20 @@ class BridgeBuilderModel(lightning.LightningModule):
             else self.hparams.inter_training_steps
         )
         with torch.no_grad():
+            if self.hparams.debug:
+                rewards = []
             for _ in range(memory_count):
-                _, _, start_state, _, _, _, _ = next(self.memories)
+                episode_idx, step_idx, start_state, action, end_state, reward, success = next(self.memories)
                 if self.hparams.debug:
+                    rewards.append(reward)
                     self._state_visit_logger.log_occurrence(
                         batch_idx=batch_idx, object=start_state
                     )
+            if self.hparams.debug:
+                self.log("min_rewards", min(rewards))
+                self.log("max_rewards", max(rewards))
+                self.log("mean_rewards", np.mean(rewards))
+                self.log("deviation_rewards", np.std(rewards))
 
     def _memory_generator(
         self,
