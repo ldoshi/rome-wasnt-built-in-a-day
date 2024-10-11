@@ -622,7 +622,15 @@ class BridgeBuilderModel(lightning.LightningModule):
             if self.hparams.debug:
                 rewards = []
             for _ in range(memory_count):
-                episode_idx, step_idx, start_state, action, end_state, reward, success = next(self.memories)
+                (
+                    episode_idx,
+                    step_idx,
+                    start_state,
+                    action,
+                    end_state,
+                    reward,
+                    success,
+                ) = next(self.memories)
                 if self.hparams.debug:
                     rewards.append(reward)
                     self._state_visit_logger.log_occurrence(
