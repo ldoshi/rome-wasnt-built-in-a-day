@@ -12,6 +12,7 @@ import torch
 from typing import Union, Optional, Callable, Hashable
 import os
 
+from pytorch_lightning.utilities import grad_norm
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
 from bridger.logging_utils import object_log_readers
