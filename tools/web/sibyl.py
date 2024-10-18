@@ -193,7 +193,7 @@ def replay_buffer_state_counts_plot_data():
 
     # State visits are sorted by most visited to least visited.
     replay_buffer_states_by_visit_count = {
-        visit_entry.state_id : visit_entry.state.tolist()
+        visit_entry.state_id: visit_entry.state.tolist()
         for visit_entry in training_history_database.get_states_by_visit_count()
     }
 
