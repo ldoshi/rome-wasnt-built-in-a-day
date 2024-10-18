@@ -350,6 +350,7 @@ class TrainingHistoryDatabase:
             )
         self._td_errors.finalize()
 
+        assert False, 'batch action'
         self._batch_action_frequency = StateActionMetricMap()
         self._replay_buffer_state_counts = MetricMap[dict[int, int]]()
         for entry in _read_object_log(dirname, log_entry.TRAINING_BATCH_LOG_ENTRY):
