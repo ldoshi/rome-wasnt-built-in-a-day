@@ -159,6 +159,5 @@ if __name__ == "__main__":
         num_actions=num_actions,
     )
 
-    with open("object_logging/success_entry.json", 'w') as f:
+    with open("object_logging/success_entry.json", "w") as f:
         json.dump(success_entry_generator.success_entries, f, indent=4)
-
