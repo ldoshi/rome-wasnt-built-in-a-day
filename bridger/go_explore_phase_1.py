@@ -158,5 +158,7 @@ if __name__ == "__main__":
         num_actions=num_actions,
     )
 
-    with ObjectLogManager("object_logging", "success_entry", create_experiment_dir=True) as object_logger:
+    with ObjectLogManager(
+        "object_logging", "success_entry", create_experiment_dir=True
+    ) as object_logger:
         object_logger.log("success_entry.pkl", success_entry_generator.success_entries)
