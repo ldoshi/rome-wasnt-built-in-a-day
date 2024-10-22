@@ -387,7 +387,7 @@ if __name__ == "__main__":
     _OBJECT_LOG_CACHE = object_log_cache.ObjectLogCache(
         log_dir=_LOG_DIR, temp_dir=_SIBYL_TMP_DIR
     )
-
+    
     convert_logs_background_thread = threading.Thread(
         target=_OBJECT_LOG_CACHE.convert_logs_to_saved_databases,
         args=(_get_experiment_names(),),

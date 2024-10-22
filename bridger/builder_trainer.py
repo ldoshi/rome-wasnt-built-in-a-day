@@ -486,10 +486,13 @@ class BridgeBuilderModel(lightning.LightningModule):
 
         # TODO(lyric): Delete convenience override after a little more testing.
         self._success_entries = {
-            #        SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
-            #     SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
-            SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
-            # SuccessEntry(trajectory=(0, 6, 1, 5, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
+             #       SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
+             #    SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
+            #SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
+             SuccessEntry(trajectory=(0, 6, 1, 5, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            SuccessEntry(trajectory=(0, 1, 2, 6, 5, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            SuccessEntry(trajectory=(6, 5, 0, 1, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            SuccessEntry(trajectory=(6, 0, 5, 4, 1, 2), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
 
         }
         self._backward_algorithm_manager = BackwardAlgorithmManager(
