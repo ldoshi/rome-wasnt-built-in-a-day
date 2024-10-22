@@ -13,7 +13,6 @@ import torch
 from typing import Union, Optional, Callable, Hashable
 import os
 
-from pytorch_lightning.utilities import grad_norm
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
 from bridger.logging_utils import object_log_readers
@@ -480,10 +479,9 @@ class BridgeBuilderModel(lightning.LightningModule):
                 )
             )
 
-        #        self._success_entries = object_log_manager.read_base_dir_log_file(
-        #           self.hparams.go_explore_success_entries_path
-        #      )
-
+        success_entries = object_log_manager.read_base_dir_log_file(
+            self.hparams.go_explore_success_entries_path
+        )[0]
         # TODO(lyric): Delete convenience override after a little more testing.
         self._success_entries = {
             #       SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
@@ -537,12 +535,6 @@ class BridgeBuilderModel(lightning.LightningModule):
             self.make_memories(
                 batch_idx=-1, requested_memory_count=self.hparams.initial_memories_count
             )
-
-    def on_before_optimizer_step(self, optimizer):
-        # Compute the 2-norm for each layer
-        # If using mixed precision, the gradients are already unscaled here
-        norms = grad_norm(self.q_manager.q, norm_type=2)
-        self.log_dict(norms)
 
     def on_train_batch_end(
         self,
@@ -607,7 +599,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             _FREQUENTLY_VISITED_STATE_COUNT
         )
         if torch.cuda.is_available():
-            frequently_visited_states = [x.cuda() for x in frequently_visited_states]
+            frequently_visted_states = [x.cuda() for x in frequently_visted_states]
 
         frequently_visited_states_tensor = torch.stack(frequently_visited_states)
         for state, q_values, q_target_values in zip(
@@ -641,15 +633,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             if self.hparams.debug:
                 rewards = []
             for _ in range(memory_count):
-                (
-                    episode_idx,
-                    step_idx,
-                    start_state,
-                    action,
-                    end_state,
-                    reward,
-                    success,
-                ) = next(self.memories)
+                episode_idx, step_idx, start_state, action, end_state, reward, success = next(self.memories)
                 if self.hparams.debug:
                     rewards.append(reward)
                     self._state_visit_logger.log_occurrence(
