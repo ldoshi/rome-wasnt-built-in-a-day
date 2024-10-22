@@ -8,6 +8,7 @@ import pickle
 import numpy as np
 from bridger import builder
 import lightning
+from lightning.pytorch.utilities import grad_norm
 import torch
 from typing import Union, Optional, Callable, Hashable
 import os
@@ -17,6 +18,7 @@ from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
 from bridger.logging_utils import object_log_readers
 from bridger.logging_utils.log_entry import SuccessEntry
+
 
 from bridger import (
     config,
@@ -278,17 +280,17 @@ class BackwardAlgorithm:
             build_result.reward
             >= sum(self._success_entry.rewards[self._trajectory_index :])
         )
-        if entry:
-            print(
-                "success at ",
-                self.iteration,
-                " : ",
-                build_result.success,
-                " and reward ",
-                build_result.reward,
-                " vs ",
-                self._success_entry.rewards[self._trajectory_index :],
-            )
+        # if entry:
+        #     print(
+        #         "success at ",
+        #         self.iteration,
+        #         " : ",
+        #         build_result.success,
+        #         " and reward ",
+        #         build_result.reward,
+        #         " vs ",
+        #         self._success_entry.rewards[self._trajectory_index :],
+        #     )
 
         self._move_backward_window[self._move_backward_window_index] = entry
 
@@ -484,9 +486,25 @@ class BridgeBuilderModel(lightning.LightningModule):
 
         # TODO(lyric): Delete convenience override after a little more testing.
         self._success_entries = {
-            #        SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
-            #     SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
-            SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
+            #       SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
+            #    SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
+            # SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
+            SuccessEntry(
+                trajectory=(0, 6, 1, 5, 2, 4),
+                rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1),
+            ),
+            SuccessEntry(
+                trajectory=(0, 1, 2, 6, 5, 4),
+                rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1),
+            ),
+            SuccessEntry(
+                trajectory=(6, 5, 0, 1, 2, 4),
+                rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1),
+            ),
+            SuccessEntry(
+                trajectory=(6, 0, 5, 4, 1, 2),
+                rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1),
+            ),
         }
         self._backward_algorithm_manager = BackwardAlgorithmManager(
             success_entries=self._success_entries,
@@ -549,14 +567,14 @@ class BridgeBuilderModel(lightning.LightningModule):
         )
         self._moved_backwards += moved_backward_count
 
-        if moved_backward_count:
-            print(
-                "Moved backward ",
-                moved_backward_count,
-                " with ",
-                completed_count,
-                " completed.",
-            )
+        # if moved_backward_count:
+        #     print(
+        #         "Moved backward ",
+        #         moved_backward_count,
+        #         " with ",
+        #         completed_count,
+        #         " completed.",
+        #     )
 
         # self.add_custom_scalar(
         #     "maximum_move_backwards",
