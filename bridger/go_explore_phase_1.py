@@ -158,5 +158,10 @@ if __name__ == "__main__":
         num_actions=num_actions,
     )
 
+<<<<<<< HEAD
     with ObjectLogManager("object_logging", "success_entry", create_experiment_dir=True) as object_logger:
         object_logger.log("success_entry.pkl", success_entry_generator.success_entries)
+=======
+    with open("object_logging/success_entry.json", "w") as f:
+        json.dump(success_entry_generator.success_entries, f, indent=4)
+>>>>>>> c0df97a82f78dacd98f757065a7e550e8479bb82
