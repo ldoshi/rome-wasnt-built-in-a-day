@@ -7,6 +7,7 @@ import numpy as np
 import multiprocessing
 import functools
 import torch
+import json
 
 from bridger.logging_utils.object_logging import ObjectLogManager
 from bridger import config
@@ -158,5 +159,6 @@ if __name__ == "__main__":
         num_actions=num_actions,
     )
 
-    with ObjectLogManager("object_logging", "success_entry") as object_logger:
-        object_logger.log("success_entry.pkl", success_entry_generator.success_entries)
+    with open("object_logging/success_entry.json", 'w') as f:
+        json.dump(success_entry_generator.success_entries, f, indent=4)
+
