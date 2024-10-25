@@ -484,26 +484,19 @@ class BridgeBuilderModel(lightning.LightningModule):
         )[0]
         # TODO(lyric): Delete convenience override after a little more testing.
         self._success_entries = {
-            #       SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
-            #    SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
-            # SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
-            SuccessEntry(
-                trajectory=(0, 6, 1, 5, 2, 4),
-                rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1),
-            ),
-            SuccessEntry(
-                trajectory=(0, 1, 2, 6, 5, 4),
-                rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1),
-            ),
-            SuccessEntry(
-                trajectory=(6, 5, 0, 1, 2, 4),
-                rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1),
-            ),
-            SuccessEntry(
-                trajectory=(6, 0, 5, 4, 1, 2),
-                rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1),
-            ),
+             #       SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
+             #    SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
+            #SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
+#             SuccessEntry(trajectory=(0, 6, 1, 5, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+#            SuccessEntry(trajectory=(0, 1, 2, 6, 5, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+ #           SuccessEntry(trajectory=(6, 5, 0, 1, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+  #          SuccessEntry(trajectory=(6, 0, 5, 4, 1, 2), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
+            SuccessEntry(trajectory=(8, 7,6,5,0,1,2,3), rewards=(-0.1, -0.1,-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            SuccessEntry(trajectory=(8, 0,7,6,1,2,3, 5), rewards=(-0.1, -0.1,-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            SuccessEntry(trajectory=(0,1,2,3, 8, 7,6,5), rewards=(-0.1, -0.1,-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            SuccessEntry(trajectory=(0, 1,8,7,6,5,2,3), rewards=(-0.1, -0.1,-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
         }
+
         self._backward_algorithm_manager = BackwardAlgorithmManager(
             success_entries=self._success_entries,
             env=self._validation_env,
