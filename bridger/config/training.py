@@ -109,6 +109,41 @@ hparam_dict[key] = {"type": int, "default": 8}
 help_str = "The number of actions to take in an exploration rollout for go-explore."
 hparam_dict[key]["help"] = help_str
 
+key = "go_explore_num_iterations"
+hparam_dict[key] = {"type": int, "default": 8}
+help_str = "The number of iterations of exploration rollouts for go-explore."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_epsilon_1"
+hparam_dict[key] = {"type": float, "default": .001}
+help_str = "The epsilon 1 for go-explore's count score."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_epsilon_2"
+hparam_dict[key] = {"type": float, "default": .00001}
+help_str = "The epsilon 2 for go-explore's count score."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_pa"
+hparam_dict[key] = {"type": float, "default": .5}
+help_str = "The exponent for go-explore's count score."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_wa_sampled"
+hparam_dict[key] = {"type": float, "default": .1}
+help_str = "The times a state was sampled weight for go-explore's count score."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_wa_led_to_something_new"
+hparam_dict[key] = {"type": float, "default": 0}
+help_str = "The times a state was chosen since it led to a new discovery weight for go-explore's count score."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_wa_times_visited"
+hparam_dict[key] = {"type": float, "default": .3}
+help_str = "The times a state was visited weight for go-explore's count score."
+hparam_dict[key]["help"] = help_str
+
 key = "jitter"
 hparam_dict[key] = {"type": int, "default": 0}
 help_str = "The backwards algorithm range in which the state is selected from."

@@ -12,7 +12,10 @@ from bridger.logging_utils.object_logging import ObjectLogManager
 from bridger import config
 from bridger.logging_utils.log_entry import SuccessEntry
 
+def _count_score(v: float, wa: float, pa: float, epsilon_1: float, epsilon_2: float) -> int:
+    return wa * (1/(v+epsilon_1)) ** pa + epsilon_2
 
+    
 @dataclass
 class CacheEntry:
     trajectory: tuple[int]
@@ -30,12 +33,14 @@ class SuccessEntryGenerator:
         env: BridgesEnv,
         num_iterations: int,
         num_actions: int,
+        hparams: Any,
     ):
         self._processes = processes
         self._width = width
         self._env = env
         self._num_iterations = num_iterations
         self._num_actions = num_actions
+        self._hparams = hparams
         self.success_entries: set[SuccessEntry] = set()
 
         _collect_generate_success_entry = functools.partial(
@@ -43,6 +48,7 @@ class SuccessEntryGenerator:
             self._env,
             self._num_iterations,
             self._num_actions,
+            self._hparams,
         )
         seeds: list[int] = list(range(self._processes))
 
@@ -54,9 +60,12 @@ class SuccessEntryGenerator:
 class StateCache:
 
     _cache: dict[Any, CacheEntry] = {}
+    current_best: int = 10000000
 
-    def __init__(self, rng):
+    def __init__(self, rng, hparams):
         self._rng = rng
+        self._hparams = hparams
+        
 
     def update_times_since_led_to_something_new(
         self, state, led_to_something_to_new: bool
@@ -68,6 +77,11 @@ class StateCache:
         else:
             self._cache[key].steps_since_led_to_something_new += 1
 
+    def update_current_best(self, trajectory_length: int):
+#        print("updating with " , trajectory_length, ' ' , self.current_best)
+        self.current_best = min(self.current_best, trajectory_length)
+#        print("CURRENT BEST: " , self.current_best)
+            
     def visit(self, state, trajectory: tuple[int], rewards: tuple[float]) -> bool:
         key = hash_utils.hash_tensor(state)
         if key in self._cache:
@@ -82,11 +96,24 @@ class StateCache:
         else:
             self._cache[key] = CacheEntry(trajectory=trajectory, rewards=rewards)
 
+            
     def sample(self, n=1):
         # Fix this when n > 1.
         assert n == 1
-        cache_keys = list(self._cache)
-        key_index = self._rng.choice(range(len(cache_keys)), n)[0]
+
+        cache_keys = []
+        state_count_scores = []
+        for state, cache_entry in self._cache.items():
+            cache_keys.append(state)
+
+            steps_since_led_to_something_new_score =  _count_score(v=cache_entry.steps_since_led_to_something_new, wa=hparams.go_explore_wa_led_to_something_new, pa=hparams.go_explore_pa, epsilon_1=hparams.go_explore_epsilon_1, epsilon_2=hparams.go_explore_epsilon_2)
+            sampled_score =  _count_score(v=cache_entry.sampled_count, wa=hparams.go_explore_wa_sampled, pa=hparams.go_explore_pa, epsilon_1=hparams.go_explore_epsilon_1, epsilon_2=hparams.go_explore_epsilon_2)
+            visited_score =  _count_score(v=cache_entry.visit_count, wa=hparams.go_explore_wa_times_visited, pa=hparams.go_explore_pa, epsilon_1=hparams.go_explore_epsilon_1, epsilon_2=hparams.go_explore_epsilon_2)
+            state_count_scores.append(steps_since_led_to_something_new_score+sampled_score+visited_score)
+        state_count_scores_sum = sum(state_count_scores)
+        state_count_probs = [x / state_count_scores_sum for x in state_count_scores]
+        
+        key_index = self._rng.choice(range(len(cache_keys)), size=n,p=state_count_probs )[0]
         key = cache_keys[key_index]
         entry = self._cache[key]
         entry.sampled_count += 1
@@ -94,10 +121,10 @@ class StateCache:
 
 
 def generate_success_entry(
-    env: BridgesEnv, num_iterations: int, num_actions: int, seed: int
+        env: BridgesEnv, num_iterations: int, num_actions: int, hparams: Any, seed: int
 ) -> list[SuccessEntry]:
     rng = np.random.default_rng(seed)
-    cache: StateCache = StateCache(rng)
+    cache: StateCache = StateCache(rng, hparams)
     cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
     success_entries: list[SuccessEntry] = []
 
@@ -114,15 +141,21 @@ def rollout(rng, env, start_state, start_entry, cache, num_actions, success_entr
 
     led_to_something_new = False
     for _ in range(num_actions):
+        if len(current_trajectory) >= cache.current_best:
+            break
+        
         action = rng.choice(range(env.nA))
         current_trajectory += (action,)
-        next_state, reward, done, _ = env.step(action)
+        next_state, reward, done, aux = env.step(action)
         rewards += (reward,)
         if done:
-            success_entries.append(
-                SuccessEntry(trajectory=current_trajectory, rewards=rewards)
-            )
-            led_to_something_new = True
+            if aux['is_success'] and all(np.array(rewards) > -.5):
+#                print('yay' , current_trajectory)
+                success_entries.append(
+                    SuccessEntry(trajectory=current_trajectory, rewards=rewards)
+                )
+                led_to_something_new = True
+                cache.update_current_best(len(current_trajectory))
             break
 
         cache.visit(next_state, current_trajectory, rewards)
@@ -147,7 +180,7 @@ if __name__ == "__main__":
 
     processes = 1
     width = hparams.env_width
-    num_iterations = hparams.max_training_batches
+    num_iterations = hparams.go_explore_num_iterations
     num_actions = hparams.go_explore_num_actions
 
     success_entry_generator = SuccessEntryGenerator(
@@ -156,9 +189,12 @@ if __name__ == "__main__":
         env=BridgesEnv(width=width, force_standard_config=True),
         num_iterations=num_iterations,
         num_actions=num_actions,
+        hparams=hparams,
     )
 
     with ObjectLogManager(
         "object_logging", "success_entry", create_experiment_dir=True
     ) as object_logger:
         object_logger.log("success_entry.pkl", success_entry_generator.success_entries)
+
+    print(f"==========\nEntry Count: {len(success_entry_generator.success_entries)}\n * wa-sampled: {hparams.go_explore_wa_sampled}\n * wa-new: {hparams.go_explore_wa_led_to_something_new}\n * wa-visit: {hparams.go_explore_wa_times_visited}\nShortest: {sorted([len(x.trajectory) for x in success_entry_generator.success_entries ])}")

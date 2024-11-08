@@ -479,34 +479,28 @@ class BridgeBuilderModel(lightning.LightningModule):
                 )
             )
 
-        success_entries = object_log_manager.read_base_dir_log_file(
-            self.hparams.go_explore_success_entries_path
-        )[0]
+#        success_entries = object_log_manager.read_base_dir_log_file(
+ #           self.hparams.go_explore_success_entries_path
+  #      )[0]
         # TODO(lyric): Delete convenience override after a little more testing.
         self._success_entries = {
-            #       SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
-            #    SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
-            # SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
-            #             SuccessEntry(trajectory=(0, 6, 1, 5, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
-            #            SuccessEntry(trajectory=(0, 1, 2, 6, 5, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
-            #           SuccessEntry(trajectory=(6, 5, 0, 1, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
-            #          SuccessEntry(trajectory=(6, 0, 5, 4, 1, 2), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
-            SuccessEntry(
-                trajectory=(8, 7, 6, 5, 0, 1, 2, 3),
-                rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1),
-            ),
-            SuccessEntry(
-                trajectory=(8, 0, 7, 6, 1, 2, 3, 5),
-                rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1),
-            ),
-            SuccessEntry(
-                trajectory=(0, 1, 2, 3, 8, 7, 6, 5),
-                rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1),
-            ),
-            SuccessEntry(
-                trajectory=(0, 1, 8, 7, 6, 5, 2, 3),
-                rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1),
-            ),
+
+             #       SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
+             #    SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1))
+#            SuccessEntry(trajectory=(0, 0,0,0,0, 1, 4,4,3,3,3,3), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+ #           SuccessEntry(trajectory=(4, 4,4,4,4, 0, 1, 2), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
+            #SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
+#             SuccessEntry(trajectory=(0, 6, 1, 5, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+#            SuccessEntry(trajectory=(0, 1, 2, 6, 5, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+
+#            SuccessEntry(trajectory=(0, 1, 2, 6, 5, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+ #           SuccessEntry(trajectory=(6, 5, 0, 1, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+  #          SuccessEntry(trajectory=(6, 0, 5, 4, 1, 2), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
+#            SuccessEntry(trajectory=(8, 7,6,5,0,1,2,3), rewards=(-0.1, -0.1,-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            SuccessEntry(trajectory=(8,8, 0,7,7,7,7,6,8,8,1,1,1,1,2,0,0,0,3,5,3), rewards=(-0.1,)*21 ),
+            SuccessEntry(trajectory=(0, 1, 0, 1, 2, 3, 4, 5, 8,8, 8, 7,7,7,8,7), rewards=(-0.1,)* 16),
+  ##          SuccessEntry(trajectory=(0,1,2,3, 8, 7,6,5), rewards=(-0.1, -0.1,-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+    #        SuccessEntry(trajectory=(0, 1,8,7,6,5,2,3), rewards=(-0.1, -0.1,-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
         }
 
         self._backward_algorithm_manager = BackwardAlgorithmManager(
@@ -604,7 +598,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             _FREQUENTLY_VISITED_STATE_COUNT
         )
         if torch.cuda.is_available():
-            frequently_visted_states = [x.cuda() for x in frequently_visted_states]
+            frequently_visited_states = [x.cuda() for x in frequently_visited_states]
 
         frequently_visited_states_tensor = torch.stack(frequently_visited_states)
         for state, q_values, q_target_values in zip(

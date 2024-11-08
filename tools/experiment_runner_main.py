@@ -40,6 +40,7 @@ from tools import experiment_runner
 
 # The binary to execute with the arguments provided in the config.
 _BINARY = "bridge_builder.py"
+_BINARY = "go_explore_phase_1.py"
 
 
 def execute_fn(args: list[str]) -> None:
@@ -59,7 +60,7 @@ def main():
         "--num-processes",
         help="The number of experiments to run in parallel.",
         type=int,
-        default=1,
+        default=12,
     )
     parsed_args = parser.parse_args()
 
