@@ -263,10 +263,13 @@ class BackwardAlgorithm:
 
         self._trajectory_index = len(self._start_states) - 1
 
-    def state(self) -> tuple[torch.tensor, int]:
-        start = max(-1 * self._jitter + self._trajectory_index, 0)
-        stop = min(self._jitter + self._trajectory_index, len(self._start_states) - 1)
-        offset = np.random.randint(start, stop + 1)
+    def state(self, use_jitter=True) -> tuple[torch.tensor, int]:
+        if use_jitter:
+            start = max(-1 * self._jitter + self._trajectory_index, 0)
+            stop = min(self._jitter + self._trajectory_index, len(self._start_states) - 1)
+            offset = np.random.randint(start, stop + 1)
+        else:
+            offset = self._trajectory_index
         return self._start_states[offset], len(self._start_states) - offset
 
     def move_backward_if_necessary(
@@ -274,7 +277,8 @@ class BackwardAlgorithm:
     ) -> [bool, bool]:
         self.iteration += 1
 
-        build_result = builder_fn(initial_state=self.state())
+        state, remaining_step_count = self.state(use_jitter=False)
+        build_result = builder_fn(initial_state=state)
         entry = build_result.success and (
             build_result.reward
             >= sum(self._success_entry.rewards[self._trajectory_index :])
@@ -321,6 +325,7 @@ class BackwardAlgorithmManager:
         move_backward_threshold: float,
         move_backward_window_size: int,
         jitter: int,
+        episode_length_buffer: int,
     ):
         self._backward_algorithms = [
             BackwardAlgorithm(
@@ -339,11 +344,14 @@ class BackwardAlgorithmManager:
             episode_length=episode_length,
             render=False,
         )
+        
+        self._episode_length_buffer = episode_length_buffer
 
     def state(self) -> tuple[torch.tensor, int]:
         entry_index = np.random.randint(low=0, high=len(self._backward_algorithms))
-        state = self._backward_algorithms[entry_index].state()
-        return state
+        state, episode_length = self._backward_algorithms[entry_index].state()
+        return state, episode_length + episode_length_buffer
+
 
     def move_backward_if_necessary(self) -> tuple[int, int]:
         moved_backward_count = 0
@@ -511,7 +519,8 @@ class BridgeBuilderModel(lightning.LightningModule):
             move_backward_window_size=11,
             jitter=self.hparams.jitter,
         )
-        self.state = self.env.reset(self._backward_algorithm_manager.state())
+        self.state, self.target_episode_length = self._backward_algorithm_manager.state()
+        self.env.reset(self.state)
         self._make_initial_memories()
 
     @property
@@ -671,9 +680,10 @@ class BridgeBuilderModel(lightning.LightningModule):
             success:    Whether the transition marked the end of the episode."""
 
         episode_idx = 0
-        total_step_idx = 0
+        total_step_idx = 0        
         while True:
-            for step_idx in range(self.hparams.max_episode_length):
+            episode_length = min(self.hparams.max_episode_length, self.target_episode_length)
+            for step_idx in range(episode_length):
                 self._checkpoint({"episode": episode_idx, "step": total_step_idx})
                 start_state, action, end_state, reward, success = self()
                 yield (
@@ -688,7 +698,8 @@ class BridgeBuilderModel(lightning.LightningModule):
                 total_step_idx += 1
                 if success:
                     break
-            self.state = self.env.reset(self._backward_algorithm_manager.state())
+            self.state, self.target_episode_length = self._backward_algorithm_manager.state()
+            self.env.reset(self.state)
             episode_idx += 1
 
     def _checkpoint(self, thresholds: dict[str, int]) -> None:
@@ -1040,7 +1051,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         return DataLoader(
             ValidationBuilder(
                 env=self._validation_env,
-                initial_state=self._backward_algorithm_manager.state(),
+                initial_state=self._backward_algorithm_manager.state()[0],
                 policy=self._validation_policy,
                 episode_length=self.hparams.max_episode_length,
             ),
