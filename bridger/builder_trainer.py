@@ -263,14 +263,14 @@ class BackwardAlgorithm:
 
         self._trajectory_index = len(self._start_states) - 1
 
-    def state(self) -> np.ndarray:
+    def state(self) -> tuple[torch.tensor, int]:
         start = max(-1 * self._jitter + self._trajectory_index, 0)
         stop = min(self._jitter + self._trajectory_index, len(self._start_states) - 1)
         offset = np.random.randint(start, stop + 1)
-        return self._start_states[offset]
+        return self._start_states[offset], len(self._start_states) - offset
 
     def move_backward_if_necessary(
-        self, builder_fn: Callable[[np.ndarray], builder.BuildResult]
+        self, builder_fn: Callable[[torch.tensor], builder.BuildResult]
     ) -> [bool, bool]:
         self.iteration += 1
 
@@ -340,7 +340,7 @@ class BackwardAlgorithmManager:
             render=False,
         )
 
-    def state(self) -> torch.tensor:
+    def state(self) -> tuple[torch.tensor, int]:
         entry_index = np.random.randint(low=0, high=len(self._backward_algorithms))
         state = self._backward_algorithms[entry_index].state()
         return state
