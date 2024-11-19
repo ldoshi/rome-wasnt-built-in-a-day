@@ -263,7 +263,6 @@ class BackwardAlgorithm:
 
         self._trajectory_index = len(self._start_states) - 1
 
-<<<<<<< HEAD
     def state(self, use_jitter=True) -> tuple[torch.tensor, int]:
         if use_jitter:
             start = max(-1 * self._jitter + self._trajectory_index, 0)
@@ -280,16 +279,6 @@ class BackwardAlgorithm:
         builder_fn: Callable[[torch.tensor, int], builder.BuildResult],
         episode_length: int,
         episode_length_buffer: int,
-=======
-    def state(self) -> tuple[torch.tensor, int]:
-        start = max(-1 * self._jitter + self._trajectory_index, 0)
-        stop = min(self._jitter + self._trajectory_index, len(self._start_states) - 1)
-        offset = np.random.randint(start, stop + 1)
-        return self._start_states[offset], len(self._start_states) - offset
-
-    def move_backward_if_necessary(
-        self, builder_fn: Callable[[torch.tensor], builder.BuildResult]
->>>>>>> e4717f4 (moo)
     ) -> [bool, bool]:
         self.iteration += 1
 
@@ -375,7 +364,6 @@ class BackwardAlgorithmManager:
             render=False,
         )
 
-<<<<<<< HEAD
         self._episode_length = episode_length
         self._episode_length_buffer = episode_length_buffer
         self._include_virtual_demonstration = include_virtual_demonstration
@@ -383,12 +371,6 @@ class BackwardAlgorithmManager:
         self._total_steps_demonstration = 0
         self._attempts_virtual = 0
         self._attempts_demonstration = 0
-=======
-    def state(self) -> tuple[torch.tensor, int]:
-        entry_index = np.random.randint(low=0, high=len(self._backward_algorithms))
-        state = self._backward_algorithms[entry_index].state()
-        return state
->>>>>>> e4717f4 (moo)
 
     def report_actual_steps(self, is_virtual: bool, total_steps: int) -> None:
         if is_virtual:
