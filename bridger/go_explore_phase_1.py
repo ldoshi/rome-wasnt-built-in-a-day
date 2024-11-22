@@ -10,7 +10,9 @@ import torch
 
 from bridger.logging_utils.object_logging import ObjectLogManager
 from bridger import config
-from bridger.logging_utils.log_entry import SuccessEntry
+
+RNG = 42
+NUM_SAMPLES_PER_PROCESS = 10
 
 
 def _count_score(
@@ -44,21 +46,8 @@ class SuccessEntryGenerator:
         self._num_iterations = num_iterations
         self._num_actions = num_actions
         self._hparams = hparams
-        self.success_entries: set[SuccessEntry] = set()
-
-        _collect_generate_success_entry = functools.partial(
-            generate_success_entry,
-            self._env,
-            self._num_iterations,
-            self._num_actions,
-            self._hparams,
-        )
-        seeds: list[int] = list(range(self._processes))
-
-        with multiprocessing.Pool(processes=self._processes) as pool:
-            for success_entries in pool.map(_collect_generate_success_entry, seeds):
-                self.success_entries.update(set(success_entries))
-
+        seed = RNG
+        self.success_entries = generate_success_entry(env=env, num_iterations=num_iterations, num_actions=num_actions, hparams=hparams, seed=seed)
 
 class StateCache:
 
@@ -80,10 +69,10 @@ class StateCache:
             self._cache[key].steps_since_led_to_something_new += 1
 
     def update_current_best(self, trajectory_length: int):
-        #        print("updating with " , trajectory_length, ' ' , self.current_best)
+        #    print("updating with " , trajectory_length, ' ' , self.current_best)
         self.current_best = min(self.current_best, trajectory_length)
 
-    #        print("CURRENT BEST: " , self.current_best)
+        #        print("CURRENT BEST: " , self.current_best)
 
     def visit(self, state, trajectory: tuple[int], rewards: tuple[float]) -> bool:
         key = hash_utils.hash_tensor(state)
@@ -100,8 +89,6 @@ class StateCache:
             self._cache[key] = CacheEntry(trajectory=trajectory, rewards=rewards)
 
     def sample(self, n=1):
-        # Fix this when n > 1.
-        assert n == 1
 
         cache_keys = []
         state_count_scores = []
@@ -132,32 +119,61 @@ class StateCache:
             state_count_scores.append(
                 steps_since_led_to_something_new_score + sampled_score + visited_score
             )
-        state_count_scores_sum = sum(state_count_scores)
-        state_count_probs = [x / state_count_scores_sum for x in state_count_scores]
+            state_count_scores_sum = sum(state_count_scores)
+            state_count_probs = [x / state_count_scores_sum for x in state_count_scores]
 
-        key_index = self._rng.choice(
+        key_indices = self._rng.choice(
             range(len(cache_keys)), size=n, p=state_count_probs
-        )[0]
-        key = cache_keys[key_index]
-        entry = self._cache[key]
-        entry.sampled_count += 1
-        return (torch.tensor(key[1]).reshape(key[0]), entry)
+        )
+        start_states = []
+        start_entries = []
+        for key_index in key_indices:
+            key = cache_keys[key_index]
+            entry = self._cache[key]
+            entry.sampled_count += 1
+            start_states.append(torch.tensor(key[1]).reshape(key[0]))
+            start_entries.append(entry)
+        return start_states, start_entries
+
+    def update(self, new_cache: "StateCache") -> None:
+        """
+        Update a cache with values from an updated new cache.
+        """
+        for new_state, new_cache_entry in new_cache._cache.items():
+            for state, cache_entry in self._cache.items():
+                if sum(new_cache_entry.rewards) > sum(cache_entry.rewards) or (
+                    sum(new_cache_entry.rewards) == sum(cache_entry.rewards)
+                    and len(new_cache_entry.trajectory) < len(cache_entry.trajectory)
+                ):
+                    cache_entry.rewards = new_cache_entry.rewards
+                    cache_entry.trajectory = new_cache_entry.trajectory
+                cache_entry.visit_count += new_cache_entry.visit_count
+                cache_entry.steps_since_led_to_something_new += (
+                    new_cache_entry.steps_since_led_to_something_new
+                )
 
 
 def generate_success_entry(
     env: BridgesEnv, num_iterations: int, num_actions: int, hparams: Any, seed: int
-) -> list[SuccessEntry]:
+) -> list["SuccessEntry"]:
     rng = np.random.default_rng(seed)
     cache: StateCache = StateCache(rng, hparams)
     cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
     success_entries: list[SuccessEntry] = []
-
-    explore(rng, env, cache, num_iterations, num_actions, success_entries)
-
+    explore(
+        rng=np.random.default_rng(RNG),
+        env=env,
+        cache=cache,
+        num_iterations=num_iterations,
+        num_actions=num_actions,
+        processes=processes,
+        success_entries=success_entries,
+    )
     return success_entries
 
 
-def rollout(rng, env, start_state, start_entry, cache, num_actions, success_entries):
+def rollout(env, actions, cache, start_state, start_entry, rng) -> StateCache:
+    success_entries = set()
     env.reset(start_state)
 
     current_trajectory = copy.deepcopy(start_entry.trajectory)
@@ -174,7 +190,6 @@ def rollout(rng, env, start_state, start_entry, cache, num_actions, success_entr
         rewards += (reward,)
         if done:
             if aux["is_success"] and all(np.array(rewards) > -0.5):
-                #                print('yay' , current_trajectory)
                 success_entries.append(
                     SuccessEntry(trajectory=current_trajectory, rewards=rewards)
                 )
@@ -185,13 +200,33 @@ def rollout(rng, env, start_state, start_entry, cache, num_actions, success_entr
         cache.visit(next_state, current_trajectory, rewards)
 
     cache.update_times_since_led_to_something_new(start_state, led_to_something_new)
+    return success_entries, cache
 
 
-def explore(rng, env, cache, num_iterations, num_actions, success_entries):
+def explore(rng, env, cache, num_iterations, num_actions, processes, success_entries):
 
-    for _ in range(num_iterations):
-        start_state, start_entry = cache.sample()
-        rollout(rng, env, start_state, start_entry, cache, num_actions, success_entries)
+    for iteration_number in range(num_iterations):
+        seeds = rng.integers(low=0, high=2**31, size=processes)
+        start_states, start_entries = cache.sample(n=processes * NUM_SAMPLES_PER_PROCESS
+        )
+        rngs = map(np.random.default_rng, seeds)
+        _collect_rollouts = functools.partial(
+            rollout,
+            env,
+            num_actions,
+            cache,
+        )
+
+        success_entries = set()
+        with multiprocessing.Pool(processes=processes) as pool:
+            for rollout_success_entries, rollout_cache in pool.starmap(
+                _collect_rollouts,
+                [*zip(start_states,
+                start_entries,
+                rngs)],
+            ):
+                success_entries.update(rollout_success_entries)
+                cache.update(rollout_cache)
 
 
 if __name__ == "__main__":
@@ -202,7 +237,8 @@ if __name__ == "__main__":
     )
     hparams = parser.parse_args()
 
-    processes = 1
+    processes = 2
+
     width = hparams.env_width
     num_iterations = hparams.go_explore_num_iterations
     num_actions = hparams.go_explore_num_actions
