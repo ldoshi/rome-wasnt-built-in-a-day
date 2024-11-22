@@ -47,7 +47,14 @@ class SuccessEntryGenerator:
         self._num_actions = num_actions
         self._hparams = hparams
         seed = RNG
-        self.success_entries = generate_success_entry(env=env, num_iterations=num_iterations, num_actions=num_actions, hparams=hparams, seed=seed)
+        self.success_entries = generate_success_entry(
+            env=env,
+            num_iterations=num_iterations,
+            num_actions=num_actions,
+            hparams=hparams,
+            seed=seed,
+        )
+
 
 class StateCache:
 
@@ -207,7 +214,8 @@ def explore(rng, env, cache, num_iterations, num_actions, processes, success_ent
 
     for iteration_number in range(num_iterations):
         seeds = rng.integers(low=0, high=2**31, size=processes)
-        start_states, start_entries = cache.sample(n=processes * NUM_SAMPLES_PER_PROCESS
+        start_states, start_entries = cache.sample(
+            n=processes * NUM_SAMPLES_PER_PROCESS
         )
         rngs = map(np.random.default_rng, seeds)
         _collect_rollouts = functools.partial(
@@ -221,9 +229,7 @@ def explore(rng, env, cache, num_iterations, num_actions, processes, success_ent
         with multiprocessing.Pool(processes=processes) as pool:
             for rollout_success_entries, rollout_cache in pool.starmap(
                 _collect_rollouts,
-                [*zip(start_states,
-                start_entries,
-                rngs)],
+                [*zip(start_states, start_entries, rngs)],
             ):
                 success_entries.update(rollout_success_entries)
                 cache.update(rollout_cache)
