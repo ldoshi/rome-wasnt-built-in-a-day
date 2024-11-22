@@ -20,6 +20,7 @@ def _count_score(
 ) -> int:
     return wa * (1 / (v + epsilon_1)) ** pa + epsilon_2
 
+
 @dataclass
 class CacheEntry:
     trajectory: tuple[int]
@@ -53,6 +54,7 @@ class SuccessEntryGenerator:
             hparams=hparams,
             seed=seed,
         )
+
 
 class StateCache:
 
@@ -157,6 +159,7 @@ class StateCache:
                     new_cache_entry.steps_since_led_to_something_new
                 )
 
+
 def generate_success_entry(
     env: BridgesEnv, num_iterations: int, num_actions: int, hparams: Any, seed: int
 ) -> list["SuccessEntry"]:
@@ -205,20 +208,24 @@ def rollout(env, actions, cache, start_state, start_entry, rng) -> StateCache:
     cache.update_times_since_led_to_something_new(start_state, led_to_something_new)
     return success_entries, cache
 
+
 def explore(rng, env, cache, num_iterations, num_actions, processes, success_entries):
-    
+
     for iteration_number in range(num_iterations):
-        # Use unique seed per process and iteration to avoid sampling same states with same seed. 
+        # Use unique seed per process and iteration to avoid sampling same states with same seed.
         seeds = rng.integers(low=0, high=2**31, size=processes)
-        start_states, start_entries = cache.sample(seed=RNG, n=RNG*NUM_SAMPLES_PER_PROCESS)
+        start_states, start_entries = cache.sample(
+            seed=RNG, n=RNG * NUM_SAMPLES_PER_PROCESS
+        )
         rngs = map(np.random.default_rng, seeds)
-        
+
         _collect_rollouts = functools.partial(
             rollout,
             env=self._env,
             actions=self._num_actions,
             cache=copy.deepcopy(cache),
         )
+
 
 def explore(rng, env, cache, num_iterations, num_actions, processes, success_entries):
 
@@ -243,6 +250,7 @@ def explore(rng, env, cache, num_iterations, num_actions, processes, success_ent
             ):
                 success_entries.update(rollout_success_entries)
                 cache.update(rollout_cache)
+
 
 if __name__ == "__main__":
     parser = config.get_hyperparam_parser(
@@ -275,4 +283,3 @@ if __name__ == "__main__":
     print(
         f"==========\nEntry Count: {len(success_entry_generator.success_entries)}\n * wa-sampled: {hparams.go_explore_wa_sampled}\n * wa-new: {hparams.go_explore_wa_led_to_something_new}\n * wa-visit: {hparams.go_explore_wa_times_visited}\nShortest: {sorted([len(x.trajectory) for x in success_entry_generator.success_entries ])}"
     )
-
