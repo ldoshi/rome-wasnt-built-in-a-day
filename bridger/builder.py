@@ -64,7 +64,7 @@ class BuildEvaluator:
     @property
     def trajectories(self):
         """Returns all the trajectories from successful builds only."""
-        return [build_results.trajectory for build_result in self._build_results if build_result.success]
+        return [build_result.trajectory for build_result in self._build_results if build_result.success]
 
     @property
     def build_steps_on_success_mean(self):
