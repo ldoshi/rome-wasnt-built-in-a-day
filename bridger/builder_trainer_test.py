@@ -595,7 +595,7 @@ class BuilderTest(unittest.TestCase):
             render=False,
         )
         self.assertFalse(build_result.success)
-        self.assertEqual(build_result.reward, -.1 * episode_length)
+        self.assertEqual(build_result.reward, -0.1 * episode_length)
         self.assertEqual(build_result.steps, episode_length)
 
         # Tests a case where the episode_length is too long and the
@@ -631,7 +631,7 @@ class BuilderTest(unittest.TestCase):
         )
         self.assertTrue(build_result.success)
         # The first gives -1 reward.
-        self.assertEqual(build_result.reward, -.1 * 2)
+        self.assertEqual(build_result.reward, -0.1 * 2)
         self.assertEqual(build_result.steps, 2)
 
 
@@ -708,8 +708,10 @@ class BuildEvaluatorTest(unittest.TestCase):
         )
         self.assertEqual(build_evaluator.build_steps_on_success_mean, 2.25)
         np.testing.assert_array_equal(build_evaluator.build_steps, [2, 4, 2, 1, 4])
-        self.assertEqual(build_evaluator.reward_on_success_mean, -.225)
-        np.testing.assert_array_equal(build_evaluator.rewards, [-0.2, -0.4, -0.2, -0.1, -0.4])
+        self.assertEqual(build_evaluator.reward_on_success_mean, -0.225)
+        np.testing.assert_array_equal(
+            build_evaluator.rewards, [-0.2, -0.4, -0.2, -0.1, -0.4]
+        )
         self.assertEqual(build_evaluator.height_of_highest_block_mean, 2.8)
 
 

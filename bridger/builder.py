@@ -189,7 +189,7 @@ class Builder:
             action = policy(state)
             trajectory.append(action)
             state, reward, done, aux = self._env.step(action)
-            success = aux['is_success']
+            success = aux["is_success"]
             total_reward += reward
             if render:
                 self._env.render()
