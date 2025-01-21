@@ -259,7 +259,7 @@ class BackwardAlgorithm:
         for action in self._success_entry.trajectory:
             self._start_states.append(state)
             state, reward, done, aux = env.step(action)
-            success = aux['is_success']
+            success = aux["is_success"]
         assert success
 
         self._trajectory_index = len(self._start_states) - 1
@@ -1081,9 +1081,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                                     actions=torch.tensor([action]),
                                     next_states=torch.tensor([next_state]),
                                     rewards=torch.tensor([reward]),
-                                    done=torch.tensor(
-                                        [environment_completion_status]
-                                    ),
+                                    done=torch.tensor([environment_completion_status]),
                                 ).item(),
                             ),
                         )
