@@ -64,7 +64,11 @@ class BuildEvaluator:
     @property
     def trajectories(self):
         """Returns all the trajectories from successful builds only."""
-        return [build_result.trajectory for build_result in self._build_results if build_result.success]
+        return [
+            build_result.trajectory
+            for build_result in self._build_results
+            if build_result.success
+        ]
 
     @property
     def build_steps_on_success_mean(self):
@@ -118,7 +122,9 @@ class BuildEvaluator:
         return end_states.shape[1] - 1 - inverted_heights.mean()
 
     def print_report(self):
-        trajectories_display_list = "\n".join([f" * {trajectory}" for trajectory in self.trajectories])
+        trajectories_display_list = "\n".join(
+            [f" * {trajectory}" for trajectory in self.trajectories]
+        )
         print(
             "Build Evaluation Summary\n"
             f"{self._build_count} build episodes of up to {self._episode_length} "
@@ -183,7 +189,7 @@ class Builder:
             action = policy(state)
             trajectory.append(action)
             state, reward, done, aux = self._env.step(action)
-            success = aux['is_success']
+            success = aux["is_success"]
             total_reward += reward
             if render:
                 self._env.render()
@@ -191,5 +197,9 @@ class Builder:
                 break
 
         return BuildResult(
-            success=success, reward=total_reward, steps=i + 1, final_state=state, trajectory=trajectory
+            success=success,
+            reward=total_reward,
+            steps=i + 1,
+            final_state=state,
+            trajectory=trajectory,
         )
