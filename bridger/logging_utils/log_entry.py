@@ -63,7 +63,7 @@ class TrainingBatchLogEntry:
     actions: torch.Tensor
     next_state_ids: list[int]
     rewards: torch.Tensor
-    successes: torch.Tensor
+    dones: torch.Tensor
     weights: torch.Tensor
     loss: torch.Tensor
     replay_buffer_state_counts: list[tuple[int, int]]
