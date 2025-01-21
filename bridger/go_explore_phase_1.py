@@ -9,6 +9,7 @@ import functools
 import torch
 
 from bridger.logging_utils.object_logging import ObjectLogManager
+from bridger.logging_utils.log_entry import SuccessEntry
 from bridger import config
 
 RNG = 42
@@ -31,6 +32,22 @@ class CacheEntry:
 
 
 class SuccessEntryGenerator:
+    """
+    A generator class for creating success entries using multiple processes.
+
+    This class initializes the parameters required for generating success entries and
+    uses these parameters to generate the entries by calling the `generate_success_entry` function.
+
+    Attributes:
+        processes (int): The number of parallel processes to use.
+        width (int): The width parameter for the environment.
+        env (BridgesEnv): The environment in which to perform the rollouts.
+        num_iterations (int): The number of iterations to run the exploration.
+        num_actions (int): The number of actions to perform in each rollout.
+        hparams (Any): Hyperparameters for the exploration process.
+        success_entries (set[SuccessEntry]): A set of generated success entries.
+    """
+
     def __init__(
         self,
         processes: int,
@@ -81,7 +98,9 @@ class StateCache:
 
         #        print("CURRENT BEST: " , self.current_best)
 
-    def visit(self, state, trajectory: tuple[int], rewards: tuple[float]) -> bool:
+    def visit(
+        self, state: np.ndarray, trajectory: tuple[int], rewards: tuple[float]
+    ) -> bool:
         key = hash_utils.hash_tensor(state)
         if key in self._cache:
             entry = self._cache[key]
@@ -144,7 +163,19 @@ class StateCache:
 
     def update(self, new_cache: "StateCache") -> None:
         """
-        Update a cache with values from an updated new cache.
+        Update the current cache with values from a new cache.
+
+        This method iterates over the entries in the new cache and updates the corresponding
+        entries in the current cache based on the rewards and trajectory lengths. If the new
+        cache entry has higher rewards or the same rewards but a shorter trajectory, the current
+        cache entry is updated with the new rewards and trajectory. Additionally, the visit count
+        and steps since the entry led to something new are accumulated.
+
+        Args:
+            new_cache (StateCache): The new cache containing updated state entries.
+
+        Returns:
+            None
         """
         for new_state, new_cache_entry in new_cache._cache.items():
             for state, cache_entry in self._cache.items():
@@ -155,32 +186,21 @@ class StateCache:
                     cache_entry.rewards = new_cache_entry.rewards
                     cache_entry.trajectory = new_cache_entry.trajectory
                 cache_entry.visit_count += new_cache_entry.visit_count
+                # TODO (Joseph): Figure out if this is the correct way to update the steps since led to something new.
                 cache_entry.steps_since_led_to_something_new += (
                     new_cache_entry.steps_since_led_to_something_new
                 )
 
 
-def generate_success_entry(
-    env: BridgesEnv, num_iterations: int, num_actions: int, hparams: Any, seed: int
-) -> list["SuccessEntry"]:
-    rng = np.random.default_rng(seed)
-    cache: StateCache = StateCache(rng, hparams)
-    cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
-    success_entries: list[SuccessEntry] = []
-    explore(
-        rng=np.random.default_rng(RNG),
-        env=env,
-        cache=cache,
-        num_iterations=num_iterations,
-        num_actions=num_actions,
-        processes=processes,
-        success_entries=success_entries,
-    )
-    return success_entries
-
-
-def rollout(env, actions, cache, start_state, start_entry, rng) -> StateCache:
-    success_entries = set()
+def rollout(
+    env: BridgesEnv,
+    actions: int,
+    cache: StateCache,
+    start_state: np.ndarray,
+    start_entry: CacheEntry,
+    rng: int,
+) -> StateCache:
+    success_entries: set[SuccessEntry] = set()
     env.reset(start_state)
     current_trajectory = copy.deepcopy(start_entry.trajectory)
     rewards: tuple[float] = start_entry.rewards
@@ -209,27 +229,73 @@ def rollout(env, actions, cache, start_state, start_entry, rng) -> StateCache:
     return success_entries, cache
 
 
-def explore(rng, env, cache, num_iterations, num_actions, processes, success_entries):
+def generate_success_entry(
+    env: BridgesEnv, num_iterations: int, num_actions: int, hparams: Any, seed: int
+) -> set[SuccessEntry]:
+    """
+    Generate success entries by performing exploration in the given environment.
 
-    for iteration_number in range(num_iterations):
-        # Use unique seed per process and iteration to avoid sampling same states with same seed.
-        seeds = rng.integers(low=0, high=2**31, size=processes)
-        start_states, start_entries = cache.sample(
-            seed=RNG, n=RNG * NUM_SAMPLES_PER_PROCESS
-        )
-        rngs = map(np.random.default_rng, seeds)
+    This function initializes the state cache and performs exploration using the specified
+    number of iterations and actions. It collects successful entries during the exploration
+    process and returns them as a set.
 
-        _collect_rollouts = functools.partial(
-            rollout,
-            env=self._env,
-            actions=self._num_actions,
-            cache=copy.deepcopy(cache),
-        )
+    Args:
+        env (BridgesEnv): The environment in which to perform the rollouts.
+        num_iterations (int): The number of iterations to run the exploration.
+        num_actions (int): The number of actions to perform in each rollout.
+        hparams (Any): Hyperparameters for the exploration process.
+        seed (int): Random seed for initializing the random number generator.
+
+    Returns:
+        set[SuccessEntry]: A set of generated success entries.
+    """
+    rng = np.random.default_rng(seed)
+    cache: StateCache = StateCache(rng, hparams)
+    cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
+    success_entries: set[SuccessEntry] = set()
+    explore(
+        rng=np.random.default_rng(RNG),
+        env=env,
+        cache=cache,
+        num_iterations=num_iterations,
+        num_actions=num_actions,
+        processes=processes,
+        success_entries=success_entries,
+    )
+    return success_entries
 
 
-def explore(rng, env, cache, num_iterations, num_actions, processes, success_entries):
+def explore(
+    rng: int,
+    env: BridgesEnv,
+    cache: StateCache,
+    num_iterations: int,
+    num_actions: int,
+    processes: int,
+    success_entries: set[SuccessEntry],
+) -> None:
+    """
+    Perform exploration using multiple processes to collect rollouts and update the state cache.
 
-    for iteration_number in range(num_iterations):
+    This function runs a specified number of iterations, where in each iteration, it samples
+    start states and entries from the cache, generates random seeds for each process, and
+    collects rollouts in parallel using multiprocessing. The collected rollouts are then used
+    to update the cache and accumulate successful entries.
+
+    Args:
+        rng (int): Random number generator for generating seeds.
+        env (BridgesEnv): The environment in which to perform the rollouts.
+        cache (StateCache): The state cache to sample from and update.
+        num_iterations (int): The number of iterations to run the exploration.
+        num_actions (int): The number of actions to perform in each rollout.
+        processes (int): The number of parallel processes to use for rollouts.
+        success_entries (set[SuccessEntry]): A set to accumulate successful entries.
+
+    Returns:
+        None
+    """
+
+    for _ in range(num_iterations):
         seeds = rng.integers(low=0, high=2**31, size=processes)
         start_states, start_entries = cache.sample(
             n=processes * NUM_SAMPLES_PER_PROCESS
@@ -248,6 +314,7 @@ def explore(rng, env, cache, num_iterations, num_actions, processes, success_ent
                 _collect_rollouts,
                 [*zip(start_states, start_entries, rngs)],
             ):
+                # TODO (Joseph): Figure out how to update the cache with the new cache correctly. Why am I updating the success entries and the cache separately?
                 success_entries.update(rollout_success_entries)
                 cache.update(rollout_cache)
 
