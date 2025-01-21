@@ -263,18 +263,44 @@ class BackwardAlgorithm:
 
         self._trajectory_index = len(self._start_states) - 1
 
-    def state(self) -> np.ndarray:
+<<<<<<< HEAD
+    def state(self, use_jitter=True) -> tuple[torch.tensor, int]:
+        if use_jitter:
+            start = max(-1 * self._jitter + self._trajectory_index, 0)
+            stop = min(
+                self._jitter + self._trajectory_index, len(self._start_states) - 1
+            )
+            offset = np.random.randint(start, stop + 1)
+        else:
+            offset = self._trajectory_index
+        return self._start_states[offset], len(self._start_states) - offset
+
+    def move_backward_if_necessary(
+        self,
+        builder_fn: Callable[[torch.tensor, int], builder.BuildResult],
+        episode_length: int,
+        episode_length_buffer: int,
+=======
+    def state(self) -> tuple[torch.tensor, int]:
         start = max(-1 * self._jitter + self._trajectory_index, 0)
         stop = min(self._jitter + self._trajectory_index, len(self._start_states) - 1)
         offset = np.random.randint(start, stop + 1)
-        return self._start_states[offset]
+        return self._start_states[offset], len(self._start_states) - offset
 
     def move_backward_if_necessary(
-        self, builder_fn: Callable[[np.ndarray], builder.BuildResult]
+        self, builder_fn: Callable[[torch.tensor], builder.BuildResult]
+>>>>>>> e4717f4 (moo)
     ) -> [bool, bool]:
         self.iteration += 1
 
-        build_result = builder_fn(initial_state=self.state())
+        state, remaining_step_count = self.state(use_jitter=False)
+        build_episode_length = min(
+            episode_length,
+            len(self._start_states) - self._trajectory_index + episode_length_buffer,
+        )
+        build_result = builder_fn(
+            initial_state=state, episode_length=build_episode_length
+        )
         entry = build_result.success and (
             build_result.reward
             >= sum(self._success_entry.rewards[self._trajectory_index :])
@@ -299,6 +325,12 @@ class BackwardAlgorithm:
 
         #        print("comparing : " ,  (sum(self._move_backward_window) / len(self._move_backward_window)), " vs " , self._move_backward_threshold)
 
+        # TODO(lyric): Need to think about what this looks like if the
+        # env changes each time we call reset. For example, if we
+        # reach the beginning of the trajectory, should we remove from
+        # circulation and let the random starts from env.reset() in
+        # the virtual demonstration keep the model in practice for
+        # working from starting states?
         if (
             (sum(self._move_backward_window) / len(self._move_backward_window))
             >= self._move_backward_threshold
@@ -321,7 +353,11 @@ class BackwardAlgorithmManager:
         move_backward_threshold: float,
         move_backward_window_size: int,
         jitter: int,
+        episode_length_buffer: int,
+        include_virtual_demonstration: bool,
     ):
+        self._initial_state = env.reset()
+
         self._backward_algorithms = [
             BackwardAlgorithm(
                 success_entry=success_entry,
@@ -336,27 +372,92 @@ class BackwardAlgorithmManager:
         self._build_fn = functools.partial(
             builder.Builder(env).build,
             policy=policy,
-            episode_length=episode_length,
             render=False,
         )
 
-    def state(self) -> torch.tensor:
+<<<<<<< HEAD
+        self._episode_length = episode_length
+        self._episode_length_buffer = episode_length_buffer
+        self._include_virtual_demonstration = include_virtual_demonstration
+        self._total_steps_virtual = 0
+        self._total_steps_demonstration = 0
+        self._attempts_virtual = 0
+        self._attempts_demonstration = 0
+=======
+    def state(self) -> tuple[torch.tensor, int]:
         entry_index = np.random.randint(low=0, high=len(self._backward_algorithms))
         state = self._backward_algorithms[entry_index].state()
         return state
+>>>>>>> e4717f4 (moo)
 
-    def move_backward_if_necessary(self) -> tuple[int, int]:
+    def report_actual_steps(self, is_virtual: bool, total_steps: int) -> None:
+        if is_virtual:
+            self._total_steps_virtual += total_steps
+            self._attempts_virtual += 1
+            return
+
+        self._total_steps_demonstration += total_steps
+        self._attempts_demonstration += 1
+
+    def state(self) -> tuple[torch.tensor, int, bool]:
+        if self._include_virtual_demonstration:
+            # From the go-explore-nature paper: To balance the number
+            # of frames allocated to the virtual demonstration, the
+            # average number of steps in an episode corresponding to
+            # the virtual demonstration (lv) is tracked as well as the
+            # average number of steps corresponding to starting from
+            # any other demonstration (ld), and the selection
+            # probability of the virtual demonstration is then
+            # 1/11*ld/lv , where 11 is the total number of
+            # demonstrations (10 from the exploration phase runs and 1
+            # virtual demonstration).
+
+            is_virtual = True
+            total_number_of_demonstrations = 1 + len(self._backward_algorithms)
+            ld = (
+                self._total_steps_demonstration / self._attempts_demonstration
+                if self._attempts_demonstration
+                else 1
+            )
+            lv = (
+                self._total_steps_virtual / self._attempts_virtual
+                if self._attempts_virtual
+                else 1
+            )
+            p = 1 / total_number_of_demonstrations * ld / lv
+            if np.random.random() < p:
+                # TODO(lyric): Need to think about what this looks
+                # like if the env changes each time we call reset.
+                return self._initial_state, self._episode_length, is_virtual
+
+        is_virtual = False
+        entry_index = np.random.randint(low=0, high=len(self._backward_algorithms))
+        state, episode_length = self._backward_algorithms[entry_index].state()
+        return (
+            state,
+            min(self._episode_length, episode_length + self._episode_length_buffer),
+            is_virtual,
+        )
+
+    def move_backward_if_necessary(self) -> dict:
         moved_backward_count = 0
         completed_count = 0
 
         for backward_algorithm in self._backward_algorithms:
             moved_backward, completed = backward_algorithm.move_backward_if_necessary(
-                self._build_fn
+                self._build_fn, self._episode_length, self._episode_length_buffer
             )
             moved_backward_count += int(moved_backward)
             completed_count += int(completed)
 
-        return moved_backward_count, completed_count
+        return {
+            "moved_backward_count": moved_backward_count,
+            "completed_count": completed_count,
+            "total_steps_demonstration": self._total_steps_demonstration,
+            "attempts_demonstration": self._attempts_demonstration,
+            "total_steps_virtual": self._total_steps_virtual,
+            "attempts_virtual": self._attempts_virtual,
+        }
 
 
 # pylint: disable=too-many-instance-attributes
@@ -509,8 +610,13 @@ class BridgeBuilderModel(lightning.LightningModule):
             move_backward_threshold=0.5,
             move_backward_window_size=11,
             jitter=self.hparams.jitter,
+            episode_length_buffer=self.hparams.max_episode_length // 2,
+            include_virtual_demonstration=True,
         )
-        self.state = self.env.reset(self._backward_algorithm_manager.state())
+        self.state, self.target_episode_length, self.is_virtual_demonstration = (
+            self._backward_algorithm_manager.state()
+        )
+        self.env.reset(self.state)
         self._make_initial_memories()
 
     @property
@@ -551,26 +657,11 @@ class BridgeBuilderModel(lightning.LightningModule):
         if self.hparams.debug:
             self._record_q_values_debug_helper()
 
-        moved_backward_count, completed_count = (
+        backward_algorithm_counters = (
             self._backward_algorithm_manager.move_backward_if_necessary()
         )
-        self._moved_backwards += moved_backward_count
+        self._moved_backwards += backward_algorithm_counters["moved_backward_count"]
 
-        # if moved_backward_count:
-        #     print(
-        #         "Moved backward ",
-        #         moved_backward_count,
-        #         " with ",
-        #         completed_count,
-        #         " completed.",
-        #     )
-
-        # self.add_custom_scalar(
-        #     "maximum_move_backwards",
-        #     sum(
-        #         len(success_entry.trajectory) - 1 for success_entry in self._success_entries
-        #     ),
-        # )
         self.log(
             "moved_backward_count",
             self._moved_backwards,
@@ -581,7 +672,39 @@ class BridgeBuilderModel(lightning.LightningModule):
         )
         self.log(
             "completed_count",
-            completed_count,
+            backward_algorithm_counters["completed_count"],
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "total_steps_demonstration",
+            backward_algorithm_counters["total_steps_demonstration"],
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "attempts_demonstration",
+            backward_algorithm_counters["attempts_demonstration"],
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "total_steps_virtual",
+            backward_algorithm_counters["total_steps_virtual"],
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "attempts_virtual",
+            backward_algorithm_counters["attempts_virtual"],
             on_step=False,
             on_epoch=True,
             prog_bar=False,
@@ -672,7 +795,10 @@ class BridgeBuilderModel(lightning.LightningModule):
         episode_idx = 0
         total_step_idx = 0
         while True:
-            for step_idx in range(self.hparams.max_episode_length):
+            episode_length = min(
+                self.hparams.max_episode_length, self.target_episode_length
+            )
+            for step_idx in range(episode_length):
                 self._checkpoint({"episode": episode_idx, "step": total_step_idx})
                 start_state, action, end_state, reward, success = self()
                 yield (
@@ -687,7 +813,14 @@ class BridgeBuilderModel(lightning.LightningModule):
                 total_step_idx += 1
                 if success:
                     break
-            self.state = self.env.reset(self._backward_algorithm_manager.state())
+            self._backward_algorithm_manager.report_actual_steps(
+                is_virtual=self.is_virtual_demonstration, total_steps=step_idx + 1
+            )
+
+            self.state, self.target_episode_length, self.is_virtual_demonstration = (
+                self._backward_algorithm_manager.state()
+            )
+            self.env.reset(self.state)
             episode_idx += 1
 
     def _checkpoint(self, thresholds: dict[str, int]) -> None:
@@ -1039,7 +1172,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         return DataLoader(
             ValidationBuilder(
                 env=self._validation_env,
-                initial_state=self._backward_algorithm_manager.state(),
+                initial_state=self._backward_algorithm_manager.state()[0],
                 policy=self._validation_policy,
                 episode_length=self.hparams.max_episode_length,
             ),
