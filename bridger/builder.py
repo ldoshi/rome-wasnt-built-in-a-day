@@ -69,7 +69,7 @@ class BuildEvaluator:
             for build_result in self._build_results
             if build_result.success
         ]
-
+    
     @property
     def build_steps_on_success_mean(self):
         """Returns the mean of build steps taken on successful builds only."""
