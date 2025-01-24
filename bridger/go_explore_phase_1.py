@@ -45,7 +45,6 @@ class SuccessEntryGenerator:
         num_iterations (int): The number of iterations to run the exploration.
         num_actions (int): The number of actions to perform in each rollout.
         hparams (Any): Hyperparameters for the exploration process.
-        success_entries (set[SuccessEntry]): A set of generated success entries.
     """
 
     def __init__(
@@ -86,6 +85,9 @@ class StateCache:
         self, state, led_to_something_to_new: bool
     ) -> None:
         key = hash_utils.hash_tensor(state)
+        print(f"THIS IS THE KEY: {key}", "\n")
+        print(self._cache, "\n")
+        print(f"IS THE KEY IN THE CACHE: {key in self._cache}", "\n")
         assert key in self._cache
         if led_to_something_to_new:
             self._cache[key].steps_since_led_to_something_new = 0
@@ -102,6 +104,7 @@ class StateCache:
         self, state: np.ndarray, trajectory: tuple[int], rewards: tuple[float]
     ) -> bool:
         key = hash_utils.hash_tensor(state)
+        print("VISITING")
         if key in self._cache:
             entry = self._cache[key]
             entry.visit_count += 1
@@ -109,13 +112,14 @@ class StateCache:
                 sum(rewards) == sum(entry.rewards)
                 and len(trajectory) < len(entry.trajectory)
             ):
+                print("UPDATING ENTRY")
                 entry.rewards = rewards
                 entry.trajectory = trajectory
         else:
             self._cache[key] = CacheEntry(trajectory=trajectory, rewards=rewards)
 
     def sample(self, n=1):
-
+        print("SAMPLING")
         cache_keys = []
         state_count_scores = []
         for state, cache_entry in self._cache.items():
@@ -177,6 +181,7 @@ class StateCache:
         Returns:
             None
         """
+        print("UPDATING CACHE")
         for new_state, new_cache_entry in new_cache._cache.items():
             for state, cache_entry in self._cache.items():
                 if sum(new_cache_entry.rewards) > sum(cache_entry.rewards) or (
@@ -194,7 +199,7 @@ class StateCache:
 
 def rollout(
     env: BridgesEnv,
-    actions: int,
+    num_actions: int,
     cache: StateCache,
     start_state: np.ndarray,
     start_entry: CacheEntry,
