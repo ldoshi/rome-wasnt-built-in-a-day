@@ -258,8 +258,9 @@ class BackwardAlgorithm:
         self._start_states = []
         for action in self._success_entry.trajectory:
             self._start_states.append(state)
-            state, reward, done, _ = env.step(action)
-        assert done
+            state, reward, done, aux = env.step(action)
+            success = aux["is_success"]
+        assert success
 
         self._trajectory_index = len(self._start_states) - 1
 

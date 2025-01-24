@@ -182,16 +182,18 @@ class Builder:
         state = self._env.reset(initial_state)
         total_reward = 0
         trajectory = []
+        success = False
         for i in range(episode_length):
             # This lint error seems to be a torch+pylint issue in general.
             # pylint: disable=not-callable
             action = policy(state)
             trajectory.append(action)
-            state, reward, success, _ = self._env.step(action)
+            state, reward, done, aux = self._env.step(action)
+            success = aux["is_success"]
             total_reward += reward
             if render:
                 self._env.render()
-            if success:
+            if done:
                 break
 
         return BuildResult(
