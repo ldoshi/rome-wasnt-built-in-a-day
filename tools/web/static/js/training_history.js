@@ -70,6 +70,13 @@ let _COLORS = [
   "rgba(127, 0, 127, 1)",
 ];
 
+function render_dropdown(data) {
+  const container = $("#hparams_data")[0];
+  for (const [key, value] of Object.entries(data)) {
+    container.value += `${key}: ${value}\n`;
+  }
+}
+
 let _DATA = null;
 
 let _STATE_FILTER = null;
@@ -86,6 +93,7 @@ function update_plots() {
     function (data, response) {
       _DATA = data;
       render_plots();
+      render_dropdown(_DATA["hparams_data"]);
       $("#current-experiment-name").html(plot_params["experiment_name"]);
     }
   )
@@ -173,7 +181,7 @@ function render_plots() {
         _DATA["labels"],
         metric_entry["series_data"],
         metric_entry["series_labels"],
-        metric_entry['plot_type']
+        metric_entry["plot_type"]
       );
     }
   }
@@ -236,6 +244,7 @@ function render_training_plot(
 function render_state_plot(state_index, data) {
   let canvas_id = `state-plot-state-canvas-${state_index}`;
   let state_plot_html = `<div class="state-plot-info">Visits: ${data["visit_count"]}</div>`;
+  state_plot_html += `<div class="state-plot-info">State id: ${data["state_idx"]}</div>`;
   state_plot_html += `<div id="state-plot-state-${state_index}" class="state-plot-state"><canvas id="${canvas_id}" class="plot-canvas"></canvas></div>`;
   $(`#plot-holder-${state_index}-state`).html(state_plot_html);
 

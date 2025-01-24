@@ -134,7 +134,12 @@ def run_experiments(
 
     if sweep_keys:
         executor_fn = functools.partial(
-            _executor, execute_fn, experiment_name_prefix, args, sweep_keys
+            
+          
+          
+          
+          
+          , execute_fn, experiment_name_prefix, args, sweep_keys
         )
         with Pool(num_processes) as pool:
             # Iterate sweep combinations.

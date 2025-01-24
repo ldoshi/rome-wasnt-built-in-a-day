@@ -1,5 +1,4 @@
 <script src= {{ url_for('static',filename='js/training_history.js') }}></script>
-<link rel= "stylesheet" type= "text/css" href= {{ url_for('static',filename='css/training_history.css') }}>
 
 {% extends 'base.html' %}
 
@@ -52,6 +51,13 @@
 	  Apply
 	</button>
 	<textarea id="state-filter-function-body" class="control-function-body-input">{{state_filter_function_body}}</textarea>
+      </div>
+    </div>
+
+    <div class="interactive-tools"></div>
+      <div class="control">
+	<div class="control-label">Hparams data</div>
+	<textarea id="hparams_data" class="control-function-body-input"></textarea>
       </div>
     </div>
 

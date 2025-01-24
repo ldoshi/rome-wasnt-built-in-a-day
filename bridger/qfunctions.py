@@ -272,20 +272,18 @@ class TabularQ(torch.nn.Module):
 
         state_hashes = set()
         state_hashes.add(self._internal_hash(env.reset()))
-
         with multiprocessing.Pool() as pool:
             for hashes in pool.map(
                 _collect_parameters_function,
                 itertools.product(range(env.nA), repeat=initial_brick_count),
             ):
                 state_hashes.update(hashes)
-
         for state_hash in state_hashes:
             self._q[state_hash] = torch.nn.Parameter(
                 torch.rand(env.nA, requires_grad=True)
             )
 
-    def _internal_hash(self, x) -> str:
+    def _internal_hash(self, x: torch.Tensor) -> str:
         """Hashes states per component requirements.
 
         ParameterDict does not allow non-str as dict keys. The
@@ -293,7 +291,7 @@ class TabularQ(torch.nn.Module):
         and tensors consistent.
         """
 
-        return str(self._hash_fn(x))
+        return str(self._hash_fn(x.int()))
 
     def forward(self, x):
         # The tensor must be converted to int to match the state hash
