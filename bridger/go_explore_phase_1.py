@@ -86,7 +86,7 @@ class StateCache:
     ) -> None:
         key = hash_utils.hash_tensor(state)
         print(f"THIS IS THE KEY: {key}", "\n")
-        print(self._cache, "\n")
+        print(f"THIS IS THE CACHE: {self._cache}", "\n")
         print(f"IS THE KEY IN THE CACHE: {key in self._cache}", "\n")
         assert key in self._cache
         if led_to_something_to_new:
@@ -116,7 +116,9 @@ class StateCache:
                 entry.rewards = rewards
                 entry.trajectory = trajectory
         else:
+            print(f"ADDING ENTRY TO CACHE: {key}")
             self._cache[key] = CacheEntry(trajectory=trajectory, rewards=rewards)
+            print(f"CURRENT CACHE: {self._cache}")
 
     def sample(self, n=1):
         print("SAMPLING")
@@ -205,6 +207,7 @@ def rollout(
     start_entry: CacheEntry,
     rng: int,
 ) -> StateCache:
+    print(f"ROLLING OUT: {cache._cache}")
     success_entries: set[SuccessEntry] = set()
     env.reset(start_state)
     current_trajectory = copy.deepcopy(start_entry.trajectory)
@@ -271,7 +274,7 @@ def generate_success_entry(
 
 
 def explore(
-    rng: int,
+    rng: int,  # TODO (Joseph): Figure out why this is an int and not a numpy random generator. (opposite)
     env: BridgesEnv,
     cache: StateCache,
     num_iterations: int,
@@ -314,6 +317,7 @@ def explore(
         )
 
         success_entries = set()
+        print(f"Right before multiprocessing: {cache._cache}")
         with multiprocessing.Pool(processes=processes) as pool:
             for rollout_success_entries, rollout_cache in pool.starmap(
                 _collect_rollouts,
@@ -332,7 +336,7 @@ if __name__ == "__main__":
     )
     hparams = parser.parse_args()
 
-    processes = 2
+    processes = 1
 
     width = hparams.env_width
     num_iterations = hparams.go_explore_num_iterations
