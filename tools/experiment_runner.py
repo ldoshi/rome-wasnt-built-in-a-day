@@ -73,7 +73,7 @@ def _executor(
     experiment_name_prefix: str,
     args: list[Any],
     sweep_keys: list[str],
-    iteration_values: list[Any],
+    iteration_values: tuple[Any],
 ) -> list[str]:
 
     iteration_args = copy.deepcopy(args)
@@ -134,7 +134,12 @@ def run_experiments(
 
     if sweep_keys:
         executor_fn = functools.partial(
-            _executor, execute_fn, experiment_name_prefix, args, sweep_keys
+            
+          
+          
+          
+          
+          , execute_fn, experiment_name_prefix, args, sweep_keys
         )
         with Pool(num_processes) as pool:
             # Iterate sweep combinations.
