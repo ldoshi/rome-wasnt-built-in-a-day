@@ -743,7 +743,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                     action,
                     end_state,
                     reward,
-                    success,
+                    done,
                 ) = next(self.memories)
                 if self.hparams.debug:
                     rewards.append(reward)
@@ -773,7 +773,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             action:      The action taken during the transition.
             end_state:   The state at the end of the transition.
             reward:      The reward gained through the transition.
-            success:    Whether the transition marked the end of the episode."""
+            done:    Whether the transition marked the end of the episode."""
 
         episode_idx = 0
         total_step_idx = 0
@@ -783,7 +783,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             )
             for step_idx in range(episode_length):
                 self._checkpoint({"episode": episode_idx, "step": total_step_idx})
-                start_state, action, end_state, reward, success = self()
+                start_state, action, end_state, reward, done = self()
                 yield (
                     episode_idx,
                     step_idx,
@@ -791,10 +791,10 @@ class BridgeBuilderModel(lightning.LightningModule):
                     action,
                     end_state,
                     reward,
-                    success,
+                    done,
                 )
                 total_step_idx += 1
-                if success:
+                if done:
                     break
             self._backward_algorithm_manager.report_actual_steps(
                 is_virtual=self.is_virtual_demonstration, total_steps=step_idx + 1
@@ -951,7 +951,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         actions: torch.Tensor,
         next_states: torch.Tensor,
         rewards: torch.Tensor,
-        success: torch.Tensor,
+        done: torch.Tensor,
     ) -> torch.Tensor:
         """Calculates TD error during training and estimates the state-value
         function of Markov decision process under a policy.
@@ -961,14 +961,14 @@ class BridgeBuilderModel(lightning.LightningModule):
             actions: The action taken during the transition.
             next_states: The state at the end of the transition.
             rewards: The reward gained through the transition.
-            success: Whether the transition marked the end of the episode.
+            done: Whether the transition marked the end of the episode.
         """
         row_idx = torch.arange(actions.shape[0])
         qvals = self.q_manager.q(states)[row_idx, actions]
         with torch.no_grad():
             next_actions = self.q_manager.q(next_states).argmax(dim=1)
             next_vals = self.q_manager.target(next_states)[row_idx, next_actions]
-            expected_qvals = rewards + (~success) * self.hparams.gamma * next_vals
+            expected_qvals = rewards + (~done) * self.hparams.gamma * next_vals
         return expected_qvals - qvals
 
     def compute_loss(
@@ -989,8 +989,8 @@ class BridgeBuilderModel(lightning.LightningModule):
 
         The loss is computed across a batch of memories sampled from the replay buffer. The replay buffer sampling weights are updated based on the TD error from the samples.
         """
-        indices, states, actions, next_states, rewards, success, weights = batch
-        td_errors = self.get_td_error(states, actions, next_states, rewards, success)
+        indices, states, actions, next_states, rewards, done, weights = batch
+        td_errors = self.get_td_error(states, actions, next_states, rewards, done)
 
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
@@ -1016,7 +1016,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             indices_copy = copy.deepcopy(indices)
             actions_copy = copy.deepcopy(actions)
             rewards_copy = copy.deepcopy(rewards)
-            success_copy = copy.deepcopy(success)
+            done_copy = copy.deepcopy(done)
             weights_copy = copy.deepcopy(weights)
             replay_buffer_state_counts_copy = sorted(
                 [
@@ -1040,7 +1040,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                         for next_state in next_states
                     ],
                     rewards=rewards_copy,
-                    successes=success_copy,
+                    dones=done_copy,
                     weights=weights_copy,
                     loss=loss,
                     replay_buffer_state_counts=replay_buffer_state_counts_copy,
@@ -1081,9 +1081,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                                     actions=torch.tensor([action]),
                                     next_states=torch.tensor([next_state]),
                                     rewards=torch.tensor([reward]),
-                                    success=torch.tensor(
-                                        [environment_completion_status]
-                                    ),
+                                    done=torch.tensor([environment_completion_status]),
                                 ).item(),
                             ),
                         )
