@@ -74,13 +74,13 @@ class CacheEntry:
 
 class CellManager:
 
-    def cache_key(state: np.ndarray) -> str:
+    def cache_key(self, state: np.ndarray) -> str:
         pass
 
 
 class StateCellManager(CellManager):
 
-    def cache_key(state: np.ndarray) -> str:
+    def cache_key(self, state: np.ndarray) -> str:
         return hash_utils.hash_tensor(state)
 
 
