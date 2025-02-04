@@ -275,17 +275,14 @@ def generate_success_entry(
     cell_manager = build_cell_manager(hparams)
     cache: StateCache = StateCache(rng, hparams, cell_manager)
     cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
-    success_entries: set[SuccessEntry] = set()
-    explore(
+    return explore(
         rng=np.random.default_rng(RNG),
         env=env,
         cache=cache,
         num_iterations=num_iterations,
         num_actions=num_actions,
         processes=processes,
-        success_entries=success_entries,
     )
-    return success_entries
 
 
 def explore(
@@ -295,7 +292,6 @@ def explore(
     num_iterations: int,
     num_actions: int,
     processes: int,
-    success_entries: set[SuccessEntry],
 ) -> None:
     """
     Perform exploration using multiple processes to collect rollouts and update the state cache.
@@ -318,6 +314,7 @@ def explore(
         None
     """
 
+    success_entries: set[SuccessEntry] = set()
     for _ in range(num_iterations):
         start_states, start_entries = cache.sample(
             n=processes * NUM_SAMPLES_PER_PROCESS
@@ -340,6 +337,8 @@ def explore(
                 # TODO (Joseph): Figure out how to update the cache with the new cache correctly. Why am I updating the success entries and the cache separately?
                 success_entries.update(rollout_success_entries)
                 cache.update(rollout_cache)
+
+    return success_entries
 
 
 if __name__ == "__main__":
