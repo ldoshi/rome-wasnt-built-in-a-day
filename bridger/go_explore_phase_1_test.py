@@ -13,6 +13,7 @@ class Hparams:
         self.go_explore_wa_sampled = 0.1
         self.go_explore_wa_led_to_something_new = 0
         self.go_explore_wa_times_visited = 0.3
+        self.cell_manager = "state_cell_manager"
 
 
 class TestGoExplorePhaseOne(unittest.TestCase):
