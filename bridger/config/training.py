@@ -153,3 +153,8 @@ key = "tag"
 hparam_dict[key] = {"type": str, "default": ""}
 help_str = "A tag to keep notes on the experiment run"
 hparam_dict[key]["help"] = help_str
+
+key = "cell_manager"
+hparam_dict[key] = {"type": str, "default": "state_cell_manager"}
+help_str = "The cell manager to use for go-explore."
+hparam_dict[key]["help"] = help_str
