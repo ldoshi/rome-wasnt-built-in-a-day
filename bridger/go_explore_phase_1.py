@@ -106,7 +106,7 @@ class StateCache:
     def update_times_since_led_to_something_new(
         self, state, led_to_something_to_new: bool
     ) -> None:
-        key = self._cell_manager(state)
+        key = self._cell_manager.cache_key(state)
         assert key in self._cache
         if led_to_something_to_new:
             self._cache[key].steps_since_led_to_something_new = 0
