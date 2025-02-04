@@ -36,7 +36,6 @@ class SuccessEntryGenerator:
         num_iterations (int): The number of iterations to run the exploration.
         num_actions (int): The number of actions to perform in each rollout.
         hparams (Any): Hyperparameters for the exploration process.
-        success_entries (set[SuccessEntry]): A set of generated success entries.
     """
 
     def __init__(
@@ -48,7 +47,6 @@ class SuccessEntryGenerator:
         num_actions: int,
         hparams: Any,
     ):
-        self._processes = processes
         self._width = width
         self._env = env
         self._num_iterations = num_iterations
@@ -61,6 +59,7 @@ class SuccessEntryGenerator:
             num_actions=num_actions,
             hparams=hparams,
             seed=seed,
+            processes=processes,
         )
 
 
@@ -87,10 +86,9 @@ class StateCellManager(Cell):
 
 class StateCache:
 
-    _cache: dict[Any, CacheEntry] = {}
-    current_best: int = 10000000
-
-    def __init__(self, rng, hparams, cell_manager: CellManager):
+    def __init__(self, rng, hparams):
+        self.current_best: int = 10000000
+        self._cache: dict[Any, CacheEntry] = {}
         self._rng = rng
         self._hparams = hparams
         self._cell_manager = cell_manager
@@ -106,10 +104,7 @@ class StateCache:
             self._cache[key].steps_since_led_to_something_new += 1
 
     def update_current_best(self, trajectory_length: int):
-        #    print("updating with " , trajectory_length, ' ' , self.current_best)
         self.current_best = min(self.current_best, trajectory_length)
-
-        #        print("CURRENT BEST: " , self.current_best)
 
     def visit(
         self, state: np.ndarray, trajectory: tuple[int], rewards: tuple[float]
@@ -128,7 +123,6 @@ class StateCache:
             self._cache[key] = CacheEntry(trajectory=trajectory, rewards=rewards)
 
     def sample(self, n=1):
-
         cache_keys = []
         state_count_scores = []
         for state, cache_entry in self._cache.items():
@@ -136,24 +130,24 @@ class StateCache:
 
             steps_since_led_to_something_new_score = _count_score(
                 v=cache_entry.steps_since_led_to_something_new,
-                wa=hparams.go_explore_wa_led_to_something_new,
-                pa=hparams.go_explore_pa,
-                epsilon_1=hparams.go_explore_epsilon_1,
-                epsilon_2=hparams.go_explore_epsilon_2,
+                wa=self._hparams.go_explore_wa_led_to_something_new,
+                pa=self._hparams.go_explore_pa,
+                epsilon_1=self._hparams.go_explore_epsilon_1,
+                epsilon_2=self._hparams.go_explore_epsilon_2,
             )
             sampled_score = _count_score(
                 v=cache_entry.sampled_count,
-                wa=hparams.go_explore_wa_sampled,
-                pa=hparams.go_explore_pa,
-                epsilon_1=hparams.go_explore_epsilon_1,
-                epsilon_2=hparams.go_explore_epsilon_2,
+                wa=self._hparams.go_explore_wa_sampled,
+                pa=self._hparams.go_explore_pa,
+                epsilon_1=self._hparams.go_explore_epsilon_1,
+                epsilon_2=self._hparams.go_explore_epsilon_2,
             )
             visited_score = _count_score(
                 v=cache_entry.visit_count,
-                wa=hparams.go_explore_wa_times_visited,
-                pa=hparams.go_explore_pa,
-                epsilon_1=hparams.go_explore_epsilon_1,
-                epsilon_2=hparams.go_explore_epsilon_2,
+                wa=self._hparams.go_explore_wa_times_visited,
+                pa=self._hparams.go_explore_pa,
+                epsilon_1=self._hparams.go_explore_epsilon_1,
+                epsilon_2=self._hparams.go_explore_epsilon_2,
             )
             state_count_scores.append(
                 steps_since_led_to_something_new_score + sampled_score + visited_score
@@ -207,7 +201,7 @@ class StateCache:
 
 def rollout(
     env: BridgesEnv,
-    actions: int,
+    num_actions: int,
     cache: StateCache,
     start_state: np.ndarray,
     start_entry: CacheEntry,
@@ -243,7 +237,12 @@ def rollout(
 
 
 def generate_success_entry(
-    env: BridgesEnv, num_iterations: int, num_actions: int, hparams: Any, seed: int
+    env: BridgesEnv,
+    num_iterations: int,
+    num_actions: int,
+    hparams: Any,
+    seed: int,
+    processes: int,
 ) -> set[SuccessEntry]:
     """
     Generate success entries by performing exploration in the given environment.
@@ -279,7 +278,7 @@ def generate_success_entry(
 
 
 def explore(
-    rng: int,
+    rng: np.random.default_rng,
     env: BridgesEnv,
     cache: StateCache,
     num_iterations: int,
@@ -333,6 +332,7 @@ def explore(
 
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("fork")
     parser = config.get_hyperparam_parser(
         config.bridger_config,
         description="Hyperparameter Parser for the BridgeBuilderModel",
@@ -340,14 +340,12 @@ if __name__ == "__main__":
     )
     hparams = parser.parse_args()
 
-    processes = 2
-
     width = hparams.env_width
     num_iterations = hparams.go_explore_num_iterations
     num_actions = hparams.go_explore_num_actions
 
     success_entry_generator = SuccessEntryGenerator(
-        processes=processes,
+        processes=2,
         width=width,
         env=BridgesEnv(width=width, force_standard_config=True),
         num_iterations=num_iterations,
