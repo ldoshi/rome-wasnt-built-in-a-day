@@ -84,9 +84,16 @@ class StateCellManager(Cell):
         return hash_utils.hash_tensor(state)
 
 
+def build_cell_manager(hparams) -> CellManager:
+    match hparams.cell_manager:
+      case "state_cell_manager":
+        return StateCellManager()
+      case _:
+        raise ValueError(f"Unrecognized cell manager provided: {hparams.cell_manager}")
+    
 class StateCache:
 
-    def __init__(self, rng, hparams):
+    def __init__(self, rng, hparams, cell_manager: CellManager):
         self.current_best: int = 10000000
         self._cache: dict[Any, CacheEntry] = {}
         self._rng = rng
@@ -262,7 +269,8 @@ def generate_success_entry(
         set[SuccessEntry]: A set of generated success entries.
     """
     rng = np.random.default_rng(seed)
-    cache: StateCache = StateCache(rng, hparams)
+    cell_manager = build_cell_manager(hparams)
+    cache: StateCache = StateCache(rng, hparams, cell_manager)
     cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
     success_entries: set[SuccessEntry] = set()
     explore(
