@@ -1,10 +1,10 @@
 """Checks that two log files of training batch entries share the same values
-   across all attributes.
+across all attributes.
 
-   Usage:
-   $ python -m tools.training_batch_comparison_tool
-     --expected_log object_logging_dir/training_batch
-     --test_log object_logging_dir_2/training_batch
+Usage:
+$ python -m tools.training_batch_comparison_tool
+  --expected_log object_logging_dir/training_batch
+  --test_log object_logging_dir_2/training_batch
 """
 
 import argparse
