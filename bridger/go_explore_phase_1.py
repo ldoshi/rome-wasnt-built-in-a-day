@@ -86,11 +86,14 @@ class StateCellManager(Cell):
 
 def build_cell_manager(hparams) -> CellManager:
     match hparams.cell_manager:
-      case "state_cell_manager":
-        return StateCellManager()
-      case _:
-        raise ValueError(f"Unrecognized cell manager provided: {hparams.cell_manager}")
-    
+        case "state_cell_manager":
+            return StateCellManager()
+        case _:
+            raise ValueError(
+                f"Unrecognized cell manager provided: {hparams.cell_manager}"
+            )
+
+
 class StateCache:
 
     def __init__(self, rng, hparams, cell_manager: CellManager):
