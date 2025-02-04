@@ -7,12 +7,13 @@ log_file = "../object_logging/20240222_222719/training_history_td_error"
 
 target_batch_idx = 3213
 
+
 def get_entries(target_batch_idx: int) -> list:
     entries = []
     for entry in object_log_readers.read_object_log(log_file):
         if entry.batch_idx == target_batch_idx:
             entries.append(entry)
-        
+
     return entries
 
 
@@ -30,6 +31,3 @@ for key, repeated in repeated_entries.items():
     for entry in repeated:
         if entry.td_error != td_error:
             print(f"{key}: {td_error} vs {entry.td_error}")
-    
-
-    
