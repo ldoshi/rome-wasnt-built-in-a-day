@@ -233,7 +233,7 @@ def rollout(
         rewards += (reward,)
         if done:
             if aux["is_success"] and all(np.array(rewards) > -0.5):
-                success_entries.append(
+                success_entries.add(
                     SuccessEntry(trajectory=current_trajectory, rewards=rewards)
                 )
                 led_to_something_new = True
@@ -319,11 +319,12 @@ def explore(
     """
 
     for _ in range(num_iterations):
-        seeds = rng.integers(low=0, high=2**31, size=processes)
         start_states, start_entries = cache.sample(
             n=processes * NUM_SAMPLES_PER_PROCESS
         )
+        seeds = rng.integers(low=0, high=2**31, size=len(start_states))
         rngs = map(np.random.default_rng, seeds)
+
         _collect_rollouts = functools.partial(
             rollout,
             env,
@@ -331,7 +332,6 @@ def explore(
             cache,
         )
 
-        success_entries = set()
         with multiprocessing.Pool(processes=processes) as pool:
             for rollout_success_entries, rollout_cache in pool.starmap(
                 _collect_rollouts,
