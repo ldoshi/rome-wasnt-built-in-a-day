@@ -56,7 +56,6 @@ class SuccessEntryGenerator:
         num_actions: int,
         hparams: Any,
     ):
-        self._processes = processes
         self._width = width
         self._env = env
         self._num_iterations = num_iterations
@@ -69,15 +68,15 @@ class SuccessEntryGenerator:
             num_actions=num_actions,
             hparams=hparams,
             seed=seed,
+            processes=processes,
         )
 
 
 class StateCache:
 
-    _cache: dict[Any, CacheEntry] = {}
-    current_best: int = 10000000
-
     def __init__(self, rng, hparams):
+        self.current_best: int = 10000000
+        self._cache: dict[Any, CacheEntry] = {}
         self._rng = rng
         self._hparams = hparams
 
@@ -85,9 +84,6 @@ class StateCache:
         self, state, led_to_something_to_new: bool
     ) -> None:
         key = hash_utils.hash_tensor(state)
-        print(f"THIS IS THE KEY: {key}", "\n")
-        print(f"THIS IS THE CACHE: {self._cache}", "\n")
-        print(f"IS THE KEY IN THE CACHE: {key in self._cache}", "\n")
         assert key in self._cache
         if led_to_something_to_new:
             self._cache[key].steps_since_led_to_something_new = 0
@@ -95,16 +91,12 @@ class StateCache:
             self._cache[key].steps_since_led_to_something_new += 1
 
     def update_current_best(self, trajectory_length: int):
-        #    print("updating with " , trajectory_length, ' ' , self.current_best)
         self.current_best = min(self.current_best, trajectory_length)
-
-        #        print("CURRENT BEST: " , self.current_best)
 
     def visit(
         self, state: np.ndarray, trajectory: tuple[int], rewards: tuple[float]
     ) -> bool:
         key = hash_utils.hash_tensor(state)
-        print("VISITING")
         if key in self._cache:
             entry = self._cache[key]
             entry.visit_count += 1
@@ -112,16 +104,12 @@ class StateCache:
                 sum(rewards) == sum(entry.rewards)
                 and len(trajectory) < len(entry.trajectory)
             ):
-                print("UPDATING ENTRY")
                 entry.rewards = rewards
                 entry.trajectory = trajectory
         else:
-            print(f"ADDING ENTRY TO CACHE: {key}")
             self._cache[key] = CacheEntry(trajectory=trajectory, rewards=rewards)
-            print(f"CURRENT CACHE: {self._cache}")
 
     def sample(self, n=1):
-        print("SAMPLING")
         cache_keys = []
         state_count_scores = []
         for state, cache_entry in self._cache.items():
@@ -129,24 +117,24 @@ class StateCache:
 
             steps_since_led_to_something_new_score = _count_score(
                 v=cache_entry.steps_since_led_to_something_new,
-                wa=hparams.go_explore_wa_led_to_something_new,
-                pa=hparams.go_explore_pa,
-                epsilon_1=hparams.go_explore_epsilon_1,
-                epsilon_2=hparams.go_explore_epsilon_2,
+                wa=self._hparams.go_explore_wa_led_to_something_new,
+                pa=self._hparams.go_explore_pa,
+                epsilon_1=self._hparams.go_explore_epsilon_1,
+                epsilon_2=self._hparams.go_explore_epsilon_2,
             )
             sampled_score = _count_score(
                 v=cache_entry.sampled_count,
-                wa=hparams.go_explore_wa_sampled,
-                pa=hparams.go_explore_pa,
-                epsilon_1=hparams.go_explore_epsilon_1,
-                epsilon_2=hparams.go_explore_epsilon_2,
+                wa=self._hparams.go_explore_wa_sampled,
+                pa=self._hparams.go_explore_pa,
+                epsilon_1=self._hparams.go_explore_epsilon_1,
+                epsilon_2=self._hparams.go_explore_epsilon_2,
             )
             visited_score = _count_score(
                 v=cache_entry.visit_count,
-                wa=hparams.go_explore_wa_times_visited,
-                pa=hparams.go_explore_pa,
-                epsilon_1=hparams.go_explore_epsilon_1,
-                epsilon_2=hparams.go_explore_epsilon_2,
+                wa=self._hparams.go_explore_wa_times_visited,
+                pa=self._hparams.go_explore_pa,
+                epsilon_1=self._hparams.go_explore_epsilon_1,
+                epsilon_2=self._hparams.go_explore_epsilon_2,
             )
             state_count_scores.append(
                 steps_since_led_to_something_new_score + sampled_score + visited_score
@@ -183,7 +171,6 @@ class StateCache:
         Returns:
             None
         """
-        print("UPDATING CACHE")
         for new_state, new_cache_entry in new_cache._cache.items():
             for state, cache_entry in self._cache.items():
                 if sum(new_cache_entry.rewards) > sum(cache_entry.rewards) or (
@@ -207,7 +194,6 @@ def rollout(
     start_entry: CacheEntry,
     rng: int,
 ) -> StateCache:
-    print(f"ROLLING OUT: {cache._cache}")
     success_entries: set[SuccessEntry] = set()
     env.reset(start_state)
     current_trajectory = copy.deepcopy(start_entry.trajectory)
@@ -238,7 +224,12 @@ def rollout(
 
 
 def generate_success_entry(
-    env: BridgesEnv, num_iterations: int, num_actions: int, hparams: Any, seed: int
+    env: BridgesEnv,
+    num_iterations: int,
+    num_actions: int,
+    hparams: Any,
+    seed: int,
+    processes: int,
 ) -> set[SuccessEntry]:
     """
     Generate success entries by performing exploration in the given environment.
@@ -274,7 +265,7 @@ def generate_success_entry(
 
 
 def explore(
-    rng: int,  # TODO (Joseph): Figure out why this is an int and not a numpy random generator. (opposite)
+    rng: np.random.default_rng,
     env: BridgesEnv,
     cache: StateCache,
     num_iterations: int,
@@ -317,7 +308,6 @@ def explore(
         )
 
         success_entries = set()
-        print(f"Right before multiprocessing: {cache._cache}")
         with multiprocessing.Pool(processes=processes) as pool:
             for rollout_success_entries, rollout_cache in pool.starmap(
                 _collect_rollouts,
@@ -329,6 +319,7 @@ def explore(
 
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("fork")
     parser = config.get_hyperparam_parser(
         config.bridger_config,
         description="Hyperparameter Parser for the BridgeBuilderModel",
@@ -336,14 +327,12 @@ if __name__ == "__main__":
     )
     hparams = parser.parse_args()
 
-    processes = 1
-
     width = hparams.env_width
     num_iterations = hparams.go_explore_num_iterations
     num_actions = hparams.go_explore_num_actions
 
     success_entry_generator = SuccessEntryGenerator(
-        processes=processes,
+        processes=2,
         width=width,
         env=BridgesEnv(width=width, force_standard_config=True),
         num_iterations=num_iterations,
