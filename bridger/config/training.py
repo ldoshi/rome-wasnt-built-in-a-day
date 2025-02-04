@@ -83,12 +83,12 @@ help_str = "The gradient_clip_val to provide the Lightning Trainer"
 hparam_dict[key]["help"] = help_str
 
 key = "val_check_interval"
-hparam_dict[key] = {"type": int, "default": 1000}
+hparam_dict[key] = {"type": int, "default": 200}
 help_str = "The val_check_interval to provide the Lightning Trainer. Set to an integer value to run validation every n steps (batches) since we have a streaming use-case running a single training epoch."
 hparam_dict[key]["help"] = help_str
 
 key = "val_batch_size"
-hparam_dict[key] = {"type": int, "default": 1000}
+hparam_dict[key] = {"type": int, "default": 10}
 help_str = "The number of episodes to sample in each validation batch"
 hparam_dict[key]["help"] = help_str
 
@@ -99,7 +99,62 @@ help_str = (
 )
 hparam_dict[key]["help"] = help_str
 
+key = "go_explore_success_entries_path"
+hparam_dict[key] = {"type": str, "default": "success_entry/success_entry.pkl"}
+help_str = "Path to the file containing SuccessEntry members discovered by go_explore."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_num_actions"
+hparam_dict[key] = {"type": int, "default": 8}
+help_str = "The number of actions to take in an exploration rollout for go-explore."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_num_iterations"
+hparam_dict[key] = {"type": int, "default": 8}
+help_str = "The number of iterations of exploration rollouts for go-explore."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_epsilon_1"
+hparam_dict[key] = {"type": float, "default": 0.001}
+help_str = "The epsilon 1 for go-explore's count score."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_epsilon_2"
+hparam_dict[key] = {"type": float, "default": 0.00001}
+help_str = "The epsilon 2 for go-explore's count score."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_pa"
+hparam_dict[key] = {"type": float, "default": 0.5}
+help_str = "The exponent for go-explore's count score."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_wa_sampled"
+hparam_dict[key] = {"type": float, "default": 0.1}
+help_str = "The times a state was sampled weight for go-explore's count score."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_wa_led_to_something_new"
+hparam_dict[key] = {"type": float, "default": 0}
+help_str = "The times a state was chosen since it led to a new discovery weight for go-explore's count score."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_wa_times_visited"
+hparam_dict[key] = {"type": float, "default": 0.3}
+help_str = "The times a state was visited weight for go-explore's count score."
+hparam_dict[key]["help"] = help_str
+
+key = "jitter"
+hparam_dict[key] = {"type": int, "default": 0}
+help_str = "The backwards algorithm range in which the state is selected from."
+hparam_dict[key]["help"] = help_str
+
 key = "tag"
 hparam_dict[key] = {"type": str, "default": ""}
 help_str = "A tag to keep notes on the experiment run"
+hparam_dict[key]["help"] = help_str
+
+key = "cell_manager"
+hparam_dict[key] = {"type": str, "default": "state_cell_manager"}
+help_str = "The cell manager to use for go-explore."
 hparam_dict[key]["help"] = help_str

@@ -224,10 +224,10 @@ class TestReplayBuffer(unittest.TestCase):
                 actions,
                 next_states,
                 rewards,
-                successes,
+                dones,
                 weights,
             ) = _sample_replay_buffer(replay_buffer, i + 1, beta)
-            combined_list = [indices, states, actions, next_states, rewards, successes]
+            combined_list = [indices, states, actions, next_states, rewards, dones]
 
             for combined_list_member in combined_list:
                 self.assertEqual(len(combined_list_member), i + 1)
@@ -444,7 +444,7 @@ class TestReplayBuffer(unittest.TestCase):
             action=1,
             end_state=1,
             reward=1,
-            success=1,
+            done=1,
             state_id=state_id,
         )
 
@@ -467,7 +467,7 @@ class TestReplayBuffer(unittest.TestCase):
         # Overwrite the state count of two states in the replay buffer.
         for i, expected_state_count in zip([0, 1, 1, 2, 2], expected):
             replay_buffer.add_new_experience(
-                start_state=i, action=i, end_state=i, reward=i, success=i, state_id=i
+                start_state=i, action=i, end_state=i, reward=i, done=i, state_id=i
             )
             self.assertEqual(replay_buffer.state_histogram, expected_state_count)
 
