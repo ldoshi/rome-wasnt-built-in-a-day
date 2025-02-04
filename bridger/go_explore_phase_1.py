@@ -22,15 +22,6 @@ def _count_score(
     return wa * (1 / (v + epsilon_1)) ** pa + epsilon_2
 
 
-@dataclass
-class CacheEntry:
-    trajectory: tuple[int]
-    rewards: tuple[float]
-    steps_since_led_to_something_new: int = 0
-    sampled_count: int = 0
-    visit_count: int = 1
-
-
 class SuccessEntryGenerator:
     """
     A generator class for creating success entries using multiple processes.
@@ -73,19 +64,41 @@ class SuccessEntryGenerator:
         )
 
 
+@dataclass
+class CacheEntry:
+    trajectory: tuple[int]
+    rewards: tuple[float]
+    steps_since_led_to_something_new: int = 0
+    sampled_count: int = 0
+    visit_count: int = 1
+
+
+class CellManager:
+
+    def cache_key(state: np.ndarray) -> str:
+        pass
+
+
+class StateCellManager(Cell):
+
+    def cache_key(state: np.ndarray) -> str:
+        return hash_utils.hash_tensor(state)
+
+
 class StateCache:
 
     _cache: dict[Any, CacheEntry] = {}
     current_best: int = 10000000
 
-    def __init__(self, rng, hparams):
+    def __init__(self, rng, hparams, cell_manager: CellManager):
         self._rng = rng
         self._hparams = hparams
+        self._cell_manager = cell_manager
 
     def update_times_since_led_to_something_new(
         self, state, led_to_something_to_new: bool
     ) -> None:
-        key = hash_utils.hash_tensor(state)
+        key = self._cell_manager(state)
         assert key in self._cache
         if led_to_something_to_new:
             self._cache[key].steps_since_led_to_something_new = 0
