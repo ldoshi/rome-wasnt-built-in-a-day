@@ -67,7 +67,7 @@ class SuccessEntryGenerator:
 class CacheEntry:
     trajectory: tuple[int]
     rewards: tuple[float]
-    state_representative: np.ndarray 
+    state_representative: np.ndarray
     steps_since_led_to_something_new: int = 0
     sampled_count: int = 0
     visit_count: int = 1
@@ -84,6 +84,7 @@ class StateCellManager(CellManager):
     def cache_key(self, state: np.ndarray) -> str:
         return hash_utils.hash_tensor(state)
 
+
 class DownsampleCellManager(CellManager):
 
     def __init__(self, factor_x: int, factor_y: int):
@@ -92,14 +93,23 @@ class DownsampleCellManager(CellManager):
 
     def _downsample_2d(self, state: np.ndarray):
         if state.shape[0] % self.factor_x != 0 or state.shape[1] % self.factor_y != 0:
-            raise ValueError("Array dimensions must be divisible by the downsampling factors")
-    
-        return state.reshape(state.shape[0] // self.factor_x, self.factor_x, state.shape[1] // self.factor_y, self.factor_y).sum(axis=(1, 3))
-        
-    def cache_key(self, state: np.ndarray) -> str:
-        return hash_utils.hash_tensor(self. _downsample_2d(state))
+            raise ValueError(
+                "Array dimensions must be divisible by the downsampling factors"
+            )
 
-# python go_explore_phase_1.py --env-width=4 --go-explore-num-iterations=8 --cell-manager=downsample_cell_manager    
+        return state.reshape(
+            state.shape[0] // self.factor_x,
+            self.factor_x,
+            state.shape[1] // self.factor_y,
+            self.factor_y,
+        ).sum(axis=(1, 3))
+
+    def cache_key(self, state: np.ndarray) -> str:
+        return hash_utils.hash_tensor(self._downsample_2d(state))
+
+
+# python go_explore_phase_1.py --env-width=4 --go-explore-num-iterations=8 --cell-manager=downsample_cell_manager
+
 
 def build_cell_manager(hparams) -> CellManager:
     match hparams.cell_manager:
@@ -151,7 +161,9 @@ class StateCache:
                 entry.trajectory = trajectory
                 entry.state_representative = state
         else:
-            self._cache[key] = CacheEntry(trajectory=trajectory, rewards=rewards, state_representative=state)
+            self._cache[key] = CacheEntry(
+                trajectory=trajectory, rewards=rewards, state_representative=state
+            )
 
     def sample(self, n=1):
         cache_keys = []
@@ -259,7 +271,9 @@ def rollout(
 
         cache.visit(next_state, current_trajectory, rewards)
 
-    cache.update_times_since_led_to_something_new(start_entry.state_representative, led_to_something_new)
+    cache.update_times_since_led_to_something_new(
+        start_entry.state_representative, led_to_something_new
+    )
     return success_entries, cache
 
 
@@ -333,9 +347,7 @@ def explore(
 
     success_entries: set[SuccessEntry] = set()
     for _ in range(num_iterations):
-        start_entries = cache.sample(
-            n=processes * NUM_SAMPLES_PER_PROCESS
-        )
+        start_entries = cache.sample(n=processes * NUM_SAMPLES_PER_PROCESS)
         seeds = rng.integers(low=0, high=2**31, size=len(start_entries))
         rngs = map(np.random.default_rng, seeds)
 
