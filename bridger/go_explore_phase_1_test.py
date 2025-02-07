@@ -18,7 +18,7 @@ class Hparams:
 
 class TestGoExplorePhaseOne(unittest.TestCase):
     def test_go_explore_phase_one(self):
-        width, num_iterations, num_actions = 6, 4, 4
+        width, num_iterations, num_actions = 6, 10, 10
 
         hparams = Hparams()
 
@@ -39,13 +39,10 @@ class TestGoExplorePhaseOne(unittest.TestCase):
             hparams=hparams,
         )
 
-        print(success_entry_generator_single_process.success_entries)
-        print("-------------------")
-        print(success_entry_generator_multiple_process.success_entries)
-
         self.assertTrue(
-            success_entry_generator_single_process.success_entries
-            in success_entry_generator_multiple_process.success_entries
+            success_entry_generator_single_process.success_entries.issubset(
+                success_entry_generator_multiple_process.success_entries
+            )
         )
 
 
