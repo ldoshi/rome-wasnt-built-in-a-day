@@ -74,7 +74,9 @@ class CacheEntry:
 
     @property
     def state_representative(self):
-        return torch.tensor(self.state_representative_encoded[1]).reshape(self.state_representative_encoded[0])
+        return torch.tensor(self.state_representative_encoded[1]).reshape(
+            self.state_representative_encoded[0]
+        )
 
 
 class CellManager:
@@ -166,7 +168,9 @@ class StateCache:
                 entry.state_representative_encoded = hash_utils.hash_tensor(state)
         else:
             self._cache[key] = CacheEntry(
-                trajectory=trajectory, rewards=rewards, state_representative_encoded=hash_utils.hash_tensor(state)
+                trajectory=trajectory,
+                rewards=rewards,
+                state_representative_encoded=hash_utils.hash_tensor(state),
             )
 
     def sample(self, n=1):
