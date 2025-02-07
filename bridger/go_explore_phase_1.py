@@ -67,10 +67,14 @@ class SuccessEntryGenerator:
 class CacheEntry:
     trajectory: tuple[int]
     rewards: tuple[float]
-    state_representative: np.ndarray
+    state_representative_encoded: Any
     steps_since_led_to_something_new: int = 0
     sampled_count: int = 0
     visit_count: int = 1
+
+    @property
+    def state_representative(self):
+        return torch.tensor(self.state_representative_encoded[1]).reshape(self.state_representative_encoded[0])
 
 
 class CellManager:
@@ -159,10 +163,10 @@ class StateCache:
             ):
                 entry.rewards = rewards
                 entry.trajectory = trajectory
-                entry.state_representative = state
+                entry.state_representative_encoded = hash_utils.hash_tensor(state)
         else:
             self._cache[key] = CacheEntry(
-                trajectory=trajectory, rewards=rewards, state_representative=state
+                trajectory=trajectory, rewards=rewards, state_representative_encoded=hash_utils.hash_tensor(state)
             )
 
     def sample(self, n=1):
@@ -276,6 +280,7 @@ def rollout(
         cache.update_times_since_led_to_something_new(
             start_entry.state_representative, led_to_something_new
         )
+
     return success_entries, cache
 
 
