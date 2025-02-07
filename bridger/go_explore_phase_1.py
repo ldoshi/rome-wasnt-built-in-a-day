@@ -318,13 +318,13 @@ def generate_success_entry(
     )
 
 
-def _chunk_list(elements: list[Any], count:int) -> list[list[Any]]:
+def _chunk_list(elements: list[Any], count: int) -> list[list[Any]]:
     if count <= 0:
         raise ValueError("Count must be greater than 0")
-    
+
     n = len(elements)
     sublist_size, remainder = divmod(n, count)
-    
+
     result = []
     start = 0
     for i in range(count):
@@ -332,7 +332,7 @@ def _chunk_list(elements: list[Any], count:int) -> list[list[Any]]:
         end = start + sublist_size + extra
         result.append(elements[start:end])
         start = end
-    
+
     return result
 
 
@@ -371,8 +371,8 @@ def explore(
         seeds = rng.integers(low=0, high=2**31, size=len(start_entries))
         rngs = list(map(np.random.default_rng, seeds))
 
-        start_entries_chunked = _chunk_list(start_entries, processes*2)
-        rngs_chunked = _chunk_list(rngs, processes*2)
+        start_entries_chunked = _chunk_list(start_entries, processes * 2)
+        rngs_chunked = _chunk_list(rngs, processes * 2)
 
         _collect_rollouts = functools.partial(
             rollout,
