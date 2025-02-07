@@ -67,6 +67,7 @@ class SuccessEntryGenerator:
 class CacheEntry:
     trajectory: tuple[int]
     rewards: tuple[float]
+    state_representative: np.ndarray
     steps_since_led_to_something_new: int = 0
     sampled_count: int = 0
     visit_count: int = 1
@@ -84,10 +85,39 @@ class StateCellManager(CellManager):
         return hash_utils.hash_tensor(state)
 
 
+class DownsampleCellManager(CellManager):
+
+    def __init__(self, factor_x: int, factor_y: int):
+        self.factor_x = factor_x
+        self.factor_y = factor_y
+
+    def _downsample_2d(self, state: np.ndarray):
+        if state.shape[0] % self.factor_x != 0 or state.shape[1] % self.factor_y != 0:
+            raise ValueError(
+                "Array dimensions must be divisible by the downsampling factors"
+            )
+
+        return state.reshape(
+            state.shape[0] // self.factor_x,
+            self.factor_x,
+            state.shape[1] // self.factor_y,
+            self.factor_y,
+        ).sum(axis=(1, 3))
+
+    def cache_key(self, state: np.ndarray) -> str:
+        return hash_utils.hash_tensor(self._downsample_2d(state))
+
+
+# python go_explore_phase_1.py --env-width=4 --go-explore-num-iterations=8 --cell-manager=downsample_cell_manager
+
+
 def build_cell_manager(hparams) -> CellManager:
     match hparams.cell_manager:
         case "state_cell_manager":
             return StateCellManager()
+        case "downsample_cell_manager":
+            # TODO(lyric): Add the factors to the config.
+            return DownsampleCellManager(2, 2)
         case _:
             raise ValueError(
                 f"Unrecognized cell manager provided: {hparams.cell_manager}"
@@ -119,7 +149,7 @@ class StateCache:
     def visit(
         self, state: np.ndarray, trajectory: tuple[int], rewards: tuple[float]
     ) -> bool:
-        key = hash_utils.hash_tensor(state)
+        key = self._cell_manager.cache_key(state)
         if key in self._cache:
             entry = self._cache[key]
             entry.visit_count += 1
@@ -129,8 +159,11 @@ class StateCache:
             ):
                 entry.rewards = rewards
                 entry.trajectory = trajectory
+                entry.state_representative = state
         else:
-            self._cache[key] = CacheEntry(trajectory=trajectory, rewards=rewards)
+            self._cache[key] = CacheEntry(
+                trajectory=trajectory, rewards=rewards, state_representative=state
+            )
 
     def sample(self, n=1):
         cache_keys = []
@@ -162,21 +195,18 @@ class StateCache:
             state_count_scores.append(
                 steps_since_led_to_something_new_score + sampled_score + visited_score
             )
-            state_count_scores_sum = sum(state_count_scores)
-            state_count_probs = [x / state_count_scores_sum for x in state_count_scores]
+        state_count_scores_sum = sum(state_count_scores)
+        state_count_probs = [x / state_count_scores_sum for x in state_count_scores]
 
         key_indices = self._rng.choice(
             range(len(cache_keys)), size=n, p=state_count_probs
         )
-        start_states = []
         start_entries = []
         for key_index in key_indices:
-            key = cache_keys[key_index]
-            entry = self._cache[key]
+            entry = self._cache[cache_keys[key_index]]
             entry.sampled_count += 1
-            start_states.append(torch.tensor(key[1]).reshape(key[0]))
             start_entries.append(entry)
-        return start_states, start_entries
+        return start_entries
 
     def update(self, new_cache: "StateCache") -> None:
         """
@@ -213,12 +243,11 @@ def rollout(
     env: BridgesEnv,
     num_actions: int,
     cache: StateCache,
-    start_state: np.ndarray,
     start_entry: CacheEntry,
     rng: int,
 ) -> StateCache:
     success_entries: set[SuccessEntry] = set()
-    env.reset(start_state)
+    env.reset(start_entry.state_representative)
     current_trajectory = copy.deepcopy(start_entry.trajectory)
     rewards: tuple[float] = start_entry.rewards
 
@@ -242,7 +271,9 @@ def rollout(
 
         cache.visit(next_state, current_trajectory, rewards)
 
-    cache.update_times_since_led_to_something_new(start_state, led_to_something_new)
+    cache.update_times_since_led_to_something_new(
+        start_entry.state_representative, led_to_something_new
+    )
     return success_entries, cache
 
 
@@ -316,10 +347,8 @@ def explore(
 
     success_entries: set[SuccessEntry] = set()
     for _ in range(num_iterations):
-        start_states, start_entries = cache.sample(
-            n=processes * NUM_SAMPLES_PER_PROCESS
-        )
-        seeds = rng.integers(low=0, high=2**31, size=len(start_states))
+        start_entries = cache.sample(n=processes * NUM_SAMPLES_PER_PROCESS)
+        seeds = rng.integers(low=0, high=2**31, size=len(start_entries))
         rngs = map(np.random.default_rng, seeds)
 
         _collect_rollouts = functools.partial(
@@ -332,7 +361,7 @@ def explore(
         with multiprocessing.Pool(processes=processes) as pool:
             for rollout_success_entries, rollout_cache in pool.starmap(
                 _collect_rollouts,
-                [*zip(start_states, start_entries, rngs)],
+                [*zip(start_entries, rngs)],
             ):
                 # TODO (Joseph): Figure out how to update the cache with the new cache correctly. Why am I updating the success entries and the cache separately?
                 success_entries.update(rollout_success_entries)
