@@ -10,7 +10,7 @@ import functools
 import torch
 
 from bridger.logging_utils.object_logging import ObjectLogManager
-from bridger.logging_utils.log_entry import SuccessEntry
+from bridger.logging_utils.log_entry import SuccessEntry, OccurrenceLogEntry
 from bridger import config
 
 RNG = 42
@@ -41,6 +41,7 @@ class SuccessEntryGenerator:
 
     def __init__(
         self,
+        object_logger: ObjectLogManager,
         processes: int,
         width: int,
         env: BridgesEnv,
@@ -55,6 +56,7 @@ class SuccessEntryGenerator:
         self._hparams = hparams
         seed = RNG
         self.success_entries = generate_success_entry(
+            object_logger=object_logger,
             env=env,
             num_iterations=num_iterations,
             num_actions=num_actions,
@@ -290,6 +292,7 @@ def rollout(
 
 
 def generate_success_entry(
+    object_logger: ObjectLogManager,
     env: BridgesEnv,
     num_iterations: int,
     num_actions: int,
@@ -319,6 +322,7 @@ def generate_success_entry(
     cache: StateCache = StateCache(rng, hparams, cell_manager)
     cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
     success_entries = explore(
+        object_logger=object_logger,
         rng=np.random.default_rng(RNG),
         env=env,
         cache=cache,
@@ -327,8 +331,7 @@ def generate_success_entry(
         processes=processes,
     )
 
-    with open(f"/tmp/state_cache-{hparams.env_width}.pkl",'wb') as f:
-        pickle.dump(cache, f)
+    object_logger.log(f"state_cache-{hparams.env_width}.pkl", OccurrenceLogEntry(batch_idx=0, object=cache))
 
     return success_entries
 
@@ -352,6 +355,7 @@ def _chunk_list(elements: list[Any], count: int) -> list[list[Any]]:
 
 
 def explore(
+    object_logger: ObjectLogManager,
     rng: np.random.default_rng,
     env: BridgesEnv,
     cache: StateCache,
@@ -381,8 +385,10 @@ def explore(
     """
 
     success_entries: set[SuccessEntry] = set()
-    for _ in range(num_iterations):
+    for iteration in range(num_iterations):
         start_entries = cache.sample(n=processes * NUM_SAMPLES_PER_PROCESS)
+        object_logger.log("start_entries.pkl", OccurrenceLogEntry(batch_idx=iteration, object=start_entries))
+        
         seeds = rng.integers(low=0, high=2**31, size=len(start_entries))
         rngs = list(map(np.random.default_rng, seeds))
 
@@ -421,18 +427,19 @@ if __name__ == "__main__":
     num_iterations = hparams.go_explore_num_iterations
     num_actions = hparams.go_explore_num_actions
 
-    success_entry_generator = SuccessEntryGenerator(
-        processes=4,
-        width=width,
-        env=BridgesEnv(width=width, force_standard_config=True),
-        num_iterations=num_iterations,
-        num_actions=num_actions,
-        hparams=hparams,
-    )
-
     with ObjectLogManager(
-        "object_logging", "success_entry", create_experiment_dir=True
+        "object_logging", "go_explore", create_experiment_dir=True
     ) as object_logger:
+        success_entry_generator = SuccessEntryGenerator(
+            object_logger=object_logger,
+            processes=4,
+            width=width,
+            env=BridgesEnv(width=width, force_standard_config=True),
+            num_iterations=num_iterations,
+            num_actions=num_actions,
+            hparams=hparams,
+        )
+
         object_logger.log("success_entry.pkl", success_entry_generator.success_entries)
 
     print(
