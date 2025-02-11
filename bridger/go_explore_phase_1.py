@@ -67,7 +67,7 @@ class SuccessEntryGenerator:
 class CacheEntry:
     trajectory: tuple[int]
     rewards: tuple[float]
-    state_representative_encoded: Any
+    state_representative_encoded: str
     steps_since_led_to_something_new: int = 0
     sampled_count: int = 0
     visit_count: int = 1
