@@ -331,7 +331,10 @@ def generate_success_entry(
         processes=processes,
     )
 
-    object_logger.log(f"state_cache-{hparams.env_width}.pkl", OccurrenceLogEntry(batch_idx=0, object=cache))
+    object_logger.log(
+        f"state_cache-{hparams.env_width}.pkl",
+        OccurrenceLogEntry(batch_idx=0, object=cache),
+    )
 
     return success_entries
 
@@ -387,8 +390,11 @@ def explore(
     success_entries: set[SuccessEntry] = set()
     for iteration in range(num_iterations):
         start_entries = cache.sample(n=processes * NUM_SAMPLES_PER_PROCESS)
-        object_logger.log("start_entries.pkl", OccurrenceLogEntry(batch_idx=iteration, object=start_entries))
-        
+        object_logger.log(
+            "start_entries.pkl",
+            OccurrenceLogEntry(batch_idx=iteration, object=start_entries),
+        )
+
         seeds = rng.integers(low=0, high=2**31, size=len(start_entries))
         rngs = list(map(np.random.default_rng, seeds))
 
