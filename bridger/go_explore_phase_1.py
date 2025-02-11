@@ -1,5 +1,6 @@
 from gym_bridges.envs.bridges_env import BridgesEnv
 import copy
+import pickle
 from typing import Any
 from bridger import hash_utils
 from dataclasses import dataclass
@@ -317,7 +318,7 @@ def generate_success_entry(
     cell_manager = build_cell_manager(hparams)
     cache: StateCache = StateCache(rng, hparams, cell_manager)
     cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
-    return explore(
+    success_entries = explore(
         rng=np.random.default_rng(RNG),
         env=env,
         cache=cache,
@@ -325,6 +326,11 @@ def generate_success_entry(
         num_actions=num_actions,
         processes=processes,
     )
+
+    with open('/tmp/state_cache.pkl') as f:
+        pickle.dump(cache, f)
+
+    return success_entries
 
 
 def _chunk_list(elements: list[Any], count: int) -> list[list[Any]]:
