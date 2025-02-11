@@ -13,7 +13,7 @@ from bridger.logging_utils.log_entry import SuccessEntry
 from bridger import config
 
 RNG = 42
-NUM_SAMPLES_PER_PROCESS = 10
+NUM_SAMPLES_PER_PROCESS = 100
 
 
 def _count_score(
@@ -67,10 +67,16 @@ class SuccessEntryGenerator:
 class CacheEntry:
     trajectory: tuple[int]
     rewards: tuple[float]
-    state_representative: np.ndarray
+    state_representative_encoded: str
     steps_since_led_to_something_new: int = 0
     sampled_count: int = 0
     visit_count: int = 1
+
+    @property
+    def state_representative(self):
+        return torch.tensor(self.state_representative_encoded[1]).reshape(
+            self.state_representative_encoded[0]
+        )
 
 
 class CellManager:
@@ -159,10 +165,12 @@ class StateCache:
             ):
                 entry.rewards = rewards
                 entry.trajectory = trajectory
-                entry.state_representative = state
+                entry.state_representative_encoded = hash_utils.hash_tensor(state)
         else:
             self._cache[key] = CacheEntry(
-                trajectory=trajectory, rewards=rewards, state_representative=state
+                trajectory=trajectory,
+                rewards=rewards,
+                state_representative_encoded=hash_utils.hash_tensor(state),
             )
 
     def sample(self, n=1):
@@ -243,37 +251,40 @@ def rollout(
     env: BridgesEnv,
     num_actions: int,
     cache: StateCache,
-    start_entry: CacheEntry,
-    rng: int,
+    start_entries: list[CacheEntry],
+    rngs: list[int],
 ) -> StateCache:
     success_entries: set[SuccessEntry] = set()
-    env.reset(start_entry.state_representative)
-    current_trajectory = copy.deepcopy(start_entry.trajectory)
-    rewards: tuple[float] = start_entry.rewards
 
-    led_to_something_new = False
-    for _ in range(num_actions):
-        if len(current_trajectory) >= cache.current_best:
-            break
+    for start_entry, rng in zip(start_entries, rngs):
+        env.reset(start_entry.state_representative)
+        current_trajectory = copy.deepcopy(start_entry.trajectory)
+        rewards: tuple[float] = start_entry.rewards
 
-        action = rng.choice(range(env.nA))
-        current_trajectory += (action,)
-        next_state, reward, done, aux = env.step(action)
-        rewards += (reward,)
-        if done:
-            if aux["is_success"] and all(np.array(rewards) > -0.5):
-                success_entries.add(
-                    SuccessEntry(trajectory=current_trajectory, rewards=rewards)
-                )
-                led_to_something_new = True
-                cache.update_current_best(len(current_trajectory))
-            break
+        led_to_something_new = False
+        for _ in range(num_actions):
+            if len(current_trajectory) >= cache.current_best:
+                break
 
-        cache.visit(next_state, current_trajectory, rewards)
+            action = rng.choice(range(env.nA))
+            current_trajectory += (action,)
+            next_state, reward, done, aux = env.step(action)
+            rewards += (reward,)
+            if done:
+                if aux["is_success"] and all(np.array(rewards) > -0.5):
+                    success_entries.add(
+                        SuccessEntry(trajectory=current_trajectory, rewards=rewards)
+                    )
+                    led_to_something_new = True
+                    cache.update_current_best(len(current_trajectory))
+                break
 
-    cache.update_times_since_led_to_something_new(
-        start_entry.state_representative, led_to_something_new
-    )
+            cache.visit(next_state, current_trajectory, rewards)
+
+        cache.update_times_since_led_to_something_new(
+            start_entry.state_representative, led_to_something_new
+        )
+
     return success_entries, cache
 
 
@@ -316,6 +327,24 @@ def generate_success_entry(
     )
 
 
+def _chunk_list(elements: list[Any], count: int) -> list[list[Any]]:
+    if count <= 0:
+        raise ValueError("Count must be greater than 0")
+
+    n = len(elements)
+    sublist_size, remainder = divmod(n, count)
+
+    result = []
+    start = 0
+    for i in range(count):
+        extra = 1 if i < remainder else 0  # Distribute remainder elements
+        end = start + sublist_size + extra
+        result.append(elements[start:end])
+        start = end
+
+    return result
+
+
 def explore(
     rng: np.random.default_rng,
     env: BridgesEnv,
@@ -349,7 +378,10 @@ def explore(
     for _ in range(num_iterations):
         start_entries = cache.sample(n=processes * NUM_SAMPLES_PER_PROCESS)
         seeds = rng.integers(low=0, high=2**31, size=len(start_entries))
-        rngs = map(np.random.default_rng, seeds)
+        rngs = list(map(np.random.default_rng, seeds))
+
+        start_entries_chunked = _chunk_list(start_entries, processes * 2)
+        rngs_chunked = _chunk_list(rngs, processes * 2)
 
         _collect_rollouts = functools.partial(
             rollout,
@@ -361,7 +393,7 @@ def explore(
         with multiprocessing.Pool(processes=processes) as pool:
             for rollout_success_entries, rollout_cache in pool.starmap(
                 _collect_rollouts,
-                [*zip(start_entries, rngs)],
+                [*zip(start_entries_chunked, rngs_chunked)],
             ):
                 # TODO (Joseph): Figure out how to update the cache with the new cache correctly. Why am I updating the success entries and the cache separately?
                 success_entries.update(rollout_success_entries)
@@ -384,7 +416,7 @@ if __name__ == "__main__":
     num_actions = hparams.go_explore_num_actions
 
     success_entry_generator = SuccessEntryGenerator(
-        processes=2,
+        processes=4,
         width=width,
         env=BridgesEnv(width=width, force_standard_config=True),
         num_iterations=num_iterations,
