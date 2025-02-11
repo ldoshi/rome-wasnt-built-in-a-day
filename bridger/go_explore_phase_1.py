@@ -327,7 +327,7 @@ def generate_success_entry(
         processes=processes,
     )
 
-    with open('/tmp/state_cache.pkl') as f:
+    with open(f"/tmp/state_cache-{hparams.env_width}.pkl",'wb') as f:
         pickle.dump(cache, f)
 
     return success_entries
