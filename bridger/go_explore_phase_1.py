@@ -237,9 +237,9 @@ class StateCache:
         Returns:
             None
         """
-        for new_state, new_cache_entry in new_cache._cache.items():
-            if self._cell_manager.cache_key(new_state) in self._cache:
-                cache_entry = self._cache[self._cell_manager.cache_key(new_state)]
+        for new_cache_key, new_cache_entry in new_cache._cache.items():
+            if new_cache_key in self._cache:
+                cache_entry = self._cache[new_cache_key]
                 if sum(new_cache_entry.rewards) > sum(cache_entry.rewards) or (
                     sum(new_cache_entry.rewards) == sum(cache_entry.rewards)
                     and len(new_cache_entry.trajectory) < len(cache_entry.trajectory)
@@ -254,7 +254,7 @@ class StateCache:
 
             else:
                 # Add to the cache if the state is not already in the cache.
-                self._cache[self._cell_manager.cache_key(new_state)] = new_cache_entry
+                self._cache[new_cache_key] = new_cache_entry
 
 
 def rollout(
