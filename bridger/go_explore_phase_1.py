@@ -64,7 +64,6 @@ class SuccessEntryGenerator:
             seed=seed,
             processes=processes,
         )
-        print(self.success_entries)
         with open(f"/tmp/state_cache-{hparams.env_width}.pkl", "wb") as f:
             pickle.dump(self.success_entries, f)
 
@@ -423,8 +422,7 @@ def explore(
             ):
                 # TODO (Joseph): Figure out how to update the cache with the new cache correctly. Why am I updating the success entries and the cache separately?
                 success_entries.update(rollout_success_entries)
-                print(rollout_cache._cache)
-                # cache.update(rollout_cache)
+                cache.update(rollout_cache)
 
     return success_entries
 
