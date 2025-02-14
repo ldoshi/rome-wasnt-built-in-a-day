@@ -246,6 +246,7 @@ class StateCache:
                 ):
                     cache_entry.rewards = new_cache_entry.rewards
                     cache_entry.trajectory = new_cache_entry.trajectory
+                    cache_entry.state_representative_encoded = new_cache_entry.state_representative_encoded
                 cache_entry.visit_count += new_cache_entry.visit_count
                 # TODO (Joseph): Figure out if this is the correct way to update the steps since led to something new.
                 cache_entry.steps_since_led_to_something_new += (
