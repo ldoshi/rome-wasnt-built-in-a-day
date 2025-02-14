@@ -240,7 +240,7 @@ class StateCache:
         """
         for new_state, new_cache_entry in new_cache._cache.items():
             if self._cell_manager.cache_key(new_state) in self._cache:
-                cache_entry = self._cache[new_state]
+                cache_entry = self._cache[self._cell_manager.cache_key(new_state)]
                 if sum(new_cache_entry.rewards) > sum(cache_entry.rewards) or (
                     sum(new_cache_entry.rewards) == sum(cache_entry.rewards)
                     and len(new_cache_entry.trajectory) < len(cache_entry.trajectory)
