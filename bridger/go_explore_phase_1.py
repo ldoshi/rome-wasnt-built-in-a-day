@@ -64,9 +64,7 @@ class SuccessEntryGenerator:
             seed=seed,
             processes=processes,
         )
-        with open(f"/tmp/state_cache-{hparams.env_width}.pkl", "wb") as f:
-            pickle.dump(self.success_entries, f)
-
+     
 
 @dataclass
 class CacheEntry:
