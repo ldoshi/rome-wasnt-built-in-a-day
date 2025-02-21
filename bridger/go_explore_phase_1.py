@@ -64,7 +64,7 @@ class SuccessEntryGenerator:
             seed=seed,
             processes=processes,
         )
-     
+
 
 @dataclass
 class CacheEntry:
