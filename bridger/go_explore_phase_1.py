@@ -1,5 +1,6 @@
 from gym_bridges.envs.bridges_env import BridgesEnv
 import copy
+import pickle
 from typing import Any
 from bridger import hash_utils
 from dataclasses import dataclass
@@ -9,7 +10,7 @@ import functools
 import torch
 
 from bridger.logging_utils.object_logging import ObjectLogManager
-from bridger.logging_utils.log_entry import SuccessEntry
+from bridger.logging_utils.log_entry import SuccessEntry, OccurrenceLogEntry
 from bridger import config
 
 RNG = 42
@@ -40,6 +41,7 @@ class SuccessEntryGenerator:
 
     def __init__(
         self,
+        object_logger: ObjectLogManager,
         processes: int,
         width: int,
         env: BridgesEnv,
@@ -54,6 +56,7 @@ class SuccessEntryGenerator:
         self._hparams = hparams
         seed = RNG
         self.success_entries = generate_success_entry(
+            object_logger=object_logger,
             env=env,
             num_iterations=num_iterations,
             num_actions=num_actions,
@@ -232,19 +235,27 @@ class StateCache:
         Returns:
             None
         """
-        for new_state, new_cache_entry in new_cache._cache.items():
-            for state, cache_entry in self._cache.items():
+        for new_cache_key, new_cache_entry in new_cache._cache.items():
+            if new_cache_key in self._cache:
+                cache_entry = self._cache[new_cache_key]
                 if sum(new_cache_entry.rewards) > sum(cache_entry.rewards) or (
                     sum(new_cache_entry.rewards) == sum(cache_entry.rewards)
                     and len(new_cache_entry.trajectory) < len(cache_entry.trajectory)
                 ):
                     cache_entry.rewards = new_cache_entry.rewards
                     cache_entry.trajectory = new_cache_entry.trajectory
+                    cache_entry.state_representative_encoded = (
+                        new_cache_entry.state_representative_encoded
+                    )
                 cache_entry.visit_count += new_cache_entry.visit_count
                 # TODO (Joseph): Figure out if this is the correct way to update the steps since led to something new.
                 cache_entry.steps_since_led_to_something_new += (
                     new_cache_entry.steps_since_led_to_something_new
                 )
+
+            else:
+                # Add to the cache if the state is not already in the cache.
+                self._cache[new_cache_key] = new_cache_entry
 
 
 def rollout(
@@ -289,6 +300,7 @@ def rollout(
 
 
 def generate_success_entry(
+    object_logger: ObjectLogManager,
     env: BridgesEnv,
     num_iterations: int,
     num_actions: int,
@@ -317,7 +329,8 @@ def generate_success_entry(
     cell_manager = build_cell_manager(hparams)
     cache: StateCache = StateCache(rng, hparams, cell_manager)
     cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
-    return explore(
+    success_entries = explore(
+        object_logger=object_logger,
         rng=np.random.default_rng(RNG),
         env=env,
         cache=cache,
@@ -325,6 +338,13 @@ def generate_success_entry(
         num_actions=num_actions,
         processes=processes,
     )
+
+    object_logger.log(
+        f"state_cache-{hparams.env_width}.pkl",
+        OccurrenceLogEntry(batch_idx=0, object=cache),
+    )
+
+    return success_entries
 
 
 def _chunk_list(elements: list[Any], count: int) -> list[list[Any]]:
@@ -346,6 +366,7 @@ def _chunk_list(elements: list[Any], count: int) -> list[list[Any]]:
 
 
 def explore(
+    object_logger: ObjectLogManager,
     rng: np.random.default_rng,
     env: BridgesEnv,
     cache: StateCache,
@@ -375,8 +396,13 @@ def explore(
     """
 
     success_entries: set[SuccessEntry] = set()
-    for _ in range(num_iterations):
+    for iteration in range(num_iterations):
         start_entries = cache.sample(n=processes * NUM_SAMPLES_PER_PROCESS)
+        object_logger.log(
+            "start_entries.pkl",
+            OccurrenceLogEntry(batch_idx=iteration, object=start_entries),
+        )
+
         seeds = rng.integers(low=0, high=2**31, size=len(start_entries))
         rngs = list(map(np.random.default_rng, seeds))
 
@@ -415,18 +441,19 @@ if __name__ == "__main__":
     num_iterations = hparams.go_explore_num_iterations
     num_actions = hparams.go_explore_num_actions
 
-    success_entry_generator = SuccessEntryGenerator(
-        processes=4,
-        width=width,
-        env=BridgesEnv(width=width, force_standard_config=True),
-        num_iterations=num_iterations,
-        num_actions=num_actions,
-        hparams=hparams,
-    )
-
     with ObjectLogManager(
-        "object_logging", "success_entry", create_experiment_dir=True
+        "object_logging", "go_explore", create_experiment_dir=True
     ) as object_logger:
+        success_entry_generator = SuccessEntryGenerator(
+            object_logger=object_logger,
+            processes=4,
+            width=width,
+            env=BridgesEnv(width=width, force_standard_config=True),
+            num_iterations=num_iterations,
+            num_actions=num_actions,
+            hparams=hparams,
+        )
+
         object_logger.log("success_entry.pkl", success_entry_generator.success_entries)
 
     print(
