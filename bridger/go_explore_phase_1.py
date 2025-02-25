@@ -19,9 +19,6 @@ from bridger import config
 NUM_SAMPLES_PER_PROCESS = 100
 
 
-RolloutParams = namedtuple("RolloutParams", ["env_width", "num_actions"])
-
-
 def _count_score(
     v: float, wa: float, pa: float, epsilon_1: float, epsilon_2: float
 ) -> int:
@@ -221,14 +218,14 @@ class StateCache:
 
 
 def rollout(
-    rollout_params: RolloutParams,
+    hparams: Any,
     cache: StateCache,
     start_entries: list[CacheEntry],
     rngs: list[int],
 ) -> StateCache:
     success_entries: set[SuccessEntry] = set()
 
-    env = BridgesEnv(width=rollout_params.env_width, force_standard_config=True)
+    env = BridgesEnv(width=hparams.env_width, force_standard_config=True)
 
     for start_entry, rng in zip(start_entries, rngs):
         env.reset(start_entry.state_representative)
@@ -236,7 +233,7 @@ def rollout(
         rewards: tuple[float] = start_entry.rewards
 
         led_to_something_new = False
-        for _ in range(rollout_params.num_actions):
+        for _ in range(hparams.go_explore_num_actions):
             if len(current_trajectory) >= cache.current_best:
                 break
 
@@ -300,13 +297,9 @@ def explore(
 
     rng = np.random.default_rng(hparams.seed)
 
-    rollout_params = RolloutParams(
-        env_width=hparams.env_width, num_actions=hparams.go_explore_num_actions
-    )
-
     cell_manager = build_cell_manager(hparams)
     cache: StateCache = StateCache(rng, hparams, cell_manager)
-    env = BridgesEnv(width=rollout_params.env_width, force_standard_config=True)
+    env = BridgesEnv(width=hparams.env_width, force_standard_config=True)
     cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
 
     success_entries: set[SuccessEntry] = set()
@@ -328,7 +321,7 @@ def explore(
 
         _collect_rollouts = functools.partial(
             rollout,
-            rollout_params,
+            hparams,
             cache,
         )
 
@@ -342,7 +335,7 @@ def explore(
                 cache.update(rollout_cache)
 
     object_logger.log(
-        f"state_cache-{rollout_params.env_width}.pkl",
+        f"state_cache-{hparams.env_width}.pkl",
         OccurrenceLogEntry(batch_idx=0, object=cache),
     )
 
