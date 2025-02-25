@@ -183,7 +183,7 @@ class StateSampler:
                     cache_entry.trajectory = new_cache_entry.trajectory
                     entry.state_representative_encoded = (
                         CacheEntry.encode_state_representative(state)
-                    )                    
+                    )
 
                 cache_entry.visit_count += new_cache_entry.visit_count
                 # TODO (Joseph): Figure out if this is the correct way to update the steps since led to something new.
@@ -239,7 +239,7 @@ class StateSamplerCacheUpdate:
                 rewards=rewards,
                 state_representative_encoded=CacheEntry.encode_state_representative(
                     state
-                )                
+                ),
             )
 
 
