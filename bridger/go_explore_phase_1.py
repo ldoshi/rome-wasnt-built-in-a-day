@@ -9,6 +9,8 @@ import numpy as np
 import multiprocessing
 import functools
 import torch
+import io
+import gzip
 
 from bridger.logging_utils.object_logging import ObjectLogManager
 from bridger.logging_utils.log_entry import SuccessEntry, OccurrenceLogEntry
@@ -31,16 +33,23 @@ def _count_score(
 class CacheEntry:
     trajectory: tuple[int]
     rewards: tuple[float]
-    state_representative_encoded: str
+    state_representative_encoded: bytes  # Store compressed bytes
     steps_since_led_to_something_new: int = 0
     sampled_count: int = 0
     visit_count: int = 1
 
     @property
-    def state_representative(self):
-        return torch.tensor(self.state_representative_encoded[1]).reshape(
-            self.state_representative_encoded[0]
-        )
+    def state_representative(self) -> torch.Tensor:
+        """Decompress and reconstruct the integer tensor."""
+        buffer = io.BytesIO(gzip.decompress(self.state_representative_encoded))
+        return torch.tensor(np.load(buffer, allow_pickle=False))
+
+    @staticmethod
+    def encode_state_representative(tensor: torch.Tensor) -> bytes:
+        """Compress and encode an integer tensor efficiently."""
+        buffer = io.BytesIO()
+        np.save(buffer, tensor.numpy(), allow_pickle=False)  # Efficient integer storage
+        return gzip.compress(buffer.getvalue())  # Further compression
 
 
 class CellManager:
@@ -52,7 +61,7 @@ class CellManager:
 class StateCellManager(CellManager):
 
     def cache_key(self, state: np.ndarray) -> str:
-        return hash_utils.hash_tensor(state)
+        return hash(hash_utils.hash_tensor(state))
 
 
 class DownsampleCellManager(CellManager):
@@ -75,7 +84,7 @@ class DownsampleCellManager(CellManager):
         ).sum(axis=(1, 3))
 
     def cache_key(self, state: np.ndarray) -> str:
-        return hash_utils.hash_tensor(self._downsample_2d(state))
+        return hash(hash_utils.hash_tensor(self._downsample_2d(state)))
 
 
 # python go_explore_phase_1.py --env-width=4 --go-explore-num-iterations=8 --cell-manager=downsample_cell_manager
@@ -129,12 +138,16 @@ class StateCache:
             ):
                 entry.rewards = rewards
                 entry.trajectory = trajectory
-                entry.state_representative_encoded = hash_utils.hash_tensor(state)
+                entry.state_representative_encoded = (
+                    CacheEntry.encode_state_representative(state)
+                )
         else:
             self._cache[key] = CacheEntry(
                 trajectory=trajectory,
                 rewards=rewards,
-                state_representative_encoded=hash_utils.hash_tensor(state),
+                state_representative_encoded=CacheEntry.encode_state_representative(
+                    state
+                ),
             )
 
     def sample(self, n=1):
@@ -330,8 +343,11 @@ def explore(
             rollout_params,
             cache,
         )
-
+        
+        #TODO: Delete this print after debugging is over.
+        print(f"We have this many entries: {len(cache._cache)}")
         with multiprocessing.Pool(processes=hparams.go_explore_num_processes) as pool:
+
             for rollout_success_entries, rollout_cache in pool.starmap(
                 _collect_rollouts,
                 [*zip(start_entries_chunked, rngs_chunked)],
