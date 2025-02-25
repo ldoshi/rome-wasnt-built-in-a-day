@@ -18,6 +18,8 @@ from bridger import config
 # sufficient for decent performance.
 NUM_SAMPLES_PER_PROCESS = 100
 
+RolloutParams = namedtuple("RolloutParams", ["env_width", "num_actions"])
+
 
 def _count_score(
     v: float, wa: float, pa: float, epsilon_1: float, epsilon_2: float
@@ -218,14 +220,14 @@ class StateCache:
 
 
 def rollout(
-    hparams: Any,
+    rollout_params: RolloutParams,
     cache: StateCache,
     start_entries: list[CacheEntry],
     rngs: list[int],
 ) -> StateCache:
     success_entries: set[SuccessEntry] = set()
 
-    env = BridgesEnv(width=hparams.env_width, force_standard_config=True)
+    env = BridgesEnv(width=rollout_params.env_width, force_standard_config=True)
 
     for start_entry, rng in zip(start_entries, rngs):
         env.reset(start_entry.state_representative)
@@ -233,7 +235,7 @@ def rollout(
         rewards: tuple[float] = start_entry.rewards
 
         led_to_something_new = False
-        for _ in range(hparams.go_explore_num_actions):
+        for _ in range(rollout_params.num_actions):
             if len(current_trajectory) >= cache.current_best:
                 break
 
@@ -302,6 +304,10 @@ def explore(
     env = BridgesEnv(width=hparams.env_width, force_standard_config=True)
     cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
 
+    rollout_params = RolloutParams(
+        env_width=hparams.env_width, num_actions=hparams.go_explore_num_actions
+    )
+
     success_entries: set[SuccessEntry] = set()
     for iteration in range(hparams.go_explore_num_iterations):
         start_entries = cache.sample(
@@ -321,7 +327,7 @@ def explore(
 
         _collect_rollouts = functools.partial(
             rollout,
-            hparams,
+            rollout_params,
             cache,
         )
 
