@@ -4,6 +4,7 @@ import pickle
 from typing import Any
 from bridger import hash_utils
 from dataclasses import dataclass
+from collections import namedtuple
 import numpy as np
 import multiprocessing
 import functools
@@ -15,57 +16,17 @@ from bridger.logging_utils.object_logging import ObjectLogManager
 from bridger.logging_utils.log_entry import SuccessEntry, OccurrenceLogEntry
 from bridger import config
 
-RNG = 42
+# A constant instead of a config because this merely needs to be
+# sufficient for decent performance.
 NUM_SAMPLES_PER_PROCESS = 100
+
+RolloutParams = namedtuple("RolloutParams", ["env_width", "num_actions"])
 
 
 def _count_score(
     v: float, wa: float, pa: float, epsilon_1: float, epsilon_2: float
 ) -> int:
     return wa * (1 / (v + epsilon_1)) ** pa + epsilon_2
-
-
-class SuccessEntryGenerator:
-    """
-    A generator class for creating success entries using multiple processes.
-
-    This class initializes the parameters required for generating success entries and
-    uses these parameters to generate the entries by calling the `generate_success_entry` function.
-
-    Attributes:
-        processes (int): The number of parallel processes to use.
-        width (int): The width parameter for the environment.
-        env (BridgesEnv): The environment in which to perform the rollouts.
-        num_iterations (int): The number of iterations to run the exploration.
-        num_actions (int): The number of actions to perform in each rollout.
-        hparams (Any): Hyperparameters for the exploration process.
-    """
-
-    def __init__(
-        self,
-        object_logger: ObjectLogManager,
-        processes: int,
-        width: int,
-        env: BridgesEnv,
-        num_iterations: int,
-        num_actions: int,
-        hparams: Any,
-    ):
-        self._width = width
-        self._env = env
-        self._num_iterations = num_iterations
-        self._num_actions = num_actions
-        self._hparams = hparams
-        seed = RNG
-        self.success_entries = generate_success_entry(
-            object_logger=object_logger,
-            env=env,
-            num_iterations=num_iterations,
-            num_actions=num_actions,
-            hparams=hparams,
-            seed=seed,
-            processes=processes,
-        )
 
 
 @dataclass
@@ -272,13 +233,14 @@ class StateCache:
 
 
 def rollout(
-    env: BridgesEnv,
-    num_actions: int,
+    rollout_params: RolloutParams,
     cache: StateCache,
     start_entries: list[CacheEntry],
     rngs: list[int],
 ) -> StateCache:
     success_entries: set[SuccessEntry] = set()
+
+    env = BridgesEnv(width=rollout_params.env_width, force_standard_config=True)
 
     for start_entry, rng in zip(start_entries, rngs):
         env.reset(start_entry.state_representative)
@@ -286,7 +248,7 @@ def rollout(
         rewards: tuple[float] = start_entry.rewards
 
         led_to_something_new = False
-        for _ in range(num_actions):
+        for _ in range(rollout_params.num_actions):
             if len(current_trajectory) >= cache.current_best:
                 break
 
@@ -312,54 +274,6 @@ def rollout(
     return success_entries, cache
 
 
-def generate_success_entry(
-    object_logger: ObjectLogManager,
-    env: BridgesEnv,
-    num_iterations: int,
-    num_actions: int,
-    hparams: Any,
-    seed: int,
-    processes: int,
-) -> set[SuccessEntry]:
-    """
-    Generate success entries by performing exploration in the given environment.
-
-    This function initializes the state cache and performs exploration using the specified
-    number of iterations and actions. It collects successful entries during the exploration
-    process and returns them as a set.
-
-    Args:
-        env (BridgesEnv): The environment in which to perform the rollouts.
-        num_iterations (int): The number of iterations to run the exploration.
-        num_actions (int): The number of actions to perform in each rollout.
-        hparams (Any): Hyperparameters for the exploration process.
-        seed (int): Random seed for initializing the random number generator.
-
-    Returns:
-        set[SuccessEntry]: A set of generated success entries.
-    """
-    rng = np.random.default_rng(seed)
-    cell_manager = build_cell_manager(hparams)
-    cache: StateCache = StateCache(rng, hparams, cell_manager)
-    cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
-    success_entries = explore(
-        object_logger=object_logger,
-        rng=np.random.default_rng(RNG),
-        env=env,
-        cache=cache,
-        num_iterations=num_iterations,
-        num_actions=num_actions,
-        processes=processes,
-    )
-
-    object_logger.log(
-        f"state_cache-{hparams.env_width}.pkl",
-        OccurrenceLogEntry(batch_idx=0, object=cache),
-    )
-
-    return success_entries
-
-
 def _chunk_list(elements: list[Any], count: int) -> list[list[Any]]:
     if count <= 0:
         raise ValueError("Count must be greater than 0")
@@ -380,37 +294,38 @@ def _chunk_list(elements: list[Any], count: int) -> list[list[Any]]:
 
 def explore(
     object_logger: ObjectLogManager,
-    rng: np.random.default_rng,
-    env: BridgesEnv,
-    cache: StateCache,
-    num_iterations: int,
-    num_actions: int,
-    processes: int,
-) -> None:
+    hparams: Any,
+) -> set[SuccessEntry]:
     """
-    Perform exploration using multiple processes to collect rollouts and update the state cache.
+    Generate success entries by performing exploration in the environment.
+
+    Uses multiple processes to collect rollouts and update the state cache.
 
     This function runs a specified number of iterations, where in each iteration, it samples
     start states and entries from the cache, generates random seeds for each process, and
     collects rollouts in parallel using multiprocessing. The collected rollouts are then used
     to update the cache and accumulate successful entries.
 
-    Args:
-        rng (int): Random number generator for generating seeds.
-        env (BridgesEnv): The environment in which to perform the rollouts.
-        cache (StateCache): The state cache to sample from and update.
-        num_iterations (int): The number of iterations to run the exploration.
-        num_actions (int): The number of actions to perform in each rollout.
-        processes (int): The number of parallel processes to use for rollouts.
-        success_entries (set[SuccessEntry]): A set to accumulate successful entries.
-
     Returns:
-        None
+        set[SuccessEntry]: A set of generated success entries.
     """
 
+    rng = np.random.default_rng(hparams.seed)
+
+    cell_manager = build_cell_manager(hparams)
+    cache: StateCache = StateCache(rng, hparams, cell_manager)
+    env = BridgesEnv(width=hparams.env_width, force_standard_config=True)
+    cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
+
+    rollout_params = RolloutParams(
+        env_width=hparams.env_width, num_actions=hparams.go_explore_num_actions
+    )
+
     success_entries: set[SuccessEntry] = set()
-    for iteration in range(num_iterations):
-        start_entries = cache.sample(n=processes * NUM_SAMPLES_PER_PROCESS)
+    for iteration in range(hparams.go_explore_num_iterations):
+        start_entries = cache.sample(
+            n=hparams.go_explore_num_processes * NUM_SAMPLES_PER_PROCESS
+        )
         object_logger.log(
             "start_entries.pkl",
             OccurrenceLogEntry(batch_idx=iteration, object=start_entries),
@@ -419,18 +334,20 @@ def explore(
         seeds = rng.integers(low=0, high=2**31, size=len(start_entries))
         rngs = list(map(np.random.default_rng, seeds))
 
-        start_entries_chunked = _chunk_list(start_entries, processes * 2)
-        rngs_chunked = _chunk_list(rngs, processes * 2)
+        work_unit_count = hparams.go_explore_num_processes * 2
+        start_entries_chunked = _chunk_list(start_entries, work_unit_count)
+        rngs_chunked = _chunk_list(rngs, work_unit_count)
 
         _collect_rollouts = functools.partial(
             rollout,
-            env,
-            num_actions,
+            rollout_params,
             cache,
         )
-
+        
+        #TODO: Delete this print after debugging is over.
         print(f"We have this many entries: {len(cache._cache)}")
-        with multiprocessing.Pool(processes=processes) as pool:
+        with multiprocessing.Pool(processes=hparams.go_explore_num_processes) as pool:
+
             for rollout_success_entries, rollout_cache in pool.starmap(
                 _collect_rollouts,
                 [*zip(start_entries_chunked, rngs_chunked)],
@@ -438,6 +355,11 @@ def explore(
                 # TODO (Joseph): Figure out how to update the cache with the new cache correctly. Why am I updating the success entries and the cache separately?
                 success_entries.update(rollout_success_entries)
                 cache.update(rollout_cache)
+
+    object_logger.log(
+        f"state_cache-{hparams.env_width}.pkl",
+        OccurrenceLogEntry(batch_idx=0, object=cache),
+    )
 
     return success_entries
 
@@ -451,25 +373,16 @@ if __name__ == "__main__":
     )
     hparams = parser.parse_args()
 
-    width = hparams.env_width
-    num_iterations = hparams.go_explore_num_iterations
-    num_actions = hparams.go_explore_num_actions
-
     with ObjectLogManager(
         "object_logging", "go_explore", create_experiment_dir=True
     ) as object_logger:
-        success_entry_generator = SuccessEntryGenerator(
+        success_entries = explore(
             object_logger=object_logger,
-            processes=4,
-            width=width,
-            env=BridgesEnv(width=width, force_standard_config=True),
-            num_iterations=num_iterations,
-            num_actions=num_actions,
             hparams=hparams,
         )
 
-        object_logger.log("success_entry.pkl", success_entry_generator.success_entries)
+        object_logger.log("success_entry.pkl", success_entries)
 
-    print(
-        f"==========\nEntry Count: {len(success_entry_generator.success_entries)}\n * wa-sampled: {hparams.go_explore_wa_sampled}\n * wa-new: {hparams.go_explore_wa_led_to_something_new}\n * wa-visit: {hparams.go_explore_wa_times_visited}\nShortest: {sorted([len(x.trajectory) for x in success_entry_generator.success_entries ])}"
-    )
+        print(
+            f"==========\nEntry Count: {len(success_entries)}\n * wa-sampled: {hparams.go_explore_wa_sampled}\n * wa-new: {hparams.go_explore_wa_led_to_something_new}\n * wa-visit: {hparams.go_explore_wa_times_visited}\nShortest: {sorted([len(x.trajectory) for x in success_entries ])}"
+        )

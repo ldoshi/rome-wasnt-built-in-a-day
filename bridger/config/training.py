@@ -144,6 +144,11 @@ hparam_dict[key] = {"type": float, "default": 0.3}
 help_str = "The times a state was visited weight for go-explore's count score."
 hparam_dict[key]["help"] = help_str
 
+key = "go_explore_num_processes"
+hparam_dict[key] = {"type": int, "default": 4}
+help_str = "The number of processes to use for rollout."
+hparam_dict[key]["help"] = help_str
+
 key = "jitter"
 hparam_dict[key] = {"type": int, "default": 0}
 help_str = "The backwards algorithm range in which the state is selected from."
