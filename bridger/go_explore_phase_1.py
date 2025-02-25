@@ -9,6 +9,8 @@ import numpy as np
 import multiprocessing
 import functools
 import torch
+import io
+import gzip
 
 from bridger.logging_utils.object_logging import ObjectLogManager
 from bridger.logging_utils.log_entry import SuccessEntry, OccurrenceLogEntry
@@ -33,16 +35,23 @@ def _count_score(
 class CacheEntry:
     trajectory: tuple[int]
     rewards: tuple[float]
-    state_representative_encoded: str
+    state_representative_encoded: bytes  # Store compressed bytes
     steps_since_led_to_something_new: int = 0
     sampled_count: int = 0
     visit_count: int = 1
 
     @property
-    def state_representative(self):
-        return torch.tensor(self.state_representative_encoded[1]).reshape(
-            self.state_representative_encoded[0]
-        )
+    def state_representative(self) -> torch.Tensor:
+        """Decompress and reconstruct the integer tensor."""
+        buffer = io.BytesIO(gzip.decompress(self.state_representative_encoded))
+        return torch.tensor(np.load(buffer, allow_pickle=False))
+
+    @staticmethod
+    def encode_state_representative(tensor: torch.Tensor) -> bytes:
+        """Compress and encode an integer tensor efficiently."""
+        buffer = io.BytesIO()
+        np.save(buffer, tensor.numpy(), allow_pickle=False)  # Efficient integer storage
+        return gzip.compress(buffer.getvalue())  # Further compression
 
 
 class CellManager:
@@ -54,7 +63,7 @@ class CellManager:
 class StateCellManager(CellManager):
 
     def cache_key(self, state: np.ndarray) -> str:
-        return hash_utils.hash_tensor(state)
+        return hash(hash_utils.hash_tensor(state))
 
 
 class DownsampleCellManager(CellManager):
@@ -77,7 +86,7 @@ class DownsampleCellManager(CellManager):
         ).sum(axis=(1, 3))
 
     def cache_key(self, state: np.ndarray) -> str:
-        return hash_utils.hash_tensor(self._downsample_2d(state))
+        return hash(hash_utils.hash_tensor(self._downsample_2d(state)))
 
 
 # python go_explore_phase_1.py --env-width=4 --go-explore-num-iterations=8 --cell-manager=downsample_cell_manager
@@ -172,9 +181,10 @@ class StateSampler:
                 ):
                     cache_entry.rewards = new_cache_entry.rewards
                     cache_entry.trajectory = new_cache_entry.trajectory
-                    cache_entry.state_representative_encoded = (
-                        new_cache_entry.state_representative_encoded
-                    )
+                    entry.state_representative_encoded = (
+                        CacheEntry.encode_state_representative(state)
+                    )                    
+
                 cache_entry.visit_count += new_cache_entry.visit_count
                 # TODO (Joseph): Figure out if this is the correct way to update the steps since led to something new.
                 cache_entry.steps_since_led_to_something_new += (
@@ -220,12 +230,16 @@ class StateSamplerCacheUpdate:
             ):
                 entry.rewards = rewards
                 entry.trajectory = trajectory
-                entry.state_representative_encoded = hash_utils.hash_tensor(state)
+                entry.state_representative_encoded = (
+                    CacheEntry.encode_state_representative(state)
+                )
         else:
             self._cache[key] = CacheEntry(
                 trajectory=trajectory,
                 rewards=rewards,
-                state_representative_encoded=hash_utils.hash_tensor(state),
+                state_representative_encoded=CacheEntry.encode_state_representative(
+                    state
+                )                
             )
 
 
@@ -336,6 +350,17 @@ def explore(
     )
     state_sampler.update(state_sampler_cache_update)
 
+    rng = np.random.default_rng(hparams.seed)
+
+    cell_manager = build_cell_manager(hparams)
+    cache: StateCache = StateCache(rng, hparams, cell_manager)
+    env = BridgesEnv(width=hparams.env_width, force_standard_config=True)
+    cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
+
+    rollout_params = RolloutParams(
+        env_width=hparams.env_width, num_actions=hparams.go_explore_num_actions
+    )
+
     success_entries: set[SuccessEntry] = set()
     for iteration in range(hparams.go_explore_num_iterations):
         start_entries = cache.sample(
@@ -367,6 +392,11 @@ def explore(
                 # TODO (Joseph): Figure out how to update the cache with the new cache correctly. Why am I updating the success entries and the cache separately?
                 success_entries.update(rollout_success_entries)
                 state_sample.update(state_sampler_cache_update)
+
+    object_logger.log(
+        f"state_cache-{hparams.env_width}.pkl",
+        OccurrenceLogEntry(batch_idx=0, object=cache),
+    )
 
     object_logger.log(
         f"state_cache-{hparams.env_width}.pkl",
