@@ -259,8 +259,12 @@ class StateSampler:
                 cache_entry.visit_count += new_cache_entry.visit_count
 
                 if new_cache_entry.steps_since_led_to_something_new_reset_count:
-                    cache_entry.steps_since_led_to_something_new = new_cache_entry.steps_since_led_to_something_new
-                    cache_entry.steps_since_led_to_something_new_reset_count += new_cache_entry.steps_since_led_to_something_new_reset_count
+                    cache_entry.steps_since_led_to_something_new = (
+                        new_cache_entry.steps_since_led_to_something_new
+                    )
+                    cache_entry.steps_since_led_to_something_new_reset_count += (
+                        new_cache_entry.steps_since_led_to_something_new_reset_count
+                    )
                 else:
                     cache_entry.steps_since_led_to_something_new += (
                         new_cache_entry.steps_since_led_to_something_new
