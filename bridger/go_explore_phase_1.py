@@ -37,6 +37,7 @@ class CacheEntry:
     rewards: tuple[float]
     state_representative_encoded: bytes  # Store compressed bytes
     steps_since_led_to_something_new: int = 0
+    steps_since_led_to_something_new_reset_count: int = 0
     sampled_count: int = 0
     visit_count: int = 1
 
@@ -125,13 +126,14 @@ class StateSamplerCacheUpdate:
         self.cache: dict[Any, CacheEntry] = {}
         self._cell_manager = cell_manager
 
-    def update_times_since_led_to_something_new(
+    def update_steps_since_led_to_something_new(
         self, state, led_to_something_to_new: bool
     ) -> None:
         key = self._cell_manager.cache_key(state)
         assert key in self.cache
         if led_to_something_to_new:
             self.cache[key].steps_since_led_to_something_new = 0
+            self.cache[key].steps_since_led_to_something_new_reset_count += 1
             return
 
         self.cache[key].steps_since_led_to_something_new += 1
@@ -255,10 +257,14 @@ class StateSampler:
                     )
 
                 cache_entry.visit_count += new_cache_entry.visit_count
-                # TODO (Joseph): Figure out if this is the correct way to update the steps since led to something new.
-                cache_entry.steps_since_led_to_something_new += (
-                    new_cache_entry.steps_since_led_to_something_new
-                )
+
+                if new_cache_entry.steps_since_led_to_something_new_reset_count:
+                    cache_entry.steps_since_led_to_something_new = new_cache_entry.steps_since_led_to_something_new
+                    cache_entry.steps_since_led_to_something_new_reset_count += new_cache_entry.steps_since_led_to_something_new_reset_count
+                else:
+                    cache_entry.steps_since_led_to_something_new += (
+                        new_cache_entry.steps_since_led_to_something_new
+                    )
 
             else:
                 # Add to the cache if the state is not already in the cache.
@@ -311,7 +317,7 @@ def rollout(
                 next_state, current_trajectory, rewards
             )
 
-        state_sampler_cache_update.update_times_since_led_to_something_new(
+        state_sampler_cache_update.update_steps_since_led_to_something_new(
             start_entry.state_representative, led_to_something_new
         )
 
