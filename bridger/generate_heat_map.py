@@ -77,9 +77,9 @@ if __name__ == "__main__":
     pickle_file = args.pickle_file
 
     cache_entries = read_object_log(args.pickle_file)
-    first_entry = next(cache_entries, None)
+    occurrence_entry = next(cache_entries, None)
 
-    if first_entry is None:
+    if occurrence_entry is None:
         print("Error: No cache entries found.")
     else:
-        plot_2d_histogram(list(first_entry.object._cache.values()))
+        plot_2d_histogram(list(occurrence_entry.object._cache.values()))
