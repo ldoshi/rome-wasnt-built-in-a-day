@@ -447,7 +447,8 @@ if __name__ == "__main__":
             hparams=hparams,
         )
 
-        object_logger.log("success_entry.pkl", success_entries)
+        for success_entry in success_entries:
+            object_logger.log("success_entry.pkl", success_entry)
 
         print(
             f"==========\nEntry Count: {len(success_entries)}\n * wa-sampled: {hparams.go_explore_wa_sampled}\n * wa-new: {hparams.go_explore_wa_led_to_something_new}\n * wa-visit: {hparams.go_explore_wa_times_visited}\nShortest: {sorted([len(x.trajectory) for x in success_entries ])}"
