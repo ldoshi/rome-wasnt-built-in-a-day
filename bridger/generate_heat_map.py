@@ -36,16 +36,14 @@ def plot_2d_histogram(cache_entries: list[CacheEntry]) -> None:
         return
     grid = cache_entries[0].state_representative.numpy()
     grid_shape = grid.shape
-    visit_counts = np.zeros(grid_shape, dtype=float)
     state_superposition = np.zeros(grid_shape, dtype=float)
 
     for entry in cache_entries:
         state_superposition += entry.state_representative.numpy()
-        visit_counts += state_superposition
 
     plt.figure(figsize=(8, 6))
     plt.imshow(
-        np.flipud(state_superposition + visit_counts),
+        np.flipud(state_superposition),
         origin="lower",
         cmap="hot",
         interpolation="nearest",
