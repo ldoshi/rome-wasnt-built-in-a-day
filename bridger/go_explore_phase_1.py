@@ -92,6 +92,7 @@ class DownsampleCellManager(CellManager):
 
 # python go_explore_phase_1.py --env-width=4 --go-explore-num-iterations=8 --cell-manager=downsample_cell_manager
 
+
 def build_cell_manager(rollout_params: RolloutParams) -> CellManager:
     match rollout_params.cell_manager:
         case "state_cell_manager":
@@ -124,14 +125,14 @@ class StateSamplerCacheUpdate:
         self.current_best_trajectory_length = current_best_trajectory_length
         self.cache: dict[Any, CacheEntry] = {}
         self._cell_manager = cell_manager
-                
+
     def update_steps_since_led_to_something_new(
         self, start_entry: CacheEntry, led_to_something_to_new: bool
     ) -> None:
         key = self._cell_manager.cache_key(start_entry.state_representative)
         if key not in self.cache:
             self.cache[key] = start_entry
-            
+
         if led_to_something_to_new:
             self.cache[key].steps_since_led_to_something_new = 0
             self.cache[key].steps_since_led_to_something_new_reset_count += 1
@@ -253,7 +254,9 @@ class StateSampler:
                 ):
                     cache_entry.rewards = new_cache_entry.rewards
                     cache_entry.trajectory = new_cache_entry.trajectory
-                    cache_entry.state_representative_encoded = new_cache_entry.state_representative_encoded
+                    cache_entry.state_representative_encoded = (
+                        new_cache_entry.state_representative_encoded
+                    )
 
                 cache_entry.visit_count += new_cache_entry.visit_count
 
