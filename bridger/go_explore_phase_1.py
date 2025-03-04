@@ -20,7 +20,9 @@ from bridger import config
 # sufficient for decent performance.
 NUM_SAMPLES_PER_PROCESS = 100
 
-RolloutParams = namedtuple("RolloutParams", ["env_width", "num_actions"])
+RolloutParams = namedtuple(
+    "RolloutParams", ["env_width", "num_actions", "cell_manager"]
+)
 
 
 def _count_score(
@@ -35,6 +37,7 @@ class CacheEntry:
     rewards: tuple[float]
     state_representative_encoded: bytes  # Store compressed bytes
     steps_since_led_to_something_new: int = 0
+    steps_since_led_to_something_new_reset_count: int = 0
     sampled_count: int = 0
     visit_count: int = 1
 
@@ -54,13 +57,13 @@ class CacheEntry:
 
 class CellManager:
 
-    def cache_key(self, state: np.ndarray) -> str:
+    def cache_key(self, state: torch.Tensor) -> str:
         pass
 
 
 class StateCellManager(CellManager):
 
-    def cache_key(self, state: np.ndarray) -> str:
+    def cache_key(self, state: torch.Tensor) -> str:
         return hash(hash_utils.hash_tensor(state))
 
 
@@ -70,7 +73,7 @@ class DownsampleCellManager(CellManager):
         self.factor_x = factor_x
         self.factor_y = factor_y
 
-    def _downsample_2d(self, state: np.ndarray):
+    def _downsample_2d(self, state: torch.Tensor):
         if state.shape[0] % self.factor_x != 0 or state.shape[1] % self.factor_y != 0:
             raise ValueError(
                 "Array dimensions must be divisible by the downsampling factors"
@@ -83,15 +86,15 @@ class DownsampleCellManager(CellManager):
             self.factor_y,
         ).sum(axis=(1, 3))
 
-    def cache_key(self, state: np.ndarray) -> str:
+    def cache_key(self, state: torch.Tensor) -> str:
         return hash(hash_utils.hash_tensor(self._downsample_2d(state)))
 
 
 # python go_explore_phase_1.py --env-width=4 --go-explore-num-iterations=8 --cell-manager=downsample_cell_manager
 
 
-def build_cell_manager(hparams) -> CellManager:
-    match hparams.cell_manager:
+def build_cell_manager(rollout_params: RolloutParams) -> CellManager:
+    match rollout_params.cell_manager:
         case "state_cell_manager":
             return StateCellManager()
         case "downsample_cell_manager":
@@ -103,52 +106,83 @@ def build_cell_manager(hparams) -> CellManager:
             )
 
 
-class StateCache:
+def _found_better_trajectory(
+    trajectory_new: list[int],
+    rewards_new: list[float],
+    trajectory_current: list[int],
+    rewards_current: list[float],
+) -> bool:
+    """Returns true if the new trajectory is better."""
+    return (sum(rewards_new) > sum(rewards_current)) or (
+        sum(rewards_new) == sum(rewards_current)
+        and len(trajectory_new) < len(trajectory_current)
+    )
 
-    def __init__(self, rng, hparams, cell_manager: CellManager):
-        self.current_best: int = 10000000
+
+class StateSamplerCacheUpdate:
+
+    def __init__(self, current_best_trajectory_length: int, cell_manager: CellManager):
+        self.current_best_trajectory_length = current_best_trajectory_length
+        self.cache: dict[Any, CacheEntry] = {}
+        self._cell_manager = cell_manager
+
+    def update_steps_since_led_to_something_new(
+        self, start_entry: CacheEntry, led_to_something_to_new: bool
+    ) -> None:
+        key = self._cell_manager.cache_key(start_entry.state_representative)
+        if key not in self.cache:
+            self.cache[key] = start_entry
+
+        if led_to_something_to_new:
+            self.cache[key].steps_since_led_to_something_new = 0
+            self.cache[key].steps_since_led_to_something_new_reset_count += 1
+            return
+
+        self.cache[key].steps_since_led_to_something_new += 1
+
+    def update_current_best_trajectory(self, trajectory_length: int) -> None:
+        self.current_best_trajectory_length = min(
+            self.current_best_trajectory_length, trajectory_length
+        )
+
+    def visit(
+        self, state: torch.Tensor, trajectory: tuple[int], rewards: tuple[float]
+    ) -> bool:
+        """Returns true if a new state was visited or a better way to a state was found."""
+
+        key = self._cell_manager.cache_key(state)
+        if key in self.cache:
+            entry = self.cache[key]
+            entry.visit_count += 1
+            if not _found_better_trajectory(
+                trajectory_new=trajectory,
+                rewards_new=rewards,
+                trajectory_current=entry.trajectory,
+                rewards_current=entry.rewards,
+            ):
+                return False
+            entry.rewards = rewards
+            entry.trajectory = trajectory
+            entry.state_representative_encoded = CacheEntry.encode_state_representative(
+                state
+            )
+            return True
+
+        self.cache[key] = CacheEntry(
+            trajectory=trajectory,
+            rewards=rewards,
+            state_representative_encoded=CacheEntry.encode_state_representative(state),
+        )
+        return True
+
+
+class StateSampler:
+
+    def __init__(self, rng, hparams):
+        self.current_best_trajectory_length: int = 10000000
         self._cache: dict[Any, CacheEntry] = {}
         self._rng = rng
         self._hparams = hparams
-        self._cell_manager = cell_manager
-
-    def update_times_since_led_to_something_new(
-        self, state, led_to_something_to_new: bool
-    ) -> None:
-        key = self._cell_manager.cache_key(state)
-        assert key in self._cache
-        if led_to_something_to_new:
-            self._cache[key].steps_since_led_to_something_new = 0
-        else:
-            self._cache[key].steps_since_led_to_something_new += 1
-
-    def update_current_best(self, trajectory_length: int):
-        self.current_best = min(self.current_best, trajectory_length)
-
-    def visit(
-        self, state: np.ndarray, trajectory: tuple[int], rewards: tuple[float]
-    ) -> bool:
-        key = self._cell_manager.cache_key(state)
-        if key in self._cache:
-            entry = self._cache[key]
-            entry.visit_count += 1
-            if sum(rewards) > sum(entry.rewards) or (
-                sum(rewards) == sum(entry.rewards)
-                and len(trajectory) < len(entry.trajectory)
-            ):
-                entry.rewards = rewards
-                entry.trajectory = trajectory
-                entry.state_representative_encoded = (
-                    CacheEntry.encode_state_representative(state)
-                )
-        else:
-            self._cache[key] = CacheEntry(
-                trajectory=trajectory,
-                rewards=rewards,
-                state_representative_encoded=CacheEntry.encode_state_representative(
-                    state
-                ),
-            )
 
     def sample(self, n=1):
         cache_keys = []
@@ -193,39 +227,50 @@ class StateCache:
             start_entries.append(entry)
         return start_entries
 
-    def update(self, new_cache: "StateCache") -> None:
-        """
-        Update the current cache with values from a new cache.
+    def update(self, cache_update: StateSamplerCacheUpdate) -> None:
+        """Update the current cache with values from the cache update.
 
-        This method iterates over the entries in the new cache and updates the corresponding
-        entries in the current cache based on the rewards and trajectory lengths. If the new
-        cache entry has higher rewards or the same rewards but a shorter trajectory, the current
-        cache entry is updated with the new rewards and trajectory. Additionally, the visit count
-        and steps since the entry led to something new are accumulated.
+        Specifically, if the new cache entry has higher rewards or the
+        same rewards but a shorter trajectory, the current cache entry
+        is updated with the new rewards and trajectory. Additionally,
+        the visit count and steps since the entry led to something new
+        are accumulated.
 
         Args:
-            new_cache (StateCache): The new cache containing updated state entries.
+            cache_update: The cache updates from a series of rollouts.
 
         Returns:
             None
         """
-        for new_cache_key, new_cache_entry in new_cache._cache.items():
+
+        for new_cache_key, new_cache_entry in cache_update.cache.items():
             if new_cache_key in self._cache:
                 cache_entry = self._cache[new_cache_key]
-                if sum(new_cache_entry.rewards) > sum(cache_entry.rewards) or (
-                    sum(new_cache_entry.rewards) == sum(cache_entry.rewards)
-                    and len(new_cache_entry.trajectory) < len(cache_entry.trajectory)
+                if _found_better_trajectory(
+                    trajectory_new=new_cache_entry.trajectory,
+                    rewards_new=new_cache_entry.rewards,
+                    trajectory_current=cache_entry.trajectory,
+                    rewards_current=cache_entry.rewards,
                 ):
                     cache_entry.rewards = new_cache_entry.rewards
                     cache_entry.trajectory = new_cache_entry.trajectory
                     cache_entry.state_representative_encoded = (
                         new_cache_entry.state_representative_encoded
                     )
+
                 cache_entry.visit_count += new_cache_entry.visit_count
-                # TODO (Joseph): Figure out if this is the correct way to update the steps since led to something new.
-                cache_entry.steps_since_led_to_something_new += (
-                    new_cache_entry.steps_since_led_to_something_new
-                )
+
+                if new_cache_entry.steps_since_led_to_something_new_reset_count:
+                    cache_entry.steps_since_led_to_something_new = (
+                        new_cache_entry.steps_since_led_to_something_new
+                    )
+                    cache_entry.steps_since_led_to_something_new_reset_count += (
+                        new_cache_entry.steps_since_led_to_something_new_reset_count
+                    )
+                else:
+                    cache_entry.steps_since_led_to_something_new += (
+                        new_cache_entry.steps_since_led_to_something_new
+                    )
 
             else:
                 # Add to the cache if the state is not already in the cache.
@@ -234,13 +279,17 @@ class StateCache:
 
 def rollout(
     rollout_params: RolloutParams,
-    cache: StateCache,
+    start_current_best_trajectory_length: int,
     start_entries: list[CacheEntry],
     rngs: list[int],
-) -> StateCache:
+) -> StateSamplerCacheUpdate:
     success_entries: set[SuccessEntry] = set()
 
     env = BridgesEnv(width=rollout_params.env_width, force_standard_config=True)
+    state_sampler_cache_update = StateSamplerCacheUpdate(
+        current_best_trajectory_length=start_current_best_trajectory_length,
+        cell_manager=build_cell_manager(rollout_params),
+    )
 
     for start_entry, rng in zip(start_entries, rngs):
         env.reset(start_entry.state_representative)
@@ -249,7 +298,10 @@ def rollout(
 
         led_to_something_new = False
         for _ in range(rollout_params.num_actions):
-            if len(current_trajectory) >= cache.current_best:
+            if (
+                len(current_trajectory)
+                >= state_sampler_cache_update.current_best_trajectory_length
+            ):
                 break
 
             action = rng.choice(range(env.nA))
@@ -262,16 +314,20 @@ def rollout(
                         SuccessEntry(trajectory=current_trajectory, rewards=rewards)
                     )
                     led_to_something_new = True
-                    cache.update_current_best(len(current_trajectory))
+                    state_sampler_cache_update.update_current_best_trajectory(
+                        len(current_trajectory)
+                    )
                 break
 
-            cache.visit(next_state, current_trajectory, rewards)
+            led_to_something_new |= state_sampler_cache_update.visit(
+                next_state, current_trajectory, rewards
+            )
 
-        cache.update_times_since_led_to_something_new(
-            start_entry.state_representative, led_to_something_new
+        state_sampler_cache_update.update_steps_since_led_to_something_new(
+            start_entry, led_to_something_new
         )
 
-    return success_entries, cache
+    return success_entries, state_sampler_cache_update
 
 
 def _chunk_list(elements: list[Any], count: int) -> list[list[Any]]:
@@ -309,21 +365,30 @@ def explore(
     Returns:
         set[SuccessEntry]: A set of generated success entries.
     """
-
     rng = np.random.default_rng(hparams.seed)
 
-    cell_manager = build_cell_manager(hparams)
-    cache: StateCache = StateCache(rng, hparams, cell_manager)
-    env = BridgesEnv(width=hparams.env_width, force_standard_config=True)
-    cache.visit(state=env.reset(), trajectory=tuple(), rewards=tuple())
-
     rollout_params = RolloutParams(
-        env_width=hparams.env_width, num_actions=hparams.go_explore_num_actions
+        env_width=hparams.env_width,
+        num_actions=hparams.go_explore_num_actions,
+        cell_manager=hparams.cell_manager,
     )
+
+    state_sampler: StateSampler = StateSampler(rng, hparams)
+
+    # Initialize state_sampler with only the reset() state for now.
+    state_sampler_cache_update = StateSamplerCacheUpdate(
+        current_best_trajectory_length=state_sampler.current_best_trajectory_length,
+        cell_manager=build_cell_manager(rollout_params),
+    )
+    env = BridgesEnv(width=hparams.env_width, force_standard_config=True)
+    state_sampler_cache_update.visit(
+        state=env.reset(), trajectory=tuple(), rewards=tuple()
+    )
+    state_sampler.update(state_sampler_cache_update)
 
     success_entries: set[SuccessEntry] = set()
     for iteration in range(hparams.go_explore_num_iterations):
-        start_entries = cache.sample(
+        start_entries = state_sampler.sample(
             n=hparams.go_explore_num_processes * NUM_SAMPLES_PER_PROCESS
         )
         object_logger.log(
@@ -341,24 +406,25 @@ def explore(
         _collect_rollouts = functools.partial(
             rollout,
             rollout_params,
-            cache,
+            state_sampler.current_best_trajectory_length,
         )
 
-        # TODO: Delete this print after debugging is over.
-        print(f"We have this many entries: {len(cache._cache)}")
         with multiprocessing.Pool(processes=hparams.go_explore_num_processes) as pool:
-
-            for rollout_success_entries, rollout_cache in pool.starmap(
+            for rollout_success_entries, state_sampler_cache_update in pool.starmap(
                 _collect_rollouts,
                 [*zip(start_entries_chunked, rngs_chunked)],
             ):
-                # TODO (Joseph): Figure out how to update the cache with the new cache correctly. Why am I updating the success entries and the cache separately?
+                # Compile success entries from the current set of
+                # rollouts to build out the return value for this
+                # function.
                 success_entries.update(rollout_success_entries)
-                cache.update(rollout_cache)
+                # Ensure the state_sampler is up to date for the next
+                # iteration of exploratory rollouts.
+                state_sampler.update(state_sampler_cache_update)
 
     object_logger.log(
         f"state_cache-{hparams.env_width}.pkl",
-        OccurrenceLogEntry(batch_idx=0, object=cache),
+        OccurrenceLogEntry(batch_idx=0, object=state_sampler),
     )
 
     return success_entries
@@ -381,7 +447,8 @@ if __name__ == "__main__":
             hparams=hparams,
         )
 
-        object_logger.log("success_entry.pkl", success_entries)
+        for success_entry in success_entries:
+            object_logger.log("success_entry.pkl", success_entry)
 
         print(
             f"==========\nEntry Count: {len(success_entries)}\n * wa-sampled: {hparams.go_explore_wa_sampled}\n * wa-new: {hparams.go_explore_wa_led_to_something_new}\n * wa-visit: {hparams.go_explore_wa_times_visited}\nShortest: {sorted([len(x.trajectory) for x in success_entries ])}"
