@@ -92,7 +92,6 @@ class DownsampleCellManager(CellManager):
 
 # python go_explore_phase_1.py --env-width=4 --go-explore-num-iterations=8 --cell-manager=downsample_cell_manager
 
-
 def build_cell_manager(rollout_params: RolloutParams) -> CellManager:
     match rollout_params.cell_manager:
         case "state_cell_manager":
@@ -115,7 +114,7 @@ def _found_better_trajectory(
     """Returns true if the new trajectory is better."""
     return (sum(rewards_new) > sum(rewards_current)) or (
         sum(rewards_new) == sum(rewards_current)
-        and len(trajectory_new) < len(trajectory_old)
+        and len(trajectory_new) < len(trajectory_current)
     )
 
 
@@ -125,12 +124,14 @@ class StateSamplerCacheUpdate:
         self.current_best_trajectory_length = current_best_trajectory_length
         self.cache: dict[Any, CacheEntry] = {}
         self._cell_manager = cell_manager
-
+                
     def update_steps_since_led_to_something_new(
-        self, state, led_to_something_to_new: bool
+        self, start_entry: CacheEntry, led_to_something_to_new: bool
     ) -> None:
-        key = self._cell_manager.cache_key(state)
-        assert key in self.cache
+        key = self._cell_manager.cache_key(start_entry.state_representative)
+        if key not in self.cache:
+            self.cache[key] = start_entry
+            
         if led_to_something_to_new:
             self.cache[key].steps_since_led_to_something_new = 0
             self.cache[key].steps_since_led_to_something_new_reset_count += 1
@@ -252,9 +253,7 @@ class StateSampler:
                 ):
                     cache_entry.rewards = new_cache_entry.rewards
                     cache_entry.trajectory = new_cache_entry.trajectory
-                    entry.state_representative_encoded = (
-                        CacheEntry.encode_state_representative(state)
-                    )
+                    cache_entry.state_representative_encoded = new_cache_entry.state_representative_encoded
 
                 cache_entry.visit_count += new_cache_entry.visit_count
 
@@ -285,7 +284,7 @@ def rollout(
 
     env = BridgesEnv(width=rollout_params.env_width, force_standard_config=True)
     state_sampler_cache_update = StateSamplerCacheUpdate(
-        current_best_trajectory_length=current_best_trajectory_length,
+        current_best_trajectory_length=start_current_best_trajectory_length,
         cell_manager=build_cell_manager(rollout_params),
     )
 
@@ -322,7 +321,7 @@ def rollout(
             )
 
         state_sampler_cache_update.update_steps_since_led_to_something_new(
-            start_entry.state_representative, led_to_something_new
+            start_entry, led_to_something_new
         )
 
     return success_entries, state_sampler_cache_update
@@ -384,12 +383,9 @@ def explore(
     )
     state_sampler.update(state_sampler_cache_update)
 
-    rollout_params = RolloutParams(
-        env_width=hparams.env_width, num_actions=hparams.go_explore_num_actions
-    )
     success_entries: set[SuccessEntry] = set()
     for iteration in range(hparams.go_explore_num_iterations):
-        start_entries = cache.sample(
+        start_entries = state_sampler.sample(
             n=hparams.go_explore_num_processes * NUM_SAMPLES_PER_PROCESS
         )
         object_logger.log(
@@ -415,18 +411,17 @@ def explore(
                 _collect_rollouts,
                 [*zip(start_entries_chunked, rngs_chunked)],
             ):
-                # TODO (Joseph): Figure out how to update the cache with the new cache correctly. Why am I updating the success entries and the cache separately?
+                # Compile success entries from the current set of
+                # rollouts to build out the return value for this
+                # function.
                 success_entries.update(rollout_success_entries)
-                state_sample.update(state_sampler_cache_update)
+                # Ensure the state_sampler is up to date for the next
+                # iteration of exploratory rollouts.
+                state_sampler.update(state_sampler_cache_update)
 
     object_logger.log(
         f"state_cache-{hparams.env_width}.pkl",
-        OccurrenceLogEntry(batch_idx=0, object=cache),
-    )
-
-    object_logger.log(
-        f"state_cache-{hparams.env_width}.pkl",
-        OccurrenceLogEntry(batch_idx=0, object=cache),
+        OccurrenceLogEntry(batch_idx=0, object=state_sampler),
     )
 
     return success_entries
