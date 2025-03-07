@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from go_explore_phase_1 import CacheEntry, StateCache, StateCellManager
+from go_explore_phase_1 import CacheEntry, StateSampler, StateCellManager
 import argparse
 from bridger.logging_utils.object_log_readers import read_object_log
 

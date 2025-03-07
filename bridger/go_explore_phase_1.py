@@ -277,6 +277,12 @@ class StateSampler:
                 self._cache[new_cache_key] = new_cache_entry
 
 
+def clear_illegal_actions(    trajectory: tuple[int], rewards: tuple[float] ) -> tuple[    tuple[int], tuple[float]]:
+    filtered = [(t, r) for t, r in zip(trajectory, rewards) if r > -0.101]
+    # Unzip the filtered values into separate tuples
+    new_trajectory, new_rewards = zip(*filtered) if filtered else ((), ())
+    return new_trajectory, new_rewards
+                
 def rollout(
     rollout_params: RolloutParams,
     start_current_best_trajectory_length: int,
@@ -309,11 +315,20 @@ def rollout(
             next_state, reward, done, aux = env.step(action)
             rewards += (reward,)
             if done:
-                if aux["is_success"] and all(np.array(rewards) > -0.5):
-                    success_entries.add(
-                        SuccessEntry(trajectory=current_trajectory, rewards=rewards)
-                    )
-                    led_to_something_new = True
+                if aux["is_success"]:
+                    # Clear out illegal actions from the trajectory
+                    # before saving. Removing these does not affect
+                    # the validity of the rest of the trajectory
+                    # because illegal actions cost reward but do not
+                    # change state.
+                    current_trajectory, rewards = clear_illegal_actions(current_trajectory, rewards)
+                    success_entry = SuccessEntry(trajectory=current_trajectory, rewards=rewards)
+                    if success_entry not in success_entries:
+                        success_entries.add(
+                            SuccessEntry(trajectory=current_trajectory, rewards=rewards)
+                        )
+                        led_to_something_new = True
+                        
                     state_sampler_cache_update.update_current_best_trajectory(
                         len(current_trajectory)
                     )
