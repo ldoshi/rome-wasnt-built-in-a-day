@@ -1,6 +1,7 @@
 from gym_bridges.envs.bridges_env import BridgesEnv
 import copy
 import pickle
+from more_itertools import chunked
 from typing import Any
 from bridger import hash_utils
 from dataclasses import dataclass
@@ -16,14 +17,11 @@ from bridger.logging_utils.object_logging import ObjectLogManager
 from bridger.logging_utils.log_entry import SuccessEntry, OccurrenceLogEntry
 from bridger import config
 
-# A constant instead of a config because this merely needs to be
-# sufficient for decent performance.
-NUM_SAMPLES_PER_PROCESS = 100
-
 RolloutParams = namedtuple(
     "RolloutParams", ["env_width", "num_actions", "cell_manager"]
 )
 
+_WORK_PER_CHUNK = 10
 
 def _count_score(
     v: float, wa: float, pa: float, epsilon_1: float, epsilon_2: float
@@ -276,6 +274,8 @@ class StateSampler:
                 # Add to the cache if the state is not already in the cache.
                 self._cache[new_cache_key] = new_cache_entry
 
+            self.current_best_trajectory_length = min(self.current_best_trajectory_length, cache_update.current_best_trajectory_length)
+
 
 def clear_illegal_actions(
     trajectory: tuple[int], rewards: tuple[float]
@@ -292,6 +292,8 @@ def rollout(
     start_entries: list[CacheEntry],
     rngs: list[int],
 ) -> StateSamplerCacheUpdate:
+    print('start ' , start_current_best_trajectory_length, ' and ' , len(start_entries))
+    
     success_entries: set[SuccessEntry] = set()
 
     env = BridgesEnv(width=rollout_params.env_width, force_standard_config=True)
@@ -352,23 +354,6 @@ def rollout(
     return success_entries, state_sampler_cache_update
 
 
-def _chunk_list(elements: list[Any], count: int) -> list[list[Any]]:
-    if count <= 0:
-        raise ValueError("Count must be greater than 0")
-
-    n = len(elements)
-    sublist_size, remainder = divmod(n, count)
-
-    result = []
-    start = 0
-    for i in range(count):
-        extra = 1 if i < remainder else 0  # Distribute remainder elements
-        end = start + sublist_size + extra
-        result.append(elements[start:end])
-        start = end
-
-    return result
-
 
 def explore(
     object_logger: ObjectLogManager,
@@ -411,7 +396,7 @@ def explore(
     success_entries: set[SuccessEntry] = set()
     for iteration in range(hparams.go_explore_num_iterations):
         start_entries = state_sampler.sample(
-            n=hparams.go_explore_num_processes * NUM_SAMPLES_PER_PROCESS
+            n=hparams.go_explore_num_samples_per_iteration
         )
         object_logger.log(
             "start_entries.pkl",
@@ -421,9 +406,8 @@ def explore(
         seeds = rng.integers(low=0, high=2**31, size=len(start_entries))
         rngs = list(map(np.random.default_rng, seeds))
 
-        work_unit_count = hparams.go_explore_num_processes * 2
-        start_entries_chunked = _chunk_list(start_entries, work_unit_count)
-        rngs_chunked = _chunk_list(rngs, work_unit_count)
+        start_entries_chunked = chunked(start_entries, _WORK_PER_CHUNK)
+        rngs_chunked = chunked(rngs, _WORK_PER_CHUNK)
 
         _collect_rollouts = functools.partial(
             rollout,

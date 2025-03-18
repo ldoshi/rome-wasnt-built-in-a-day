@@ -149,6 +149,11 @@ hparam_dict[key] = {"type": int, "default": 4}
 help_str = "The number of processes to use for rollout."
 hparam_dict[key]["help"] = help_str
 
+key = "go_explore_num_samples_per_iteration"
+hparam_dict[key] = {"type": int, "default": 120}
+help_str = "The number of processes to use for rollout."
+hparam_dict[key]["help"] = help_str
+
 key = "jitter"
 hparam_dict[key] = {"type": int, "default": 0}
 help_str = "The backwards algorithm range in which the state is selected from."
