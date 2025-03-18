@@ -23,6 +23,7 @@ RolloutParams = namedtuple(
 
 _WORK_PER_CHUNK = 10
 
+
 def _count_score(
     v: float, wa: float, pa: float, epsilon_1: float, epsilon_2: float
 ) -> int:
@@ -274,7 +275,10 @@ class StateSampler:
                 # Add to the cache if the state is not already in the cache.
                 self._cache[new_cache_key] = new_cache_entry
 
-            self.current_best_trajectory_length = min(self.current_best_trajectory_length, cache_update.current_best_trajectory_length)
+            self.current_best_trajectory_length = min(
+                self.current_best_trajectory_length,
+                cache_update.current_best_trajectory_length,
+            )
 
 
 def clear_illegal_actions(
@@ -292,8 +296,8 @@ def rollout(
     start_entries: list[CacheEntry],
     rngs: list[int],
 ) -> StateSamplerCacheUpdate:
-    print('start ' , start_current_best_trajectory_length, ' and ' , len(start_entries))
-    
+    print("start ", start_current_best_trajectory_length, " and ", len(start_entries))
+
     success_entries: set[SuccessEntry] = set()
 
     env = BridgesEnv(width=rollout_params.env_width, force_standard_config=True)
@@ -352,7 +356,6 @@ def rollout(
         )
 
     return success_entries, state_sampler_cache_update
-
 
 
 def explore(
