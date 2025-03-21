@@ -149,8 +149,18 @@ hparam_dict[key] = {"type": int, "default": 4}
 help_str = "The number of processes to use for rollout."
 hparam_dict[key]["help"] = help_str
 
+key = "go_explore_downsample_cell_manager_x_stride"
+hparam_dict[key] = {"type": int, "default": 2}
+help_str = "The x stride to downsample the state."
+hparam_dict[key]["help"] = help_str
+
+key = "go_explore_downsample_cell_manager_y_stride"
+hparam_dict[key] = {"type": int, "default": 2}
+help_str = "The y stride to downsample the state."
+hparam_dict[key]["help"] = help_str
+
 key = "go_explore_num_samples_per_iteration"
-hparam_dict[key] = {"type": int, "default": 120}
+hparam_dict[key] = {"type": int, "default": 1200}
 help_str = "The number of processes to use for rollout."
 hparam_dict[key]["help"] = help_str
 
