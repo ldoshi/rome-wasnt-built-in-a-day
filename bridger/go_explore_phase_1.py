@@ -18,7 +18,7 @@ from bridger.logging_utils.log_entry import SuccessEntry, OccurrenceLogEntry
 from bridger import config
 
 RolloutParams = namedtuple(
-    "RolloutParams", ["env_width", "num_actions", "cell_manager"]
+    "RolloutParams", ["env_width", "num_actions", "cell_manager", "downsample_cell_manager_x_stride", "downsample_cell_manager_y_stride"]
 )
 
 _WORK_PER_CHUNK = 10
@@ -98,7 +98,7 @@ def build_cell_manager(rollout_params: RolloutParams) -> CellManager:
             return StateCellManager()
         case "downsample_cell_manager":
             # TODO(lyric): Add the factors to the config.
-            return DownsampleCellManager(2, 2)
+            return DownsampleCellManager(rollout_params.downsample_cell_manager_y_stride, rollout_params.downsample_cell_manager_x_stride)
         case _:
             raise ValueError(
                 f"Unrecognized cell manager provided: {hparams.cell_manager}"
@@ -148,7 +148,7 @@ class StateSamplerCacheUpdate:
         self, state: torch.Tensor, trajectory: tuple[int], rewards: tuple[float]
     ) -> bool:
         """Returns true if a new state was visited or a better way to a state was found."""
-
+        
         key = self._cell_manager.cache_key(state)
         if key in self.cache:
             entry = self.cache[key]
@@ -186,6 +186,7 @@ class StateSampler:
     def sample(self, n=1):
         cache_keys = []
         state_count_scores = []
+        
         for state, cache_entry in self._cache.items():
             cache_keys.append(state)
 
@@ -213,6 +214,7 @@ class StateSampler:
             state_count_scores.append(
                 steps_since_led_to_something_new_score + sampled_score + visited_score
             )
+
         state_count_scores_sum = sum(state_count_scores)
         state_count_probs = [x / state_count_scores_sum for x in state_count_scores]
 
@@ -296,8 +298,6 @@ def rollout(
     start_entries: list[CacheEntry],
     rngs: list[int],
 ) -> StateSamplerCacheUpdate:
-    print("start ", start_current_best_trajectory_length, " and ", len(start_entries))
-
     success_entries: set[SuccessEntry] = set()
 
     env = BridgesEnv(width=rollout_params.env_width, force_standard_config=True)
@@ -347,9 +347,10 @@ def rollout(
                     )
                 break
 
-            led_to_something_new |= state_sampler_cache_update.visit(
+            r = state_sampler_cache_update.visit(
                 next_state, current_trajectory, rewards
             )
+            led_to_something_new |= r
 
         state_sampler_cache_update.update_steps_since_led_to_something_new(
             start_entry, led_to_something_new
@@ -381,6 +382,8 @@ def explore(
         env_width=hparams.env_width,
         num_actions=hparams.go_explore_num_actions,
         cell_manager=hparams.cell_manager,
+        downsample_cell_manager_x_stride=hparams.go_explore_downsample_cell_manager_x_stride,
+        downsample_cell_manager_y_stride=hparams.go_explore_downsample_cell_manager_y_stride,
     )
 
     state_sampler: StateSampler = StateSampler(rng, hparams)
@@ -398,13 +401,19 @@ def explore(
 
     success_entries: set[SuccessEntry] = set()
     for iteration in range(hparams.go_explore_num_iterations):
+        if iteration + 1 % 20 == 0:
+            print(f"[Iteration {iteration}] Successes: {len(success_entries)} ({sorted([len(x.trajectory) for x in success_entries ])})")
+            x = next(sorted(success_entries,key=lambda e: len(e.trajectory)))
+            print("  Trajectory: ", x.trajectory)
+            
         start_entries = state_sampler.sample(
             n=hparams.go_explore_num_samples_per_iteration
         )
-        object_logger.log(
-            "start_entries.pkl",
-            OccurrenceLogEntry(batch_idx=iteration, object=start_entries),
-        )
+        if hparams.debug:
+            object_logger.log(
+                "start_entries.pkl",
+                OccurrenceLogEntry(batch_idx=iteration, object=start_entries),
+            )
 
         seeds = rng.integers(low=0, high=2**31, size=len(start_entries))
         rngs = list(map(np.random.default_rng, seeds))
@@ -431,10 +440,11 @@ def explore(
                 # iteration of exploratory rollouts.
                 state_sampler.update(state_sampler_cache_update)
 
-    object_logger.log(
-        f"state_cache-{hparams.env_width}.pkl",
-        OccurrenceLogEntry(batch_idx=0, object=state_sampler),
-    )
+    if hparams.debug:
+        object_logger.log(
+            f"state_cache-{hparams.env_width}.pkl",
+            OccurrenceLogEntry(batch_idx=0, object=state_sampler),
+        )
 
     return success_entries
 
