@@ -11,6 +11,16 @@ from bridger.logging_utils import log_entry
 from tools.web import object_log_cache
 from tools.web import plot_utils
 from collections import Counter
+from bridger.go_explore_phase_1 import CacheEntry
+from bridger.logging_utils.cache_entry_database import (
+    CacheEntryDatabase,
+    TrajectorySortKey,
+    VisitCountSortKey,
+    SampleCountSortKey,
+    StepsSinceLedToSomethingNewSortKey,
+    StepsSinceLedToSomethingNewResetCountSortKey,
+)
+from bridger.logging_utils.object_log_readers import read_object_log
 
 app = flask.Flask(__name__)
 
@@ -63,6 +73,38 @@ def _get_experiment_names() -> list[str]:
         for x in sorted(os.listdir(_LOG_DIR))
         if x != log_entry.STATE_NORMALIZED_LOG_ENTRY
     ]
+
+
+@app.route("/n_fewest_steps_since_led_to_something_new_go_explore", methods=["GET"])
+def n_fewest_steps_since_led_to_something_new_go_explore_plot_data():
+    """
+    Provides plot data for the n states that have most recently seen a new cell.
+    """
+    experiment_name = _get_string_or_default(_EXPERIMENT_NAME)
+    n = _get_int_or_default("n", 10)
+
+    cache_entry_database = CacheEntryDatabase(
+        list(read_object_log(os.path.join(_LOG_DIR, "go_explore", "start_entries.pkl")))
+    )
+
+    return {
+        "states": [
+            cache_entry.state for cache_entry in cache_entry_database.cache_entries
+        ],
+        "trajectory_length": cache_entry_database.get_top_n_by_sort_key(
+            TrajectorySortKey, n
+        ),
+        "steps_since_led_to_something_new": cache_entry_database.get_top_n_by_sort_key(
+            StepsSinceLedToSomethingNewSortKey, n
+        ),
+        "steps_since_led_to_something_new_reset_count": cache_entry_database.get_top_n_by_sort_key(
+            StepsSinceLedToSomethingNewResetCountSortKey, n
+        ),
+        "sample_count": cache_entry_database.get_top_n_by_sort_key(
+            SampleCountSortKey, n
+        ),
+        "visit_count": cache_entry_database.get_top_n_by_sort_key(VisitCountSortKey, n),
+    }
 
 
 @app.route("/training_history_plot_data", methods=["GET"])
@@ -371,6 +413,19 @@ def action_inversion():
         selected_experiment_name=selected_experiment_name,
         start_batch_idx=start_batch_idx,
         end_batch_idx=end_batch_idx,
+    )
+
+
+@app.route("/go_explore")
+def go_explore():
+    experiment_names = _get_experiment_names()
+    selected_experiment_name = _get_string_or_default(
+        name=_EXPERIMENT_NAME, default=experiment_names[0]
+    )
+    return flask.render_template(
+        "go_explore.html",
+        experiment_names=experiment_names,
+        selected_experiment_name=selected_experiment_name,
     )
 
 

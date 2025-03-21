@@ -1,0 +1,98 @@
+{% extends 'base.html' %} {% block title %}Sibyl: Go Explore Visualization{%
+endblock %} {% block content %}
+<div id="loading" class="message-banner hidden">Loading...</div>
+<div id="load-error" class="message-banner hidden">Load Error</div>
+<div id="welcome">Go Explore Visualization</div>
+
+<style>
+  .plot-container {
+    margin: 20px;
+    padding: 20px;
+    background-color: #1a1a1a;
+    border-radius: 8px;
+  }
+
+  .state-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .state-container {
+    background-color: #1a1a1a;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .state-container h3 {
+    color: #ffffff;
+    margin-bottom: 10px;
+  }
+
+  .controls {
+    margin: 20px;
+    padding: 15px;
+    background-color: #1a1a1a;
+    border-radius: 8px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .control label {
+    color: #ffffff;
+  }
+
+  .control input {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background-color: #2a2a2a;
+    color: #ffffff;
+  }
+
+  button {
+    padding: 8px 16px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background-color: #45a049;
+  }
+
+  .message-banner {
+    padding: 10px;
+    margin: 10px;
+    border-radius: 4px;
+    text-align: center;
+    color: white;
+  }
+
+  #loading {
+    background-color: #2196f3;
+  }
+
+  #load-error {
+    background-color: #f44336;
+  }
+
+  .hidden {
+    display: none;
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/go_explore_plots.js') }}"></script>
+{% endblock %}
