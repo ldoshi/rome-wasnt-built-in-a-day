@@ -31,7 +31,20 @@ def read_object_log(log_filepath: str):
         buffer = None
         while True:
             try:
-                buffer = pickle.load(f)
+                # Try to load with torch.load first to handle CUDA tensors
+                try:
+                    buffer = torch.load(f, map_location=torch.device("cpu"))
+                except:
+                    # If that fails, try regular pickle.load
+                    f.seek(0)  # Reset file pointer
+                    buffer = pickle.load(f)
+                    # Move any tensors to CPU
+                    if isinstance(buffer, list):
+                        for i, item in enumerate(buffer):
+                            if isinstance(item, torch.Tensor):
+                                buffer[i] = item.cpu()
+                    elif isinstance(buffer, torch.Tensor):
+                        buffer = buffer.cpu()
 
                 for element in buffer:
                     yield element

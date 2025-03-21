@@ -444,10 +444,10 @@ def explore(
                 # iteration of exploratory rollouts.
                 state_sampler.update(state_sampler_cache_update)
 
-    object_logger.log(
-        f"state_cache-{hparams.env_width}.pkl",
-        OccurrenceLogEntry(batch_idx=0, object=state_sampler),
-    )
+        object_logger.log(
+            f"state_cache-{hparams.env_width}.pkl",
+            OccurrenceLogEntry(batch_idx=iteration, object=state_sampler),
+        )
 
     return success_entries
 
