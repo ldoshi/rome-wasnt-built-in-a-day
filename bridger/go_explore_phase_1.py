@@ -18,7 +18,14 @@ from bridger.logging_utils.log_entry import SuccessEntry, OccurrenceLogEntry
 from bridger import config
 
 RolloutParams = namedtuple(
-    "RolloutParams", ["env_width", "num_actions", "cell_manager", "downsample_cell_manager_x_stride", "downsample_cell_manager_y_stride"]
+    "RolloutParams",
+    [
+        "env_width",
+        "num_actions",
+        "cell_manager",
+        "downsample_cell_manager_x_stride",
+        "downsample_cell_manager_y_stride",
+    ],
 )
 
 _WORK_PER_CHUNK = 10
@@ -98,7 +105,10 @@ def build_cell_manager(rollout_params: RolloutParams) -> CellManager:
             return StateCellManager()
         case "downsample_cell_manager":
             # TODO(lyric): Add the factors to the config.
-            return DownsampleCellManager(rollout_params.downsample_cell_manager_y_stride, rollout_params.downsample_cell_manager_x_stride)
+            return DownsampleCellManager(
+                rollout_params.downsample_cell_manager_y_stride,
+                rollout_params.downsample_cell_manager_x_stride,
+            )
         case _:
             raise ValueError(
                 f"Unrecognized cell manager provided: {hparams.cell_manager}"
@@ -148,7 +158,7 @@ class StateSamplerCacheUpdate:
         self, state: torch.Tensor, trajectory: tuple[int], rewards: tuple[float]
     ) -> bool:
         """Returns true if a new state was visited or a better way to a state was found."""
-        
+
         key = self._cell_manager.cache_key(state)
         if key in self.cache:
             entry = self.cache[key]
@@ -186,7 +196,7 @@ class StateSampler:
     def sample(self, n=1):
         cache_keys = []
         state_count_scores = []
-        
+
         for state, cache_entry in self._cache.items():
             cache_keys.append(state)
 
@@ -402,10 +412,12 @@ def explore(
     success_entries: set[SuccessEntry] = set()
     for iteration in range(hparams.go_explore_num_iterations):
         if iteration + 1 % 20 == 0:
-            print(f"[Iteration {iteration}] Successes: {len(success_entries)} ({sorted([len(x.trajectory) for x in success_entries ])})")
-            x = next(sorted(success_entries,key=lambda e: len(e.trajectory)))
+            print(
+                f"[Iteration {iteration}] Successes: {len(success_entries)} ({sorted([len(x.trajectory) for x in success_entries ])})"
+            )
+            x = next(sorted(success_entries, key=lambda e: len(e.trajectory)))
             print("  Trajectory: ", x.trajectory)
-            
+
         start_entries = state_sampler.sample(
             n=hparams.go_explore_num_samples_per_iteration
         )
