@@ -21,6 +21,7 @@ from bridger.logging_utils.cache_entry_database import (
     StepsSinceLedToSomethingNewResetCountSortKey,
 )
 from bridger.logging_utils.object_log_readers import read_object_log
+from bridger.go_explore_phase_1 import StateSampler
 
 app = flask.Flask(__name__)
 
@@ -80,30 +81,32 @@ def n_fewest_steps_since_led_to_something_new_go_explore_plot_data():
     """
     Provides plot data for the n states that have most recently seen a new cell.
     """
-    experiment_name = _get_string_or_default(_EXPERIMENT_NAME)
     n = _get_int_or_default("n", 10)
-
-    cache_entry_database = CacheEntryDatabase(
-        list(read_object_log(os.path.join(_LOG_DIR, "go_explore", "start_entries.pkl")))
+    _CACHE_ENTRY_DATABASE = list(
+        read_object_log(os.path.join(_LOG_DIR, "go_explore", "state_cache-6.pkl"))
     )
+    print(_CACHE_ENTRY_DATABASE)
 
     return {
         "states": [
-            cache_entry.state for cache_entry in cache_entry_database.cache_entries
+            cache_entry.object.state
+            for cache_entry in _CACHE_ENTRY_DATABASE.cache_entries
         ],
-        "trajectory_length": cache_entry_database.get_top_n_by_sort_key(
-            TrajectorySortKey, n
-        ),
-        "steps_since_led_to_something_new": cache_entry_database.get_top_n_by_sort_key(
-            StepsSinceLedToSomethingNewSortKey, n
-        ),
-        "steps_since_led_to_something_new_reset_count": cache_entry_database.get_top_n_by_sort_key(
-            StepsSinceLedToSomethingNewResetCountSortKey, n
-        ),
-        "sample_count": cache_entry_database.get_top_n_by_sort_key(
-            SampleCountSortKey, n
-        ),
-        "visit_count": cache_entry_database.get_top_n_by_sort_key(VisitCountSortKey, n),
+        # "trajectory_length": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
+        #     TrajectorySortKey, n
+        # ),
+        # "steps_since_led_to_something_new": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
+        #     StepsSinceLedToSomethingNewSortKey, n
+        # ),
+        # "steps_since_led_to_something_new_reset_count": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
+        #     StepsSinceLedToSomethingNewResetCountSortKey, n
+        # ),
+        # "sample_count": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
+        #     SampleCountSortKey, n
+        # ),
+        # "visit_count": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
+        #     VisitCountSortKey, n
+        # ),
     }
 
 
@@ -447,6 +450,6 @@ if __name__ == "__main__":
         target=_OBJECT_LOG_CACHE.convert_logs_to_saved_databases,
         args=(_get_experiment_names(),),
     )
-    convert_logs_background_thread.start()
+    # convert_logs_background_thread.start()
 
     app.run(host="0.0.0.0", port=6006)

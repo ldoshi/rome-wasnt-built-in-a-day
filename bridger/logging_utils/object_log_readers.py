@@ -28,23 +28,10 @@ from bridger.logging_utils import log_entry
 
 def read_object_log(log_filepath: str):
     with open(log_filepath, "rb") as f:
-        buffer = None
         while True:
             try:
-                # Try to load with torch.load first to handle CUDA tensors
-                try:
-                    buffer = torch.load(f, map_location=torch.device("cpu"))
-                except:
-                    # If that fails, try regular pickle.load
-                    f.seek(0)  # Reset file pointer
-                    buffer = pickle.load(f)
-                    # Move any tensors to CPU
-                    if isinstance(buffer, list):
-                        for i, item in enumerate(buffer):
-                            if isinstance(item, torch.Tensor):
-                                buffer[i] = item.cpu()
-                    elif isinstance(buffer, torch.Tensor):
-                        buffer = buffer.cpu()
+                print(f"This is the type: {type(f)}")
+                buffer = pickle.load(f)
 
                 for element in buffer:
                     yield element
@@ -311,6 +298,7 @@ class TrainingHistoryDatabase:
         for entry in _read_object_log(
             os.path.dirname(dirname), log_entry.STATE_NORMALIZED_LOG_ENTRY
         ):
+            print(f"")
             self._states[entry.id] = entry.object
 
         # Store visited states sorted by visit count.
