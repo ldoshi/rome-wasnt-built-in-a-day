@@ -49,7 +49,7 @@ class CacheEntryDatabase:
         print(f"Getting top {n} entries by {sort_key.key}")
         start_time = time.time()
         try:
-            sorted_entries = self.sort_by_key(sort_key)
+            sorted_entries = self.sort_by_key(sort_key())
             result = sorted_entries[:n]
             end_time = time.time()
             print(f"Retrieved top {n} entries in {end_time - start_time:.2f} seconds")
