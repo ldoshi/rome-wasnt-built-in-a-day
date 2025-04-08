@@ -371,11 +371,13 @@ def rollout_worker(task_queue, result_queue, rollout_func):
     while True:
         task = task_queue.get()
         if task is None:
+            task_queue.task_done()
             break
 
         result = rollout_func(*task)
         result_queue.put(result)
-
+        task_queue.task_done()
+    return None
 
 def explore(
     object_logger: ObjectLogManager,
@@ -445,12 +447,11 @@ def explore(
             )
         ]
 
-    def _process_results(count: int):
-        count_processed = 0
+    def _process_results(count: int, final_flush: bool = False):
+        # Block on the first, then process up to count in total.
         try:
-            for _ in range(count):
-                if count_processed == 0:
-                    # Block on the first, then process up to count in total.
+            for i in range(count):
+                if i == 0 or final_flush:
                     rollout_success_entries, state_sampler_cache_update = (
                         result_queue.get()
                     )
@@ -458,7 +459,7 @@ def explore(
                     rollout_success_entries, state_sampler_cache_update = (
                         result_queue.get_nowait()
                     )
-
+                    
                 # Compile success entries from the current set of
                 # rollouts to build out the return value for this
                 # function.
@@ -467,16 +468,15 @@ def explore(
                 # iteration of exploratory rollouts.
                 state_sampler.update(state_sampler_cache_update)
 
-                count_processed += 1
+                result_queue.task_done()
         except:
             pass
 
-        return count_processed
 
     # Push initial tasks.
     task_target = hparams.go_explore_num_processes * 2
-    task_queue = multiprocessing.Queue(maxsize=task_target)
-    result_queue = multiprocessing.Queue()
+    task_queue = multiprocessing.JoinableQueue(maxsize=task_target)
+    result_queue = multiprocessing.JoinableQueue()
 
     # Start worker processes.
     _collect_rollouts = functools.partial(rollout, rollout_params)
@@ -492,7 +492,6 @@ def explore(
         worker.start()
 
     total_task_count = 0
-    tasks_in_flight = 0
     while True:
         if total_task_count + 1 % 20 == 0:
             print(
@@ -501,34 +500,38 @@ def explore(
             x = next(sorted(success_entries, key=lambda e: len(e.trajectory)))
             print("  Trajectory: ", x.trajectory)
 
-        process_result_count = len(workers)
-        if total_task_count < hparams.go_explore_num_tasks:
-            for task in _get_tasks(
-                total_task_count=total_task_count,
-                new_task_count=task_target - tasks_in_flight,
-                current_best_trajectory_length=state_sampler.current_best_trajectory_length,
-            ):
-                task_queue.put(task)
-                tasks_in_flight += 1
-                total_task_count += 1
-                if total_task_count == hparams.go_explore_num_tasks:
-                    break
-        else:
+
+        if total_task_count == hparams.go_explore_num_tasks:
             # Clean up by posting sentinels.
             for _ in range(len(workers)):
                 task_queue.put(None)
+
+            task_queue.join()
+            
+            # Process all completed tasks.
+            _process_results(result_queue.qsize(), final_flush=True)
+            result_queue.join()
+
             for worker in workers:
                 worker.join()
-            # Process all completed tasks.
-            tasks_in_flight -= _process_results(tasks_in_flight)
-            break
 
+            break
+            
+        for task in _get_tasks(
+            total_task_count=total_task_count,
+            new_task_count=task_target - task_queue.qsize(),
+            current_best_trajectory_length=state_sampler.current_best_trajectory_length,
+        ):
+            task_queue.put(task)
+            total_task_count += 1
+            if total_task_count == hparams.go_explore_num_tasks:
+                break
+            
         # Process up to len(workers) results to balance batching and
         # not being stuck until all the work-in-flight is done.
-        tasks_in_flight -= _process_results(len(workers))
+        _process_results(len(workers))
 
-    assert tasks_in_flight == 0
-
+    
     if hparams.debug:
         object_logger.log(
             f"state_cache-width-{hparams.env_width}.pkl",
