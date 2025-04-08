@@ -427,7 +427,7 @@ def explore(
         )
         if hparams.debug:
             object_logger.log(
-                "start_entries.pkl",
+                "start_entries-width-{hparams.env_width}.pkl",
                 OccurrenceLogEntry(batch_idx=total_task_count, object=start_entries),
             )
 
@@ -531,7 +531,7 @@ def explore(
 
     if hparams.debug:
         object_logger.log(
-            f"state_cache-{hparams.env_width}.pkl",
+            f"state_cache-width-{hparams.env_width}.pkl",
             OccurrenceLogEntry(batch_idx=0, object=state_sampler),
         )
 
@@ -556,7 +556,7 @@ if __name__ == "__main__":
         )
 
         for success_entry in success_entries:
-            object_logger.log("success_entry.pkl", success_entry)
+            object_logger.log("success_entry-width-{hparams.env_width}.pkl", success_entry)
 
         print(
             f"==========\nEntry Count: {len(success_entries)}\n * wa-sampled: {hparams.go_explore_wa_sampled}\n * wa-new: {hparams.go_explore_wa_led_to_something_new}\n * wa-visit: {hparams.go_explore_wa_times_visited}\nShortest: {sorted([len(x.trajectory) for x in success_entries ])}"
