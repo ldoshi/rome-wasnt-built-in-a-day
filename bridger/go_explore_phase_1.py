@@ -379,6 +379,7 @@ def rollout_worker(task_queue, result_queue, rollout_func):
         task_queue.task_done()
     return None
 
+
 def explore(
     object_logger: ObjectLogManager,
     hparams: Any,
@@ -459,7 +460,7 @@ def explore(
                     rollout_success_entries, state_sampler_cache_update = (
                         result_queue.get_nowait()
                     )
-                    
+
                 # Compile success entries from the current set of
                 # rollouts to build out the return value for this
                 # function.
@@ -471,7 +472,6 @@ def explore(
                 result_queue.task_done()
         except:
             pass
-
 
     # Push initial tasks.
     task_target = hparams.go_explore_num_processes * 2
@@ -500,14 +500,13 @@ def explore(
             x = next(sorted(success_entries, key=lambda e: len(e.trajectory)))
             print("  Trajectory: ", x.trajectory)
 
-
         if total_task_count == hparams.go_explore_num_tasks:
             # Clean up by posting sentinels.
             for _ in range(len(workers)):
                 task_queue.put(None)
 
             task_queue.join()
-            
+
             # Process all completed tasks.
             _process_results(result_queue.qsize(), final_flush=True)
             result_queue.join()
@@ -516,7 +515,7 @@ def explore(
                 worker.join()
 
             break
-            
+
         for task in _get_tasks(
             total_task_count=total_task_count,
             new_task_count=task_target - task_queue.qsize(),
@@ -526,12 +525,11 @@ def explore(
             total_task_count += 1
             if total_task_count == hparams.go_explore_num_tasks:
                 break
-            
+
         # Process up to len(workers) results to balance batching and
         # not being stuck until all the work-in-flight is done.
         _process_results(len(workers))
 
-    
     if hparams.debug:
         object_logger.log(
             f"state_cache-width-{hparams.env_width}.pkl",
@@ -559,7 +557,9 @@ if __name__ == "__main__":
         )
 
         for success_entry in success_entries:
-            object_logger.log("success_entry-width-{hparams.env_width}.pkl", success_entry)
+            object_logger.log(
+                "success_entry-width-{hparams.env_width}.pkl", success_entry
+            )
 
         print(
             f"==========\nEntry Count: {len(success_entries)}\n * wa-sampled: {hparams.go_explore_wa_sampled}\n * wa-new: {hparams.go_explore_wa_led_to_something_new}\n * wa-visit: {hparams.go_explore_wa_times_visited}\nShortest: {sorted([len(x.trajectory) for x in success_entries ])}"
