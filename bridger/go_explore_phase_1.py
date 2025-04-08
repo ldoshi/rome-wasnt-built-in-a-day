@@ -28,8 +28,6 @@ RolloutParams = namedtuple(
     ],
 )
 
-_WORK_PER_CHUNK = 10
-
 
 def _count_score(
     v: float, wa: float, pa: float, epsilon_1: float, epsilon_2: float
@@ -369,22 +367,33 @@ def rollout(
     return success_entries, state_sampler_cache_update
 
 
+def rollout_worker(task_queue, result_queue, rollout_func):
+    while True:
+        task = task_queue.get()
+        if task is None:
+            break
+
+        result = rollout_func(*task)
+        result_queue.put(result)
+
 def explore(
     object_logger: ObjectLogManager,
     hparams: Any,
 ) -> set[SuccessEntry]:
-    """
-    Generate success entries by performing exploration in the environment.
+    """Generate success entries by performing exploration in the environment.
 
     Uses multiple processes to collect rollouts and update the state cache.
 
-    This function runs a specified number of iterations, where in each iteration, it samples
-    start states and entries from the cache, generates random seeds for each process, and
-    collects rollouts in parallel using multiprocessing. The collected rollouts are then used
-    to update the cache and accumulate successful entries.
+    This function generates a specified number of tasks to send to
+    rollout workers. For each task, it samples start states and
+    entries from the cache, generates random seeds for each process,
+    and collects rollouts in parallel using multiprocessing. The
+    collected rollouts are then used to update the cache and
+    accumulate successful entries.
 
     Returns:
         set[SuccessEntry]: A set of generated success entries.
+
     """
     rng = np.random.default_rng(hparams.seed)
 
@@ -410,40 +419,33 @@ def explore(
     state_sampler.update(state_sampler_cache_update)
 
     success_entries: set[SuccessEntry] = set()
-    for iteration in range(hparams.go_explore_num_iterations):
-        if iteration + 1 % 20 == 0:
-            print(
-                f"[Iteration {iteration}] Successes: {len(success_entries)} ({sorted([len(x.trajectory) for x in success_entries ])})"
-            )
-            x = next(sorted(success_entries, key=lambda e: len(e.trajectory)))
-            print("  Trajectory: ", x.trajectory)
-
-        start_entries = state_sampler.sample(
-            n=hparams.go_explore_num_samples_per_iteration
-        )
+        
+    def _get_tasks(total_task_count, new_task_count, current_best_trajectory_length):
+        start_entries = state_sampler.sample(n=new_task_count * hparams.go_explore_num_samples_per_worker_task)
         if hparams.debug:
             object_logger.log(
                 "start_entries.pkl",
-                OccurrenceLogEntry(batch_idx=iteration, object=start_entries),
+                OccurrenceLogEntry(batch_idx=total_task_count, object=start_entries),
             )
 
         seeds = rng.integers(low=0, high=2**31, size=len(start_entries))
         rngs = list(map(np.random.default_rng, seeds))
 
-        start_entries_chunked = chunked(start_entries, _WORK_PER_CHUNK)
-        rngs_chunked = chunked(rngs, _WORK_PER_CHUNK)
+        start_entries_chunked = chunked(start_entries, hparams.go_explore_num_samples_per_worker_task)
+        rngs_chunked = chunked(rngs, hparams.go_explore_num_samples_per_worker_task)
+        return [(current_best_trajectory_length, start_entries_chunk, rngs_chunk) for start_entries_chunk, rngs_chunk in zip(start_entries_chunked, rngs_chunked)]
 
-        _collect_rollouts = functools.partial(
-            rollout,
-            rollout_params,
-            state_sampler.current_best_trajectory_length,
-        )
 
-        with multiprocessing.Pool(processes=hparams.go_explore_num_processes) as pool:
-            for rollout_success_entries, state_sampler_cache_update in pool.starmap(
-                _collect_rollouts,
-                [*zip(start_entries_chunked, rngs_chunked)],
-            ):
+    def _process_results(count: int):
+        count_processed = 0
+        try:
+            for _ in range(count):
+                if count_processed == 0:
+                    # Block on the first, then process up to count in total.
+                    rollout_success_entries, state_sampler_cache_update = result_queue.get()
+                else:
+                    rollout_success_entries, state_sampler_cache_update = result_queue.get_nowait()
+
                 # Compile success entries from the current set of
                 # rollouts to build out the return value for this
                 # function.
@@ -452,6 +454,62 @@ def explore(
                 # iteration of exploratory rollouts.
                 state_sampler.update(state_sampler_cache_update)
 
+                count_processed += 1
+        except:
+            pass
+
+        return count_processed 
+
+    # Need to figure out why WORKERS ARE NOT DOING ANYTHING! no python work is happening. blocking.
+
+    # Push initial tasks.
+    task_target = hparams.go_explore_num_processes*2
+    task_queue = multiprocessing.Queue(maxsize=task_target)
+    result_queue = multiprocessing.Queue()
+
+    # Start worker processes.
+    _collect_rollouts = functools.partial(rollout, rollout_params)
+    workers = []
+    for _ in range(hparams.go_explore_num_processes):
+        workers.append(multiprocessing.Process(target=rollout_worker, args=(task_queue, result_queue, _collect_rollouts)))
+    for worker in workers:
+        worker.start()
+
+    total_task_count = 0
+    tasks_in_flight = 0
+    while True:
+        if total_task_count + 1 % 20 == 0:
+            print(
+                f"[Total Task Count {total_task_count}] Successes: {len(success_entries)} ({sorted([len(x.trajectory) for x in success_entries ])})"
+            )
+            x = next(sorted(success_entries, key=lambda e: len(e.trajectory)))
+            print("  Trajectory: ", x.trajectory)
+
+        
+        process_result_count = len(workers)
+        if total_task_count < hparams.go_explore_num_tasks:
+            for task in _get_tasks(total_task_count=total_task_count, new_task_count=task_target-tasks_in_flight, current_best_trajectory_length=state_sampler.current_best_trajectory_length):
+                task_queue.put(task)
+                tasks_in_flight +=1
+                total_task_count += 1
+                if total_task_count == hparams.go_explore_num_tasks:
+                    break
+        else:
+            # Clean up by posting sentinels.
+            for _ in range(len(workers)):
+                task_queue.put(None)
+            for worker in workers:
+                worker.join()
+            # Process all completed tasks.
+            tasks_in_flight -= _process_results(tasks_in_flight)
+            break
+            
+        # Process up to len(workers) results to balance batching and
+        # not being stuck until all the work-in-flight is done.
+        tasks_in_flight -= _process_results(len(workers))
+
+    assert tasks_in_flight == 0
+                
     if hparams.debug:
         object_logger.log(
             f"state_cache-{hparams.env_width}.pkl",
