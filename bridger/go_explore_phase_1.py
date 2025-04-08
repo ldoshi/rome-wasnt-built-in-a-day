@@ -473,8 +473,6 @@ def explore(
 
         return count_processed
 
-    # Need to figure out why WORKERS ARE NOT DOING ANYTHING! no python work is happening. blocking.
-
     # Push initial tasks.
     task_target = hparams.go_explore_num_processes * 2
     task_queue = multiprocessing.Queue(maxsize=task_target)
