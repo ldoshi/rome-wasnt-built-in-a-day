@@ -7,7 +7,7 @@ setup(
     name="bridger",
     version=__version__,
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
-    scripts=["bin/bridge_builder.py"],
+    scripts=["bin/bridge_builder.py", "bridger/go_explore_phase_1.py"],
     install_requires=[
         "ipython>=7.21.0",
         "gym>=0.17.3",

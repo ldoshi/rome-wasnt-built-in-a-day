@@ -187,7 +187,7 @@ class BridgeBuilderTrainerTest(unittest.TestCase):
                 actions=torch.tensor([1, 2, 1, 1, 1]),
                 next_state_ids=[1, 0, 1, 1, 1],
                 rewards=torch.tensor([-1, -2, -1, -1, -1]),
-                successes=torch.tensor([False, False, False, False, False]),
+                dones=torch.tensor([False, False, False, False, False]),
                 weights=torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0], dtype=torch.float64),
                 loss=torch.tensor(1.5562, dtype=torch.float64, requires_grad=True),
                 replay_buffer_state_counts=[(0, 1000)],
@@ -586,6 +586,8 @@ class BuilderTest(unittest.TestCase):
             """Returns a policy that always adds a brick to the left side."""
             return torch.tensor([1, 0, 0, 0])
 
+        # Tests a case where the episode ends because we run out of
+        # steps without reaching a done state.
         episode_length = 4
         build_result = test_builder.build(
             policy=policies.GreedyPolicy(_constant_estimator),
@@ -593,8 +595,22 @@ class BuilderTest(unittest.TestCase):
             render=False,
         )
         self.assertFalse(build_result.success)
-        self.assertEqual(build_result.reward, -1 * episode_length)
+        self.assertEqual(build_result.reward, -0.1 * episode_length)
         self.assertEqual(build_result.steps, episode_length)
+
+        # Tests a case where the episode_length is too long and the
+        # episode ends because we build over the top.
+        episode_length = 20
+        build_result = test_builder.build(
+            policy=policies.GreedyPolicy(_constant_estimator),
+            episode_length=episode_length,
+            render=False,
+        )
+        self.assertFalse(build_result.success)
+        # -.1 5 times, and then -1 for going over the top.
+        self.assertEqual(build_result.reward, -1.5)
+        # The height of the width=4 env.
+        self.assertEqual(build_result.steps, 6)
 
         alternator = False
 
@@ -615,7 +631,7 @@ class BuilderTest(unittest.TestCase):
         )
         self.assertTrue(build_result.success)
         # The first gives -1 reward.
-        self.assertEqual(build_result.reward, -1)
+        self.assertEqual(build_result.reward, -0.1 * 2)
         self.assertEqual(build_result.steps, 2)
 
 
@@ -692,8 +708,10 @@ class BuildEvaluatorTest(unittest.TestCase):
         )
         self.assertEqual(build_evaluator.build_steps_on_success_mean, 2.25)
         np.testing.assert_array_equal(build_evaluator.build_steps, [2, 4, 2, 1, 4])
-        self.assertEqual(build_evaluator.reward_on_success_mean, -1.25)
-        np.testing.assert_array_equal(build_evaluator.rewards, [-1, -3, -1, 0, -4])
+        self.assertEqual(build_evaluator.reward_on_success_mean, -0.225)
+        np.testing.assert_array_equal(
+            build_evaluator.rewards, [-0.2, -0.4, -0.2, -0.1, -0.4]
+        )
         self.assertEqual(build_evaluator.height_of_highest_block_mean, 2.8)
 
 

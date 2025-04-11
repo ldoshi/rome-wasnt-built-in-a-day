@@ -18,7 +18,7 @@ _FALSE_BOOLEAN_FLAG_NAME_FORMAT = """--no-{flag_name}"""
 
 
 def _extract_sweep_keys_and_values(
-    config: dict[str, Any]
+    config: dict[str, Any],
 ) -> tuple[list[str], list[list[Any]]]:
     keys = []
     value_lists = []

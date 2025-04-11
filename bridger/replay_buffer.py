@@ -276,7 +276,7 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
         action,
         end_state,
         reward,
-        success,
+        done,
         state_id: Optional[int] = None,
     ):
         if self.state_histogram is not None:
@@ -288,7 +288,7 @@ class ReplayBuffer(torch.utils.data.IterableDataset):
                 state_id is None
             ), "The state id should not be passed if the replay buffer is not initialized in debug mode"
         # The last element in the experience is reserved for an optional state id value.
-        experience = [start_state, action, end_state, reward, success, state_id]
+        experience = [start_state, action, end_state, reward, done, state_id]
 
         if len(self._content) == self._capacity:
             if self.state_histogram is not None:

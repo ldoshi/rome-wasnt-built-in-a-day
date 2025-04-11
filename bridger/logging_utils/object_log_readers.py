@@ -292,6 +292,7 @@ class TrainingHistoryDatabase:
         Args:
           dirname: The directory containing the training history log files.
         """
+
         self._states = {}
         # State normalized log entries are stored in the parent of the object logging directory.
         for entry in _read_object_log(

@@ -32,7 +32,7 @@ class Experience(NamedTuple):
     action: Any
     end_state: Any
     reward: Any
-    success: Any
+    done: Any
     state_id: int
 
 
@@ -65,7 +65,7 @@ class ReplayBufferInitializersTest(unittest.TestCase):
         action: Any,
         end_state: Any,
         reward: Any,
-        success: Any,
+        done: Any,
         state_id: int,
     ):
         self._replay_buffer.append(
@@ -74,7 +74,7 @@ class ReplayBufferInitializersTest(unittest.TestCase):
                 action=action,
                 end_state=end_state,
                 reward=reward,
-                success=success,
+                done=done,
                 state_id=state_id,
             )
         )
@@ -104,11 +104,11 @@ class ReplayBufferInitializersTest(unittest.TestCase):
             len(self._replay_buffer),
             _ENV_WIDTH * ((int((_ENV_WIDTH - 2) / 2) + 1) ** 2 - 1),
         )
-        count_successes = 0
+        count_dones = 0
         for experience in self._replay_buffer:
-            if experience.success:
-                count_successes += 1
-        self.assertEqual(count_successes, 2)
+            if experience.done:
+                count_dones += 1
+        self.assertEqual(count_dones, 2)
 
     def test_2_bricks(self):
         """Verifies the n-bricks strategy with 2 bricks.
@@ -128,16 +128,16 @@ class ReplayBufferInitializersTest(unittest.TestCase):
         # (b) will produce an additional 6 unique experiences
         # each. (c) will not produce any unique experiences.
         self.assertEqual(len(self._replay_buffer), 18)
-        count_successes = 0
+        count_dones = 0
         for experience in self._replay_buffer:
-            if experience.success:
-                count_successes += 1
-        self.assertEqual(count_successes, 0)
+            if experience.done:
+                count_dones += 1
+        self.assertEqual(count_dones, 0)
 
     def test_4_bricks(self):
         """Verifies the n-bricks strategy with 4 bricks.
 
-        We chose 4 so we can reason about the number of successes.
+        We chose 4 so we can reason about the number of dones.
         """
         replay_buffer_initializers.initialize_replay_buffer(
             strategy=replay_buffer_initializers.STRATEGY_4_BRICKS,
@@ -147,16 +147,16 @@ class ReplayBufferInitializersTest(unittest.TestCase):
         )
         # This number is empirically derived.
         self.assertEqual(len(self._replay_buffer), 132)
-        count_successes = 0
+        count_dones = 0
         for experience in self._replay_buffer:
-            if experience.success:
-                count_successes += 1
+            if experience.done:
+                count_dones += 1
 
-        # The 2 success scenarios occur when the last brick is placed
+        # The 2 done scenarios occur when the last brick is placed
         # with action 1 after {0, [4,3]} or action 3 after {[0,1],
         # 4}. The actions in [] must happen in that order relative to
         # other list members while {} means the order doesn't matter.
-        self.assertEqual(count_successes, 2)
+        self.assertEqual(count_dones, 2)
 
     def test_capacity_too_small(self):
         self.assertRaisesRegex(

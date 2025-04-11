@@ -7,3 +7,5 @@ lightning==2.2.3
 torch==1.13.1
 protobuf==3.20.1
 Werkzeug==2.2.2
+more-itertools==10.6.0
+

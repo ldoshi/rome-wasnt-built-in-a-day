@@ -16,7 +16,9 @@
 import datetime
 import os
 
+import torch
 from lightning import Trainer
+import lightning.pytorch
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 
@@ -83,13 +85,13 @@ def run():
                 monitor=None,  # Should show a quantity, e.g. "train_loss"
                 every_n_train_steps=hparams.checkpoint_interval,
             ),
-            EarlyStopping(
-                monitor="val_reward",
-                patience=hparams.early_stopping_patience,
-                mode="max",
-                strict=True,
-                check_on_train_epoch_end=False,
-            ),
+            # EarlyStopping(
+            #     monitor="val_reward",
+            #     patience=hparams.early_stopping_patience,
+            #     mode="max",
+            #     strict=True,
+            #     check_on_train_epoch_end=False,
+            # ),
         ]
         if hparams.debug:
             callbacks += [
@@ -100,6 +102,7 @@ def run():
             ]
 
         trainer = Trainer(
+            accelerator="auto",
             gradient_clip_val=hparams.gradient_clip_val,
             check_val_every_n_epoch=hparams.val_check_interval,
             # The validation batch size can be adjusted via a config, but
@@ -114,6 +117,8 @@ def run():
             max_epochs=hparams.max_training_batches,
             reload_dataloaders_every_n_epochs=1,
             callbacks=callbacks,
+            enable_progress_bar=False,
+            detect_anomaly=True,
         )
 
         trainer.fit(model)
@@ -138,6 +143,9 @@ def run():
                 hparams.tabular_q_initialization_brick_count, demo_episode_length
             )
 
+        # See CNNQ for the reason we need this.
+        if torch.cuda.is_available():
+            model.q_manager.q.cudaify()
         build_evaluator = builder.BuildEvaluator(
             env=evaluation_env,
             policy=model.trained_policy,

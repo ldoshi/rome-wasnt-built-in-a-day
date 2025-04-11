@@ -56,6 +56,20 @@ def _single_column(
         state, _, _, _ = env.step(0)
 
 
+def _debug_env_4(env: gym.Env) -> Generator[tuple[Any, Any, Any, Any, Any], None, None]:
+    state = env.reset()
+
+    for action in [0, 3, 3]:
+        next_state, reward, done, _ = env.step(action)
+        yield state, action, next_state, reward, done
+        state = next_state
+
+    for action in range(env.nA):
+        env.reset(state)
+        next_state, reward, done, _ = env.step(action)
+        yield state, action, next_state, reward, done
+
+
 def _standard_configuration_bridge_states(
     env: gym.Env,
 ) -> Generator[tuple[Any, Any, Any, Any, Any], None, None]:
@@ -135,6 +149,7 @@ def _n_bricks(
 
 STRATEGY_ONLY_RESET_STATE = "only_reset_state"
 STRATEGY_SINGLE_COLUMN = "single_column"
+STRATEGY_DEBUG_ENV_4 = "debug_env_4"
 STRATEGY_STANDARD_CONFIGURATION_BRIDGE_STATES = "standard_configuration_bridge_states"
 STRATEGY_2_BRICKS = "2_bricks"
 STRATEGY_4_BRICKS = "4_bricks"
@@ -145,6 +160,7 @@ _INITIALIZE_REPLAY_BUFFER_BATCH_IDX = -1
 _STRATEGY_MAP = {
     STRATEGY_ONLY_RESET_STATE: _only_reset_state,
     STRATEGY_SINGLE_COLUMN: _single_column,
+    STRATEGY_DEBUG_ENV_4: _debug_env_4,
     STRATEGY_STANDARD_CONFIGURATION_BRIDGE_STATES: _standard_configuration_bridge_states,
     STRATEGY_2_BRICKS: functools.partial(_n_bricks, brick_count=2),
     STRATEGY_4_BRICKS: functools.partial(_n_bricks, brick_count=4),
@@ -196,14 +212,11 @@ def initialize_replay_buffer(
         if state_visit_logger:
             state_visit_logger.log_occurrence(
                 batch_idx=_INITIALIZE_REPLAY_BUFFER_BATCH_IDX,
-                object=torch.from_numpy(state),
+                object=state,
             )
 
-        state_id = (
-            state_logger.get_logged_object_id(torch.from_numpy(state))
-            if state_logger
-            else None
-        )
+        state_id = state_logger.get_logged_object_id(state) if state_logger else None
+
         add_new_experience(state, action, next_state, reward, done, state_id)
         experience_count += 1
 

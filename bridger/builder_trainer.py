@@ -1,15 +1,22 @@
 import argparse
+import dataclasses
 import IPython
 import copy
+import functools
 import gym
+import pickle
 import numpy as np
 from bridger import builder
 import lightning
+from lightning.pytorch.utilities import grad_norm
 import torch
 from typing import Union, Optional, Callable, Hashable
+import os
 
 from torch.utils.data import DataLoader
 from typing import Any, Union, Generator, Optional
+from bridger.logging_utils import object_log_readers
+from bridger.logging_utils.log_entry import SuccessEntry
 
 
 from bridger import (
@@ -131,16 +138,26 @@ class ValidationBuilder(torch.utils.data.IterableDataset):
     The model underpinning the policy refers to the same one being
     trained and will thus evolve over time."""
 
-    def __init__(self, env: gym.Env, policy: policies.Policy, episode_length: int):
+    def __init__(
+        self,
+        env: gym.Env,
+        policy: policies.Policy,
+        episode_length: int,
+        initial_state: np.ndarray,
+    ):
         self._builder = builder.Builder(env)
         self._policy = policy
         self._episode_length = episode_length
+        self._initial_state = initial_state
 
     def __iter__(self):
         """Yields the result of a single building episode each call."""
         while True:
             build_result = self._builder.build(
-                self._policy, self._episode_length, render=False
+                self._policy,
+                self._episode_length,
+                render=False,
+                initial_state=self._initial_state,
             )
             yield [build_result.success, build_result.reward, build_result.steps]
 
@@ -216,6 +233,214 @@ class StateActionCache:
 
 # TODO(arvind): Redesign the signature checking mechanism. Using
 # config.validate_input# is not robust with changes in Lightning functionality
+
+
+# First impl: train until reward is >=. Soften this later, especially
+# if we vary envs and also consider a success rate.
+class BackwardAlgorithm:
+
+    def __init__(
+        self,
+        success_entry: SuccessEntry,
+        env: gym.Env,
+        move_backward_threshold: float,
+        move_backward_window_size: int,
+        jitter: int,
+    ):
+        self.iteration = 0
+        self._move_backward_window = [False] * move_backward_window_size
+        self._move_backward_window_index = 0
+        self._move_backward_threshold = move_backward_threshold
+        self._success_entry = success_entry
+        self._jitter = jitter
+
+        state = env.reset()
+        self._start_states = []
+        for action in self._success_entry.trajectory:
+            self._start_states.append(state)
+            state, reward, done, aux = env.step(action)
+            success = aux["is_success"]
+        assert success
+
+        self._trajectory_index = len(self._start_states) - 1
+
+    def state(self, use_jitter=True) -> tuple[torch.tensor, int]:
+        if use_jitter:
+            start = max(-1 * self._jitter + self._trajectory_index, 0)
+            stop = min(
+                self._jitter + self._trajectory_index, len(self._start_states) - 1
+            )
+            offset = np.random.randint(start, stop + 1)
+        else:
+            offset = self._trajectory_index
+        return self._start_states[offset], len(self._start_states) - offset
+
+    def move_backward_if_necessary(
+        self,
+        builder_fn: Callable[[torch.tensor, int], builder.BuildResult],
+        episode_length: int,
+        episode_length_buffer: int,
+    ) -> [bool, bool]:
+        self.iteration += 1
+
+        state, remaining_step_count = self.state(use_jitter=False)
+        build_episode_length = min(
+            episode_length,
+            len(self._start_states) - self._trajectory_index + episode_length_buffer,
+        )
+        build_result = builder_fn(
+            initial_state=state, episode_length=build_episode_length
+        )
+        entry = build_result.success and (
+            build_result.reward
+            >= sum(self._success_entry.rewards[self._trajectory_index :])
+        )
+        # if entry:
+        #     print(
+        #         "success at ",
+        #         self.iteration,
+        #         " : ",
+        #         build_result.success,
+        #         " and reward ",
+        #         build_result.reward,
+        #         " vs ",
+        #         self._success_entry.rewards[self._trajectory_index :],
+        #     )
+
+        self._move_backward_window[self._move_backward_window_index] = entry
+
+        self._move_backward_window_index = (self._move_backward_window_index + 1) % len(
+            self._move_backward_window
+        )
+
+        #        print("comparing : " ,  (sum(self._move_backward_window) / len(self._move_backward_window)), " vs " , self._move_backward_threshold)
+
+        # TODO(lyric): Need to think about what this looks like if the
+        # env changes each time we call reset. For example, if we
+        # reach the beginning of the trajectory, should we remove from
+        # circulation and let the random starts from env.reset() in
+        # the virtual demonstration keep the model in practice for
+        # working from starting states?
+        if (
+            (sum(self._move_backward_window) / len(self._move_backward_window))
+            >= self._move_backward_threshold
+        ) and self._trajectory_index > 0:
+            self._trajectory_index -= 1
+            self._move_backward_window = [False] * len(self._move_backward_window)
+            return True, self._trajectory_index == 0
+
+        return False, self._trajectory_index == 0
+
+
+class BackwardAlgorithmManager:
+
+    def __init__(
+        self,
+        success_entries: set[SuccessEntry],
+        env: gym.Env,
+        policy: policies.Policy,
+        episode_length: int,
+        move_backward_threshold: float,
+        move_backward_window_size: int,
+        jitter: int,
+        episode_length_buffer: int,
+        include_virtual_demonstration: bool,
+    ):
+        self._initial_state = env.reset()
+
+        self._backward_algorithms = [
+            BackwardAlgorithm(
+                success_entry=success_entry,
+                env=env,
+                move_backward_threshold=move_backward_threshold,
+                move_backward_window_size=move_backward_window_size,
+                jitter=jitter,
+            )
+            for success_entry in success_entries
+        ]
+
+        self._build_fn = functools.partial(
+            builder.Builder(env).build,
+            policy=policy,
+            render=False,
+        )
+
+        self._episode_length = episode_length
+        self._episode_length_buffer = episode_length_buffer
+        self._include_virtual_demonstration = include_virtual_demonstration
+        self._total_steps_virtual = 0
+        self._total_steps_demonstration = 0
+        self._attempts_virtual = 0
+        self._attempts_demonstration = 0
+
+    def report_actual_steps(self, is_virtual: bool, total_steps: int) -> None:
+        if is_virtual:
+            self._total_steps_virtual += total_steps
+            self._attempts_virtual += 1
+            return
+
+        self._total_steps_demonstration += total_steps
+        self._attempts_demonstration += 1
+
+    def state(self) -> tuple[torch.tensor, int, bool]:
+        if self._include_virtual_demonstration:
+            # From the go-explore-nature paper: To balance the number
+            # of frames allocated to the virtual demonstration, the
+            # average number of steps in an episode corresponding to
+            # the virtual demonstration (lv) is tracked as well as the
+            # average number of steps corresponding to starting from
+            # any other demonstration (ld), and the selection
+            # probability of the virtual demonstration is then
+            # 1/11*ld/lv , where 11 is the total number of
+            # demonstrations (10 from the exploration phase runs and 1
+            # virtual demonstration).
+
+            is_virtual = True
+            total_number_of_demonstrations = 1 + len(self._backward_algorithms)
+            ld = (
+                self._total_steps_demonstration / self._attempts_demonstration
+                if self._attempts_demonstration
+                else 1
+            )
+            lv = (
+                self._total_steps_virtual / self._attempts_virtual
+                if self._attempts_virtual
+                else 1
+            )
+            p = 1 / total_number_of_demonstrations * ld / lv
+            if np.random.random() < p:
+                # TODO(lyric): Need to think about what this looks
+                # like if the env changes each time we call reset.
+                return self._initial_state, self._episode_length, is_virtual
+
+        is_virtual = False
+        entry_index = np.random.randint(low=0, high=len(self._backward_algorithms))
+        state, episode_length = self._backward_algorithms[entry_index].state()
+        return (
+            state,
+            min(self._episode_length, episode_length + self._episode_length_buffer),
+            is_virtual,
+        )
+
+    def move_backward_if_necessary(self) -> dict:
+        moved_backward_count = 0
+        completed_count = 0
+
+        for backward_algorithm in self._backward_algorithms:
+            moved_backward, completed = backward_algorithm.move_backward_if_necessary(
+                self._build_fn, self._episode_length, self._episode_length_buffer
+            )
+            moved_backward_count += int(moved_backward)
+            completed_count += int(completed)
+
+        return {
+            "moved_backward_count": moved_backward_count,
+            "completed_count": completed_count,
+            "total_steps_demonstration": self._total_steps_demonstration,
+            "attempts_demonstration": self._attempts_demonstration,
+            "total_steps_virtual": self._total_steps_virtual,
+            "attempts_virtual": self._attempts_virtual,
+        }
 
 
 # pylint: disable=too-many-instance-attributes
@@ -320,7 +545,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         self.memories = self._memory_generator()
 
         self.next_action = None
-        self.state = self.env.reset()
+
         self._breakpoint = {"step": 0, "episode": 0}
         if self.hparams.debug:
             self._model_parameters_logger = object_logging.log_model_parameters(
@@ -329,6 +554,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             )
 
         self._action_inversion_checker = None
+        self._moved_backwards: int = 0
         if self.hparams.debug_action_inversion_checker:
             actions = get_actions_for_standard_configuration(self.hparams.env_width)
             self._action_inversion_checker = (
@@ -337,6 +563,43 @@ class BridgeBuilderModel(lightning.LightningModule):
                 )
             )
 
+        #        success_entries = object_log_manager.read_base_dir_log_file(
+        #           self.hparams.go_explore_success_entries_path
+        #      )[0]
+        # TODO(lyric): Delete convenience override after a little more testing.
+        self._success_entries = {
+            SuccessEntry(trajectory=(0, 1, 4, 3), rewards=(-0.1, -0.1, -0.1, -0.1)),
+            SuccessEntry(trajectory=(0, 4, 3, 1), rewards=(-0.1, -0.1, -0.1, -0.1)),
+            #            SuccessEntry(trajectory=(0, 0,0,0,0, 1, 4,4,3,3,3,3), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            #           SuccessEntry(trajectory=(4, 4,4,4,4, 0, 1, 2), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
+            # SuccessEntry(trajectory=(0, 2), rewards=(-0.1, -0.1)),
+            #             SuccessEntry(trajectory=(0, 6, 1, 5, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            #            SuccessEntry(trajectory=(0, 1, 2, 6, 5, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            #            SuccessEntry(trajectory=(0, 1, 2, 6, 5, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            #           SuccessEntry(trajectory=(6, 5, 0, 1, 2, 4), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            #          SuccessEntry(trajectory=(6, 0, 5, 4, 1, 2), rewards=(-0.1, -0.1, -0.1, -0.1, -0.1, -0.1))
+            #            SuccessEntry(trajectory=(8, 7,6,5,0,1,2,3), rewards=(-0.1, -0.1,-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            #            SuccessEntry(trajectory=(8,8, 0,7,7,7,7,6,8,8,1,1,1,1,2,0,0,0,3,5,3), rewards=(-0.1,)*21 ),
+            #            SuccessEntry(trajectory=(0, 1, 0, 1, 2, 3, 4, 5, 8,8, 8, 7,7,7,8,7), rewards=(-0.1,)* 16),
+            ##          SuccessEntry(trajectory=(0,1,2,3, 8, 7,6,5), rewards=(-0.1, -0.1,-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+            #        SuccessEntry(trajectory=(0, 1,8,7,6,5,2,3), rewards=(-0.1, -0.1,-0.1, -0.1, -0.1, -0.1, -0.1, -0.1)),
+        }
+
+        self._backward_algorithm_manager = BackwardAlgorithmManager(
+            success_entries=self._success_entries,
+            env=self._validation_env,
+            policy=self._validation_policy,
+            episode_length=self.hparams.max_episode_length,
+            move_backward_threshold=0.5,
+            move_backward_window_size=11,
+            jitter=self.hparams.jitter,
+            episode_length_buffer=self.hparams.max_episode_length // 2,
+            include_virtual_demonstration=True,
+        )
+        self.state, self.target_episode_length, self.is_virtual_demonstration = (
+            self._backward_algorithm_manager.state()
+        )
+        self.env.reset(self.state)
         self._make_initial_memories()
 
     @property
@@ -376,6 +639,61 @@ class BridgeBuilderModel(lightning.LightningModule):
 
         if self.hparams.debug:
             self._record_q_values_debug_helper()
+
+        backward_algorithm_counters = (
+            self._backward_algorithm_manager.move_backward_if_necessary()
+        )
+        self._moved_backwards += backward_algorithm_counters["moved_backward_count"]
+
+        self.log(
+            "moved_backward_count",
+            self._moved_backwards,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "completed_count",
+            backward_algorithm_counters["completed_count"],
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "total_steps_demonstration",
+            backward_algorithm_counters["total_steps_demonstration"],
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "attempts_demonstration",
+            backward_algorithm_counters["attempts_demonstration"],
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "total_steps_virtual",
+            backward_algorithm_counters["total_steps_virtual"],
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "attempts_virtual",
+            backward_algorithm_counters["attempts_virtual"],
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+        )
+
         self.make_memories(batch_idx=self.global_step)
 
     def _record_q_values_debug_helper(self) -> None:
@@ -383,6 +701,8 @@ class BridgeBuilderModel(lightning.LightningModule):
         frequently_visited_states = self._state_visit_logger.get_top_n(
             _FREQUENTLY_VISITED_STATE_COUNT
         )
+        if torch.cuda.is_available():
+            frequently_visited_states = [x.cuda() for x in frequently_visited_states]
 
         frequently_visited_states_tensor = torch.stack(frequently_visited_states)
         for state, q_values, q_target_values in zip(
@@ -413,12 +733,28 @@ class BridgeBuilderModel(lightning.LightningModule):
             else self.hparams.inter_training_steps
         )
         with torch.no_grad():
+            if self.hparams.debug:
+                rewards = []
             for _ in range(memory_count):
-                _, _, start_state, _, _, _, _ = next(self.memories)
+                (
+                    episode_idx,
+                    step_idx,
+                    start_state,
+                    action,
+                    end_state,
+                    reward,
+                    done,
+                ) = next(self.memories)
                 if self.hparams.debug:
+                    rewards.append(reward)
                     self._state_visit_logger.log_occurrence(
-                        batch_idx=batch_idx, object=torch.from_numpy(start_state)
+                        batch_idx=batch_idx, object=start_state
                     )
+            if self.hparams.debug:
+                self.log("min_rewards", min(rewards))
+                self.log("max_rewards", max(rewards))
+                self.log("mean_rewards", np.mean(rewards))
+                self.log("deviation_rewards", np.std(rewards))
 
     def _memory_generator(
         self,
@@ -437,14 +773,17 @@ class BridgeBuilderModel(lightning.LightningModule):
             action:      The action taken during the transition.
             end_state:   The state at the end of the transition.
             reward:      The reward gained through the transition.
-            success:    Whether the transition marked the end of the episode."""
+            done:    Whether the transition marked the end of the episode."""
 
         episode_idx = 0
         total_step_idx = 0
         while True:
-            for step_idx in range(self.hparams.max_episode_length):
+            episode_length = min(
+                self.hparams.max_episode_length, self.target_episode_length
+            )
+            for step_idx in range(episode_length):
                 self._checkpoint({"episode": episode_idx, "step": total_step_idx})
-                start_state, action, end_state, reward, success = self()
+                start_state, action, end_state, reward, done = self()
                 yield (
                     episode_idx,
                     step_idx,
@@ -452,12 +791,19 @@ class BridgeBuilderModel(lightning.LightningModule):
                     action,
                     end_state,
                     reward,
-                    success,
+                    done,
                 )
                 total_step_idx += 1
-                if success:
+                if done:
                     break
-            self.state = self.env.reset()
+            self._backward_algorithm_manager.report_actual_steps(
+                is_virtual=self.is_virtual_demonstration, total_steps=step_idx + 1
+            )
+
+            self.state, self.target_episode_length, self.is_virtual_demonstration = (
+                self._backward_algorithm_manager.state()
+            )
+            self.env.reset(self.state)
             episode_idx += 1
 
     def _checkpoint(self, thresholds: dict[str, int]) -> None:
@@ -557,9 +903,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         if self.hparams.interactive_mode and self.next_action is not None:
             action = self.next_action
         else:
-            action = self.policy(
-                torch.as_tensor(state, dtype=torch.float), epsilon=self.epsilon
-            )
+            action = self.policy(state, epsilon=self.epsilon)
 
         next_state, reward, done, _ = self.env.step(action)
         self.state = next_state
@@ -607,7 +951,7 @@ class BridgeBuilderModel(lightning.LightningModule):
         actions: torch.Tensor,
         next_states: torch.Tensor,
         rewards: torch.Tensor,
-        success: torch.Tensor,
+        done: torch.Tensor,
     ) -> torch.Tensor:
         """Calculates TD error during training and estimates the state-value
         function of Markov decision process under a policy.
@@ -617,14 +961,14 @@ class BridgeBuilderModel(lightning.LightningModule):
             actions: The action taken during the transition.
             next_states: The state at the end of the transition.
             rewards: The reward gained through the transition.
-            success: Whether the transition marked the end of the episode.
+            done: Whether the transition marked the end of the episode.
         """
         row_idx = torch.arange(actions.shape[0])
         qvals = self.q_manager.q(states)[row_idx, actions]
         with torch.no_grad():
             next_actions = self.q_manager.q(next_states).argmax(dim=1)
             next_vals = self.q_manager.target(next_states)[row_idx, next_actions]
-            expected_qvals = rewards + (~success) * self.hparams.gamma * next_vals
+            expected_qvals = rewards + (~done) * self.hparams.gamma * next_vals
         return expected_qvals - qvals
 
     def compute_loss(
@@ -645,19 +989,24 @@ class BridgeBuilderModel(lightning.LightningModule):
 
         The loss is computed across a batch of memories sampled from the replay buffer. The replay buffer sampling weights are updated based on the TD error from the samples.
         """
-        indices, states, actions, next_states, rewards, success, weights = batch
-        td_errors = self.get_td_error(states, actions, next_states, rewards, success)
+        indices, states, actions, next_states, rewards, done, weights = batch
+        td_errors = self.get_td_error(states, actions, next_states, rewards, done)
 
         loss = self.compute_loss(td_errors, weights=weights)
         self.log(
-            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "train_loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
         )
         self.log(
             "epsilon",
             self.epsilon,
-            on_step=True,
+            on_step=False,
             on_epoch=True,
-            prog_bar=True,
+            prog_bar=False,
             logger=True,
         )
 
@@ -667,7 +1016,7 @@ class BridgeBuilderModel(lightning.LightningModule):
             indices_copy = copy.deepcopy(indices)
             actions_copy = copy.deepcopy(actions)
             rewards_copy = copy.deepcopy(rewards)
-            success_copy = copy.deepcopy(success)
+            done_copy = copy.deepcopy(done)
             weights_copy = copy.deepcopy(weights)
             replay_buffer_state_counts_copy = sorted(
                 [
@@ -691,7 +1040,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                         for next_state in next_states
                     ],
                     rewards=rewards_copy,
-                    successes=success_copy,
+                    dones=done_copy,
                     weights=weights_copy,
                     loss=loss,
                     replay_buffer_state_counts=replay_buffer_state_counts_copy,
@@ -732,9 +1081,7 @@ class BridgeBuilderModel(lightning.LightningModule):
                                     actions=torch.tensor([action]),
                                     next_states=torch.tensor([next_state]),
                                     rewards=torch.tensor([reward]),
-                                    success=torch.tensor(
-                                        [environment_completion_status]
-                                    ),
+                                    done=torch.tensor([environment_completion_status]),
                                 ).item(),
                             ),
                         )
@@ -779,7 +1126,6 @@ class BridgeBuilderModel(lightning.LightningModule):
     def validation_step(self, batch, batch_idx):
         """Runs a single validation step based on a policy."""
         success, rewards, steps = batch
-
         self.log("val_success", torch.sum(success) / len(batch))
         self.log("val_reward", torch.Tensor.float(rewards).mean())
         self.log("val_steps", torch.Tensor.float(steps).mean())
@@ -800,18 +1146,19 @@ class BridgeBuilderModel(lightning.LightningModule):
         return DataLoader(
             self.replay_buffer,
             batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
+            # num_workers=self.hparams.num_workers,
         )
 
     def val_dataloader(self) -> DataLoader:
         return DataLoader(
             ValidationBuilder(
                 env=self._validation_env,
+                initial_state=self._backward_algorithm_manager.state()[0],
                 policy=self._validation_policy,
                 episode_length=self.hparams.max_episode_length,
             ),
             batch_size=self.hparams.val_batch_size,
-            num_workers=self.hparams.num_workers,
+            #            num_workers=self.hparams.num_workers,
         )
 
     # TODO(arvind): Override hooks to load data appropriately for test
