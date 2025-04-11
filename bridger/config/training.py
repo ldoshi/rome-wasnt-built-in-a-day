@@ -109,9 +109,9 @@ hparam_dict[key] = {"type": int, "default": 8}
 help_str = "The number of actions to take in an exploration rollout for go-explore."
 hparam_dict[key]["help"] = help_str
 
-key = "go_explore_num_iterations"
+key = "go_explore_num_tasks"
 hparam_dict[key] = {"type": int, "default": 8}
-help_str = "The number of iterations of exploration rollouts for go-explore."
+help_str = "The number of exploration rollout tasks to assign for go-explore. This is effectively an iteration count."
 hparam_dict[key]["help"] = help_str
 
 key = "go_explore_epsilon_1"
@@ -159,9 +159,9 @@ hparam_dict[key] = {"type": int, "default": 2}
 help_str = "The y stride to downsample the state."
 hparam_dict[key]["help"] = help_str
 
-key = "go_explore_num_samples_per_iteration"
-hparam_dict[key] = {"type": int, "default": 1200}
-help_str = "The number of processes to use for rollout."
+key = "go_explore_num_samples_per_worker_task"
+hparam_dict[key] = {"type": int, "default": 10}
+help_str = "The number of samples to send each worker as a task"
 hparam_dict[key]["help"] = help_str
 
 key = "jitter"
