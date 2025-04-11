@@ -30,7 +30,6 @@ def read_object_log(log_filepath: str):
     with open(log_filepath, "rb") as f:
         while True:
             try:
-                print(f"This is the type: {type(f)}")
                 buffer = pickle.load(f)
 
                 for element in buffer:
@@ -298,7 +297,6 @@ class TrainingHistoryDatabase:
         for entry in _read_object_log(
             os.path.dirname(dirname), log_entry.STATE_NORMALIZED_LOG_ENTRY
         ):
-            print(f"")
             self._states[entry.id] = entry.object
 
         # Store visited states sorted by visit count.

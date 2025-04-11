@@ -11,17 +11,6 @@ class CacheEntryDatabase:
         print(f"Initializing CacheEntryDatabase with {len(cache_entries)} entries")
         start_time = time.time()
 
-        # Debug info about the entries
-        if cache_entries:
-            print(f"First entry type: {type(cache_entries[0])}")
-            print(f"First entry attributes: {dir(cache_entries[0])}")
-            try:
-                print(
-                    f"First entry state shape: {cache_entries[0].state_representative.shape}"
-                )
-            except Exception as e:
-                print(f"Error getting state shape: {e}")
-
         self.cache_entries = cache_entries
         end_time = time.time()
         print(
@@ -49,8 +38,11 @@ class CacheEntryDatabase:
         print(f"Getting top {n} entries by {sort_key.key}")
         start_time = time.time()
         try:
-            sorted_entries = self.sort_by_key(sort_key())
-            result = sorted_entries[:n]
+            self.sort_by_key(sort_key)
+            result = [
+                cache_entry.state_representative.tolist()
+                for cache_entry in self.cache_entries[:n].copy()
+            ]
             end_time = time.time()
             print(f"Retrieved top {n} entries in {end_time - start_time:.2f} seconds")
             return result
@@ -94,4 +86,4 @@ class VisitCountSortKey(SortKey):
 
 class SampleCountSortKey(SortKey):
     def __init__(self):
-        super().__init__("sample_count")
+        super().__init__("sampled_count")

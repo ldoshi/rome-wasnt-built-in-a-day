@@ -92,7 +92,7 @@ def go_explore_plot_data():
 
     return {
         "states": [
-            cache_entry.state_representative
+            cache_entry.state_representative.tolist()
             for cache_entry in _CACHE_ENTRY_DATABASE.cache_entries
         ],
         "trajectory_length": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
@@ -104,7 +104,7 @@ def go_explore_plot_data():
         "steps_since_led_to_something_new_reset_count": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
             StepsSinceLedToSomethingNewResetCountSortKey(), n
         ),
-        "sample_count": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
+        "sampled_count": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
             SampleCountSortKey(), n
         ),
         "visit_count": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
