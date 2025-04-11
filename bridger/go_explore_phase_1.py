@@ -430,7 +430,7 @@ def explore(
         )
         if hparams.debug:
             object_logger.log(
-                "start_entries-width-{hparams.env_width}.pkl",
+                f"start_entries-width-{hparams.env_width}.pkl",
                 OccurrenceLogEntry(batch_idx=total_task_count, object=start_entries),
             )
 
@@ -558,7 +558,7 @@ if __name__ == "__main__":
 
         for success_entry in success_entries:
             object_logger.log(
-                "success_entry-width-{hparams.env_width}.pkl", success_entry
+                f"success_entry-width-{hparams.env_width}.pkl", success_entry
             )
 
         print(
