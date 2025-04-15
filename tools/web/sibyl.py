@@ -4,6 +4,7 @@ import os
 import threading
 import time
 import json
+import numpy as np
 
 from typing import Any, Optional
 
@@ -90,25 +91,31 @@ def go_explore_plot_data():
     cache_entries = [cache_entry for cache in caches for cache_entry in cache]
     _CACHE_ENTRY_DATABASE = CacheEntryDatabase(cache_entries)
 
+    # Convert all states to lists and ensure numeric values are Python native types
+    states = [
+        [
+            int(x) if isinstance(x, (np.int64, np.int32)) else x
+            for x in cache_entry.state_representative.tolist()
+        ]
+        for cache_entry in _CACHE_ENTRY_DATABASE.cache_entries
+    ]
+
     return {
-        "states": [
-            cache_entry.state_representative.tolist()
-            for cache_entry in _CACHE_ENTRY_DATABASE.cache_entries
-        ],
+        "states": states,
         "trajectory_length": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
-            TrajectorySortKey(), n
+            TrajectorySortKey(), n, ascending=False
         ),
         "steps_since_led_to_something_new": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
-            StepsSinceLedToSomethingNewSortKey(), n
+            StepsSinceLedToSomethingNewSortKey(), n, ascending=False
         ),
         "steps_since_led_to_something_new_reset_count": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
-            StepsSinceLedToSomethingNewResetCountSortKey(), n
+            StepsSinceLedToSomethingNewResetCountSortKey(), n, ascending=False
         ),
         "sampled_count": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
-            SampleCountSortKey(), n
+            SampleCountSortKey(), n, ascending=False
         ),
         "visit_count": _CACHE_ENTRY_DATABASE.get_top_n_by_sort_key(
-            VisitCountSortKey(), n
+            VisitCountSortKey(), n, ascending=False
         ),
     }
 
@@ -422,8 +429,8 @@ def action_inversion():
     )
 
 
-@app.route("/go_explore")
-def go_explore():
+@app.route("/go_explore_visualization")
+def go_explore_visualization():
     experiment_names = _get_experiment_names()
     selected_experiment_name = _get_string_or_default(
         name=_EXPERIMENT_NAME, default=experiment_names[0]

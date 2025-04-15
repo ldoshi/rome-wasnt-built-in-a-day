@@ -46,18 +46,36 @@ const COLORS = [
 ];
 
 let data = null;
+let currentMetric = "trajectory_length"; // Default metric
+
+// Available metrics with their display names
+const METRICS = [
+  { key: "trajectory_length", label: "Trajectory Length" },
+  { key: "steps_since_led_to_something_new", label: "Steps Since New Cell" },
+  { key: "steps_since_led_to_something_new_reset_count", label: "Reset Count" },
+  { key: "sampled_count", label: "Sample Count" },
+  { key: "visit_count", label: "Visit Count" },
+];
 
 // Function to update plots with new data
 function updatePlots() {
-  const n = document.getElementById("n-states").value || 10;
+  const nInput = document.getElementById("n-states");
+  const metricSelector = document.getElementById("metric-selector");
+
+  if (!nInput || !metricSelector) {
+    console.error("Required DOM elements not found");
+    return;
+  }
+
+  const n = nInput.value || 10;
+  currentMetric = metricSelector.value;
 
   // Show loading indicator
   document.getElementById("loading").classList.remove("hidden");
+  document.getElementById("load-error").classList.add("hidden");
 
   // Fetch data from endpoint
-  fetch(
-    `${_ROOT_URL}n_fewest_steps_since_led_to_something_new_go_explore?n=${n}`
-  )
+  fetch(`${_ROOT_URL}go_explore?n=${n}`)
     .then((response) => response.json())
     .then((responseData) => {
       data = responseData;
@@ -87,71 +105,45 @@ function renderPlots() {
   // Clear existing plots
   container.innerHTML = "";
 
-  // Create plots for each metric
-  const metrics = [
-    { key: "trajectory_length", label: "Trajectory Length" },
-    { key: "steps_since_led_to_something_new", label: "Steps Since New Cell" },
-    {
-      key: "steps_since_led_to_something_new_reset_count",
-      label: "Reset Count",
-    },
-    { key: "sample_count", label: "Sample Count" },
-    { key: "visit_count", label: "Visit Count" },
-  ];
+  // Get the current metric data
+  const metricData = data[currentMetric];
+  if (!metricData || !metricData.states || !metricData.values) return;
 
-  metrics.forEach((metric, index) => {
-    const plotDiv = document.createElement("div");
-    plotDiv.className = "plot-container";
-    container.appendChild(plotDiv);
+  // Find the metric label
+  const metricLabel =
+    METRICS.find((m) => m.key === currentMetric)?.label || currentMetric;
 
+  // Create a title for the current metric
+  const metricTitle = document.createElement("h2");
+  metricTitle.style.color = "#FFFFFF";
+  metricTitle.style.textAlign = "center";
+  metricTitle.style.marginBottom = "20px";
+  metricTitle.textContent = metricLabel;
+  container.appendChild(metricTitle);
+
+  // Create state grid container
+  const gridContainer = document.createElement("div");
+  gridContainer.className = "state-grid";
+  container.appendChild(gridContainer);
+
+  // Create state visualizations
+  metricData.states.forEach((state, stateIndex) => {
+    const stateContainer = document.createElement("div");
+    stateContainer.className = "state-container";
+
+    // Create title with metric value
+    const title = document.createElement("h3");
+    title.textContent = `Value: ${metricData.values[stateIndex]}`;
+    stateContainer.appendChild(title);
+
+    // Create canvas for state visualization
     const canvas = document.createElement("canvas");
-    canvas.id = `plot-${metric.key}`;
-    plotDiv.appendChild(canvas);
+    stateContainer.appendChild(canvas);
 
-    const chartOptions = structuredClone(CHART_OPTIONS_TEMPLATE);
-    chartOptions.plugins.title.text = metric.label;
+    // Render state grid
+    renderStateGrid(state, canvas);
 
-    new Chart(canvas, {
-      type: "bar",
-      data: {
-        labels: Array.from(
-          { length: data[metric.key].length },
-          (_, i) => `State ${i + 1}`
-        ),
-        datasets: [
-          {
-            label: metric.label,
-            data: data[metric.key],
-            backgroundColor: COLORS[index % COLORS.length],
-            borderColor: COLORS[index % COLORS.length],
-          },
-        ],
-      },
-      options: chartOptions,
-    });
-  });
-
-  // Create state visualization grid
-  const stateGrid = document.createElement("div");
-  stateGrid.id = "state-grid";
-  container.appendChild(stateGrid);
-
-  // Add state visualizations
-  data.states.forEach((state, index) => {
-    const stateDiv = document.createElement("div");
-    stateDiv.className = "state-container";
-    stateGrid.appendChild(stateDiv);
-
-    const stateTitle = document.createElement("h3");
-    stateTitle.textContent = `State ${index + 1}`;
-    stateDiv.appendChild(stateTitle);
-
-    const stateCanvas = document.createElement("canvas");
-    stateCanvas.id = `state-${index}`;
-    stateDiv.appendChild(stateCanvas);
-
-    // Render 2D state array
-    renderStateGrid(state, stateCanvas);
+    gridContainer.appendChild(stateContainer);
   });
 }
 
@@ -171,8 +163,31 @@ function renderStateGrid(state, canvas) {
   // Draw state grid
   state.forEach((row, y) => {
     row.forEach((value, x) => {
-      ctx.fillStyle = value ? "#FFFFFF" : "#000000";
+      // Use different colors for different values
+      let color;
+      if (value === 0) {
+        color = "#000000"; // Black for empty
+      } else if (value === 1) {
+        color = "#FFFFFF"; // White for walls/obstacles
+      } else if (value === 2) {
+        color = "#FF0000"; // Red for player/agent
+      } else if (value === 3) {
+        color = "#00FF00"; // Green for goals
+      } else {
+        color = "#888888"; // Gray for other values
+      }
+
+      ctx.fillStyle = color;
       ctx.fillRect(
+        x * (cellSize + padding),
+        y * (cellSize + padding),
+        cellSize,
+        cellSize
+      );
+
+      // Add a subtle border around each cell
+      ctx.strokeStyle = "#333";
+      ctx.strokeRect(
         x * (cellSize + padding),
         y * (cellSize + padding),
         cellSize,
@@ -184,18 +199,55 @@ function renderStateGrid(state, canvas) {
 
 // Initialize when document is ready
 document.addEventListener("DOMContentLoaded", () => {
-  // Add controls if they don't exist
-  const controls = document.createElement("div");
-  controls.className = "controls";
-  controls.innerHTML = `
-        <div class="control">
-            <label for="n-states">Number of States:</label>
-            <input type="number" id="n-states" value="10" min="1" max="50">
-        </div>
-        <button onclick="updatePlots()">Update Plots</button>
-    `;
-  document.body.insertBefore(controls, document.body.firstChild);
+  // Create controls if they don't exist
+  let controls = document.querySelector(".controls");
+  if (!controls) {
+    controls = document.createElement("div");
+    controls.className = "controls";
+    document.body.insertBefore(controls, document.body.firstChild);
+  }
 
-  // Initial plot update
-  updatePlots();
+  // Create metric selector
+  const metricSelector = document.createElement("select");
+  metricSelector.id = "metric-selector";
+  metricSelector.className = "control";
+
+  // Add metric options
+  METRICS.forEach((metric) => {
+    const option = document.createElement("option");
+    option.value = metric.key;
+    option.textContent = metric.label;
+    metricSelector.appendChild(option);
+  });
+
+  // Add metric selector to controls
+  const metricControl = document.createElement("div");
+  metricControl.className = "control";
+  metricControl.innerHTML = `
+    <label for="metric-selector">Metric:</label>
+    ${metricSelector.outerHTML}
+  `;
+  controls.insertBefore(metricControl, controls.firstChild);
+
+  // Add number of states input if it doesn't exist
+  if (!document.getElementById("n-states")) {
+    const nStatesControl = document.createElement("div");
+    nStatesControl.className = "control";
+    nStatesControl.innerHTML = `
+      <label for="n-states">Number of States:</label>
+      <input type="number" id="n-states" value="10" min="1" max="50">
+    `;
+    controls.appendChild(nStatesControl);
+  }
+
+  // Add update button if it doesn't exist
+  if (!document.querySelector(".controls button")) {
+    const updateButton = document.createElement("button");
+    updateButton.textContent = "Update Plots";
+    updateButton.onclick = updatePlots;
+    controls.appendChild(updateButton);
+  }
+
+  // Wait a short moment for DOM to be fully updated before initial plot update
+  setTimeout(updatePlots, 100);
 });

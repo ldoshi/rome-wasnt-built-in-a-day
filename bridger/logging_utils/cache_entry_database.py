@@ -1,5 +1,6 @@
 from bridger.go_explore_phase_1 import CacheEntry
 import time
+import numpy as np
 
 
 class CacheEntryDatabase:
@@ -31,18 +32,53 @@ class CacheEntryDatabase:
             print(f"Error during sorting: {e}")
             raise
 
-    def get_top_n_by_sort_key(self, sort_key: "SortKey", n: int):
+    def get_top_n_by_sort_key(
+        self, sort_key: "SortKey", n: int, ascending: bool = False
+    ):
         """
-        Returns the top n cache entries.
+        Returns the top n cache entries along with their metric values.
+
+        Args:
+            sort_key: The key to sort by
+            n: Number of entries to return
+            ascending: If True, sort in ascending order, otherwise descending (default)
+
+        Returns:
+            A dictionary containing:
+            - states: List of state representations
+            - values: List of corresponding metric values
         """
         print(f"Getting top {n} entries by {sort_key.key}")
         start_time = time.time()
         try:
             self.sort_by_key(sort_key)
-            result = [
-                cache_entry.state_representative.tolist()
-                for cache_entry in self.cache_entries[:n].copy()
-            ]
+            if ascending:
+                entries = self.cache_entries[:n].copy()
+            else:
+                entries = self.cache_entries[-n:].copy()
+                entries.reverse()
+
+            # Convert values to Python native types, handling both numbers and tuples
+            def convert_value(value):
+                if isinstance(value, (np.int64, np.int32)):
+                    return int(value)
+                elif isinstance(value, tuple):
+                    return [
+                        int(x) if isinstance(x, (np.int64, np.int32)) else x
+                        for x in value
+                    ]
+                return value
+
+            result = {
+                "states": [
+                    cache_entry.state_representative.tolist() for cache_entry in entries
+                ],
+                "values": [
+                    convert_value(getattr(cache_entry, sort_key.key))
+                    for cache_entry in entries
+                ],
+            }
+
             end_time = time.time()
             print(f"Retrieved top {n} entries in {end_time - start_time:.2f} seconds")
             return result
