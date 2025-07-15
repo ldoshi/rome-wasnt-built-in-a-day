@@ -5,6 +5,7 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 # --- Bars and Stripes Dataset (4x4) ---
 def generate_bars_stripes(n=4):
     images = []
@@ -21,24 +22,24 @@ def generate_bars_stripes(n=4):
             unique.append(img)
     return np.array(unique).astype(np.float32)
 
+
 data_np = generate_bars_stripes(4)
 data = torch.tensor(data_np.reshape(len(data_np), -1))  # shape: (N, 16)
+
 
 # --- EBM: MLP Energy Model ---
 class EBM(nn.Module):
     def __init__(self, input_dim):
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1)
-        )
+        self.net = nn.Sequential(nn.Linear(input_dim, 64), nn.ReLU(), nn.Linear(64, 1))
 
     def forward(self, x):
         return self.net(x).squeeze(-1)  # (N,)
 
+
 model = EBM(16)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
 
 # --- Sampling (Gibbs-style) ---
 @torch.no_grad()
@@ -55,13 +56,14 @@ def gibbs_sample(model, x_init, steps=30):
             x[:, i] = x[:, i] * mask + x_flip[:, i] * (1 - mask)
     return x
 
+
 # --- Training Loop ---
 epochs = 1000
 batch_size = 64
 for epoch in range(epochs):
     idx = torch.randint(0, data.size(0), (batch_size,))
     x_data = data[idx]
-    
+
     x_noise = torch.bernoulli(torch.full_like(x_data, 0.5))
     x_neg = gibbs_sample(model, x_noise, steps=40)
 
@@ -86,4 +88,3 @@ for ax, img in zip(axs.flat, samples):
     ax.axis("off")
 plt.tight_layout()
 plt.show()
-
